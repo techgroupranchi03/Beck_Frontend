@@ -22,9 +22,9 @@ const palette = {
 
 export default function Dashboard() {
   return (
-    <>
+    <React.Fragment>
       {/* Metric Cards */}
-      <Grid container spacing={3} mb={6} sx={{mt: 4}}>
+      <Grid container spacing={3} mb={6} sx={{ mt: 4 }}>
         {[
           { label: "TOTAL CLIENTS", value: 500, icon: <People />, color: palette.primary },
           { label: "ACTIVE CLIENTS", value: 200, icon: <PersonAdd />, color: palette.primary },
@@ -68,6 +68,6 @@ export default function Dashboard() {
           </Grid>
         ))}
       </Grid>
-    </>
+    </React.Fragment>
   );
 }

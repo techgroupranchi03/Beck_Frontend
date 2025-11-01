@@ -1,0 +1,19 @@
+import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Layout from '../../Layout.jsx'
+import Dashboard from '../../pages/admin/Dashboard.jsx'
+import Clients from '../../pages/admin/Clients.jsx'
+import Admin_login from '../../auth/admin/Admin_login.jsx'
+
+const AdminRoutes = () => (
+  <Routes>
+    <Route path="/login" element={<Admin_login />} />
+    <Route path="/" element={<Layout role="admin" />}>
+      <Route index element={<Navigate to="dashboard" replace />} />
+      <Route path="dashboard" element={<Dashboard />} />
+      <Route path="clients" element={<Clients />} />
+    </Route>
+  </Routes>
+)
+
+export default AdminRoutes

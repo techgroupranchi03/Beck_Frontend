@@ -14,10 +14,10 @@ import {
   Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { MaterialReactTable } from "material-react-table";
-import clientData from '../dummydata/Client';
-import AddClientsDialog from "../components/dialoge/add_clients";
-import ConfirmationDialog from "../components/dialoge/Confirmation_dialog";
-import EditClientsDialog from "../components/dialoge/Edit_Clients";
+import clientData from './Client';
+import AddClientsDialog from "../../dialoge/admin/add_clients";
+import ConfirmationDialog from "../../dialoge/admin/Confirmation_dialog";
+import EditClientsDialog from "../../dialoge/admin/Edit_clients";
 const palette = {
   dark: "#132421",
   primary: "#407f68",

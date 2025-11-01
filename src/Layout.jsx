@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Outlet, NavLink, useLocation } from "react-router-dom";
 import {
   Box,
@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { People, TrendingUp, Menu as MenuIcon } from "@mui/icons-material";
-import ProfileMenu from "./components/reuseable_componetns/profile_menu.jsx";
+import ProfileMenu from "./resuable_components/profile_menu.jsx";
 
 const palette = {
   dark: "#132421",
@@ -21,15 +21,56 @@ const palette = {
 };
 
 const getPageTitle = (pathname) => {
-  if (pathname.includes("dashboard")) return "Dashboard";
-  if (pathname.includes("clients")) return "All Clients";
+  // Normalize without query/hash
+  const path = pathname.split(/[?#]/)[0];
+  if (path.startsWith("/admin")) {
+    if (path.includes("dashboard")) return "Admin Dashboard";
+    if (path.endsWith("/clients") || path.includes("/clients/")) return "Manage Clients";
+    return "Admin";
+  }
+  if (path.startsWith("/clients")) {
+    if (path.includes("dashboard")) return "Client Dashboard";
+    if (path.includes("property")) return "Property Management";
+    if (path.includes("inventory")) return "Inventory Management";
+    if (path.includes("team")) return "Team Management";
+    return "Client Portal";
+  }
   return "Beck Holiday Homes";
 };
 
-export default function Layout() {
+export default function Layout({ role }) {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
   const [drawerOpen, setDrawerOpen] = useState(true);
+
+  // Determine role if not passed explicitly (fallback based on path)
+  const resolvedRole = useMemo(() => {
+    if (role) return role;
+    const p = location.pathname;
+    if (p.startsWith("/admin")) return "admin";
+    if (p.startsWith("/clients")) return "client";
+    return "guest";
+  }, [role, location.pathname]);
+
+  const basePath = resolvedRole === "admin" ? "/admin" : resolvedRole === "client" ? "/clients" : "";
+
+  const navItems = useMemo(() => {
+    if (resolvedRole === "admin") {
+      return [
+        { to: `${basePath}/dashboard`, icon: <TrendingUp />, label: "Dashboard" },
+        { to: `${basePath}/clients`, icon: <People />, label: "Clients" },
+      ];
+    }
+    if (resolvedRole === "client") {
+      return [
+        { to: `${basePath}/dashboard`, icon: <TrendingUp />, label: "Dashboard" },
+        { to: `${basePath}/property-management`, icon: <People />, label: "Properties" },
+        { to: `${basePath}/inventory-management`, icon: <People />, label: "Inventory" },
+        { to: `${basePath}/team-management`, icon: <People />, label: "Team" },
+      ];
+    }
+    return [];
+  }, [resolvedRole, basePath]);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f9f9f9" }}>
@@ -79,10 +120,7 @@ export default function Layout() {
         {/* Navigation Links */}
         <Box component="nav" sx={{ width: "100%", mt: 2 }}>
           <Stack spacing={1}>
-            {[
-              { to: "/dashboard", icon: <TrendingUp />, label: "Dashboard" },
-              { to: "/clients", icon: <People />, label: "Clients" },
-            ].map((item) => (
+            {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
