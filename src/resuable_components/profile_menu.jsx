@@ -8,18 +8,13 @@ import {
     MenuItem,
     Typography,
     IconButton,
+    useTheme,
 } from "@mui/material";
 import { Logout } from "@mui/icons-material";
-
-const palette = {
-    dark: "#132421",
-    primary: "#407f68",
-    accent: "#6b603f",
-    lightGreen: "#96d980",
-    cream: "#fef7c5",
-};
+import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
 
 export default function ProfileMenu() {
+    const theme = useTheme();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
 
@@ -31,7 +26,10 @@ export default function ProfileMenu() {
     };
 
     return (
-        <Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 2 }}>
+            {/* Theme Toggle Button */}
+            <ThemeToggleButton />
+
             {/* Avatar button to open menu */}
             <IconButton onClick={handleMenuOpen} size="small">
                 <Avatar
@@ -40,8 +38,8 @@ export default function ProfileMenu() {
                     sx={{
                         width: 50,
                         height: 50,
-                        bgcolor: palette.primary,
-                        color: palette.cream,
+                        bgcolor: theme.palette.primary.main,
+                        color: theme.palette.custom.cream,
                     }}
                 />
             </IconButton>
@@ -67,10 +65,12 @@ export default function ProfileMenu() {
                             right: 20,
                             width: 12,
                             height: 12,
-                            bgcolor: "background.paper",
+                            bgcolor: theme.palette.background.paper,
                             transform: "translateY(-50%) rotate(45deg)",
                             zIndex: 0,
-                            boxShadow: "0px -1px 1px rgba(0,0,0,0.1)",
+                            boxShadow: theme.palette.mode === "light"
+                                ? "0px -1px 1px rgba(0,0,0,0.1)"
+                                : "0px -1px 1px rgba(255,255,255,0.1)",
                         },
                     },
                 }}
@@ -83,7 +83,7 @@ export default function ProfileMenu() {
                         display: "flex",
                         alignItems: "center",
                         p: 1.5,
-                        bgcolor: "white",
+                        bgcolor: theme.palette.background.paper,
                         borderRadius: 2,
                     }}
                 >
@@ -94,34 +94,40 @@ export default function ProfileMenu() {
                             width: 56,
                             height: 56,
                             mr: 2,
-                            bgcolor: palette.accent,
-                            color: palette.cream,
+                            bgcolor: theme.palette.secondary.main,
+                            color: theme.palette.custom.cream,
                         }}
                     />
                     <Box>
                         <Typography
                             variant="subtitle1"
                             fontWeight={600}
-                            sx={{ color: palette.dark }}
+                            sx={{ color: theme.palette.text.primary }}
                         >
                             System Administrator
                         </Typography>
                         <Typography
                             variant="body2"
-                            sx={{ color: palette.lightGreen, fontWeight: 500 }}
+                            sx={{ 
+                                color: theme.palette.primary.light, 
+                                fontWeight: 500 
+                            }}
                         >
                             super_admin
                         </Typography>
                     </Box>
                 </Box>
 
-                <Divider sx={{ my: 1, borderColor: palette.accent }} />
+                <Divider sx={{ my: 1, borderColor: theme.palette.divider }} />
 
                 {/* Email */}
                 <MenuItem disabled>
                     <Typography
                         variant="body2"
-                        sx={{ color: palette.dark, wordBreak: "break-word" }}
+                        sx={{ 
+                            color: theme.palette.text.secondary, 
+                            wordBreak: "break-word" 
+                        }}
                     >
                         johndoe@example.com
                     </Typography>
@@ -138,11 +144,11 @@ export default function ProfileMenu() {
                         sx={{
                             textTransform: "none",
                             fontWeight: 600,
-                            bgcolor: palette.primary,
-                            color: palette.cream,
+                            bgcolor: theme.palette.primary.main,
+                            color: theme.palette.custom.cream,
                             borderRadius: 2,
                             "&:hover": {
-                                bgcolor: palette.accent,
+                                bgcolor: theme.palette.secondary.main,
                             },
                         }}
                     >

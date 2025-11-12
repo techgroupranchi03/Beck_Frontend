@@ -6,7 +6,6 @@ import PropertyManagement from '../../pages/clients/PropertyManagement.jsx'
 import InventoryManagement from '../../pages/clients/InventoryManagement.jsx'
 import TeamManagement from '../../pages/clients/TeamManagement.jsx'
 import Clients_login from '../../auth/clients/Clients_login.jsx'
-import PageNotFound from '../../pages/PageNotFound.jsx'
 
 const ClientsRoutes = () => (
   <Routes>
