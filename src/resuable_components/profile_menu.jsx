@@ -12,11 +12,26 @@ import {
 } from "@mui/material";
 import { Logout } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfileMenu() {
     const theme = useTheme();
+    const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
+
+    const handleLogout = () => {
+        try {
+            // Clear authentication tokens or user data from localStorage
+            localStorage.removeItem("admin_token");
+            // Redirect to login page
+            navigate("/admin/login");
+        } catch (error) {
+            console.error("Logout failed:", error);
+        }
+    };
+
+
 
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
@@ -108,9 +123,9 @@ export default function ProfileMenu() {
                         </Typography>
                         <Typography
                             variant="body2"
-                            sx={{ 
-                                color: theme.palette.primary.light, 
-                                fontWeight: 500 
+                            sx={{
+                                color: theme.palette.primary.light,
+                                fontWeight: 500
                             }}
                         >
                             super_admin
@@ -124,9 +139,9 @@ export default function ProfileMenu() {
                 <MenuItem disabled>
                     <Typography
                         variant="body2"
-                        sx={{ 
-                            color: theme.palette.text.secondary, 
-                            wordBreak: "break-word" 
+                        sx={{
+                            color: theme.palette.text.secondary,
+                            wordBreak: "break-word"
                         }}
                     >
                         johndoe@example.com
@@ -140,7 +155,7 @@ export default function ProfileMenu() {
                         fullWidth
                         variant="contained"
                         startIcon={<Logout />}
-                        onClick={() => alert("Logged out")}
+                        onClick={handleLogout}
                         sx={{
                             textTransform: "none",
                             fontWeight: 600,

@@ -9,63 +9,58 @@ import {
     IconButton,
     Avatar,
     useTheme,
-    createTheme,
-    ThemeProvider,
+    CircularProgress,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-
-// Your color palette
-const theme = createTheme({
-    palette: {
-        primary: { main: "#407f68" },
-        secondary: { main: "#6b603f" },
-        background: { default: "#fef7c5", paper: "#ffffff" },
-        text: { primary: "#132421" },
-    },
-    typography: {
-        fontFamily: "Poppins, sans-serif",
-    },
-});
+import { useNavigate } from "react-router-dom";
+import { adminLogin } from "../../service/Admin/Admin_auth";
 
 const Admin_login = () => {
+    const theme = useTheme();
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
-    const [logindata, setLogindata] = useState({ username: "", password: "" });
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+ 
 
-    const handleChange = (e) => {
-        setLogindata({ ...logindata, [e.target.name]: e.target.value });
-    };
-    const handleLogin = () => {
-        if (!logindata.username || !logindata.password) {
-            setError("Username and password are required.");
-            return;
-        }
+    const handleLogin = async () => {
         setError("");
-        console.log("Admin Login:", logindata);
+        setLoading(true);
+        try {
+            const response = await adminLogin({ username, password });
+            console.log('Login response:', response);
+            localStorage.setItem("admin_token", response.data.token);
+            navigate("/admin/dashboard");
+        } catch (err) {
+            setError(err.message || "Login failed. Please check your credentials.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <ThemeProvider theme={theme}>
-            <Box
+        <Box
+            sx={{
+                backgroundColor: theme.palette.background.creme,
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 2,
+            }}
+        >
+            <Container
+                maxWidth="xs"
                 sx={{
-                    backgroundColor: theme.palette.background.default,
-                    minHeight: "100vh",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    p: 2,
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 5,
+                    boxShadow: 2,
+                    p: 4,
+                    textAlign: "center",
                 }}
             >
-                <Container
-                    maxWidth="xs"
-                    sx={{
-                        backgroundColor: theme.palette.background.paper,
-                        borderRadius: 5,
-                        boxShadow: 2,
-                        p: 4,
-                        textAlign: "center",
-                    }}
-                >
                     {/* Logo and App Name */}
                     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
                         <Avatar
@@ -74,14 +69,14 @@ const Admin_login = () => {
                             sx={{ width: 64, height: 64, mb: 1 }}
                         />
                         <Typography
-                            variant="h5"
+                            variant="h4"
                             fontWeight="bold"
                             sx={{ color: theme.palette.text.primary }}
                         >
                             Beck HolidayHomes
                         </Typography>
                         <Typography
-                            variant="subtitle2"
+                            variant="subtitle1"
                             sx={{ color: theme.palette.secondary.main }}
                         >
                             Admin Login
@@ -94,12 +89,12 @@ const Admin_login = () => {
                         label="Username"
                         name="username"
                         required
-                        value={logindata.username}
-                        onChange={handleChange}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         variant="outlined"
                         margin="normal"
-                        error={!!error && !logindata.username}
-                        helperText={!!error && !logindata.username ? error : ""}
+                        error={!!error}
+                        disabled={loading}
                         slotProps={{
                             inputLabel: { sx: { color: theme.palette.text.primary } }
                         }}
@@ -109,23 +104,24 @@ const Admin_login = () => {
                         label="Password"
                         name="password"
                         type={showPassword ? "text" : "password"}
-                        value={logindata.password}
-                        onChange={handleChange}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         variant="outlined"
                         margin="normal"
                         required
-                        error={!!error && !logindata.password}
-                        helperText={!!error && !logindata.password ? error : ""}
+                        error={!!error}
+                        disabled={loading}
                         slotProps={{
                             inputLabel: { sx: { color: theme.palette.text.primary } },
                             input: {
-                                endAdornment: logindata.password ? (
+                                endAdornment: password ? (
                                     <InputAdornment position="end">
                                         <IconButton
                                             onClick={() => setShowPassword(!showPassword)}
                                             edge="end"
                                             sx={{ color: theme.palette.text.primary }}
                                             aria-label={showPassword ? "Hide password" : "Show password"}
+                                            disabled={loading}
                                         >
                                             {showPassword ? <VisibilityOff /> : <Visibility />}
                                         </IconButton>
@@ -134,27 +130,43 @@ const Admin_login = () => {
                             },
                         }}
                     />
+
+                    {/* Error Message */}
+                    {error && (
+                        <Typography
+                            variant="body1"
+                            sx={{
+                                color: "error.main",
+                                mt: 2,
+                                textAlign: "left",
+                            }}
+                        >
+                            {error}
+                        </Typography>
+                    )}
+
                     <Button
                         fullWidth
                         variant="contained"
                         disableElevation
                         onClick={handleLogin}
+                        disabled={loading}
                         sx={{
                             mt: 3,
                             py: 1.2,
                             backgroundColor: theme.palette.primary.main,
                             "&:hover": { backgroundColor: "#326655" },
+                            "&:disabled": { backgroundColor: "#9db5a9" },
                             fontWeight: "bold",
                             borderRadius: 2,
-                            textyTransform: "none",
+                            textTransform: "none",
                         }}
 
                     >
-                        Login
+                        {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
                     </Button>
                 </Container>
             </Box>
-        </ThemeProvider>
     );
 };
 

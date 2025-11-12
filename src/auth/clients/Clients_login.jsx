@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Box,
     Button,
@@ -9,152 +10,151 @@ import {
     IconButton,
     Avatar,
     useTheme,
-    createTheme,
-    ThemeProvider,
+    CircularProgress,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-
-// Your color palette
-const theme = createTheme({
-    palette: {
-        primary: { main: "#407f68" },
-        secondary: { main: "#6b603f" },
-        background: { default: "#fef7c5", paper: "#ffffff" },
-        text: { primary: "#132421" },
-    },
-    typography: {
-        fontFamily: "Poppins, sans-serif",
-    },
-});
+import { clientLogin } from "../../service/Clients/Clients_auth";
 
 const Clients_login = () => {
+    const theme = useTheme();
     const [showPassword, setShowPassword] = useState(false);
-    const [logindata, setLogindata] = useState({ username: "", password: "" });
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
-    const handleChange = (e) => {
-        setLogindata({ ...logindata, [e.target.name]: e.target.value });
-    };
-    const handleLogin = () => {
-        if (!logindata.username || !logindata.password) {
-            setError("Username and password are required.");
-            return;
-        }
+
+    const handleLogin = async () => {
         setError("");
-        console.log("Clients Login:", logindata);
+        setLoading(true);
+        try {
+            const response = await clientLogin({ email: username, password });
+            console.log('Login response:', response);
+            localStorage.setItem("client_token", response.data.token);
+            navigate("/clients/dashboard");
+        } catch (err) {
+            setError(err.message || "Login failed. Please check your credentials.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <ThemeProvider theme={theme}>
-            <Box
+        <Box
+            sx={{
+                backgroundColor: theme.palette.background.creme,
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 2,
+            }}
+        >
+            <Container
+                maxWidth="xs"
                 sx={{
-                    backgroundColor: theme.palette.background.default,
-                    minHeight: "100vh",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    p: 2,
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 5,
+                    boxShadow: 2,
+                    p: 4,
+                    textAlign: "center",
                 }}
             >
-                <Container
-                    maxWidth="xs"
-                    sx={{
-                        backgroundColor: theme.palette.background.paper,
-                        borderRadius: 5,
-                        boxShadow: 2,
-                        p: 4,
-                        textAlign: "center",
-                    }}
-                >
-                    {/* Logo and App Name */}
-                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
-                        <Avatar
-                            src="../images/logo.png"
-                            alt="Beck HolidayHomes Logo"
-                            sx={{ width: 64, height: 64, mb: 1 }}
-                        />
-                        <Typography
-                            variant="h5"
-                            fontWeight="bold"
-                            sx={{ color: theme.palette.text.primary }}
-                        >
-                            Beck HolidayHomes
-                        </Typography>
-                        <Typography
-                            variant="subtitle2"
-                            sx={{ color: theme.palette.secondary.main }}
-                        >
-                            Clients Login
-                        </Typography>
-                    </Box>
-
-                    {/* Username Field */}
-                    <TextField
-                        fullWidth
-                        label="Username"
-                        name="username"
-                        required
-                        value={logindata.username}
-                        onChange={handleChange}
-                        variant="outlined"
-                        margin="normal"
-                        error={!!error && !logindata.username}
-                        helperText={!!error && !logindata.username ? error : ""}
-                        slotProps={{
-                            inputLabel: { sx: { color: theme.palette.text.primary } }
-                        }}
+                {/* Logo and App Name */}
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
+                    <Avatar
+                        src="../images/logo.png"
+                        alt="Beck HolidayHomes Logo"
+                        sx={{ width: 64, height: 64, mb: 1 }}
                     />
-                    <TextField
-                        fullWidth
-                        label="Password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={logindata.password}
-                        onChange={handleChange}
-                        variant="outlined"
-                        margin="normal"
-                        required
-                        error={!!error && !logindata.password}
-                        helperText={!!error && !logindata.password ? error : ""}
-                        slotProps={{
-                            inputLabel: { sx: { color: theme.palette.text.primary } },
-                            input: {
-                                endAdornment: logindata.password ? (
-                                    <InputAdornment position="end">
-                                        <IconButton
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            edge="end"
-                                            sx={{ color: theme.palette.text.primary }}
-                                            aria-label={showPassword ? "Hide password" : "Show password"}
-                                        >
-                                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                                        </IconButton>
-                                    </InputAdornment>
-                                ) : null,
-                            },
-                        }}
-                    />
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        disableElevation
-                        onClick={handleLogin}
-                        sx={{
-                            mt: 3,
-                            py: 1.2,
-                            backgroundColor: theme.palette.primary.main,
-                            "&:hover": { backgroundColor: "#326655" },
-                            fontWeight: "bold",
-                            borderRadius: 2,
-                            textyTransform: "none",
-                        }}
-
+                    <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.text.primary }}
                     >
-                        Login
-                    </Button>
-                </Container>
-            </Box>
-        </ThemeProvider>
+                        Beck HolidayHomes
+                    </Typography>
+                    <Typography
+                        variant="subtitle1"
+                        sx={{ color: theme.palette.secondary.main }}
+                    >
+                        Clients Login
+                    </Typography>
+                </Box>
+
+                {/* Username Field */}
+                <TextField
+                    fullWidth
+                    label="Username"
+                    name="username"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    variant="outlined"
+                    margin="normal"
+                    error={!!error}
+                    slotProps={{
+                        inputLabel: { sx: { color: theme.palette.text.primary } }
+                    }}
+                />
+                <TextField
+                    fullWidth
+                    label="Password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    variant="outlined"
+                    margin="normal"
+                    required
+                    error={!!error}
+                    slotProps={{
+                        inputLabel: { sx: { color: theme.palette.text.primary } },
+                        input: {
+                            endAdornment: password ? (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        edge="end"
+                                        sx={{ color: theme.palette.text.primary }}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ) : null,
+                        },
+                    }}
+                />
+
+                {/* Error Message */}
+                {error && (
+                    <Typography color="error" variant="body1" sx={{ mt: 1 }}>
+                        {error}
+                    </Typography>
+                )}
+
+                <Button
+                    fullWidth
+                    variant="contained"
+                    disableElevation
+                    onClick={handleLogin}
+                    sx={{
+                        mt: 3,
+                        py: 1.2,
+                        backgroundColor: theme.palette.primary.main,
+                        "&:hover": { backgroundColor: "#326655" },
+                        fontWeight: "bold",
+                        borderRadius: 2,
+                        textTransform: "none",
+                    }}
+
+                >
+                    {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
+                </Button>
+            </Container>
+        </Box>
     );
 };
 
