@@ -35,3 +35,21 @@ export const adminLogout = async () => {
         return Promise.reject(error.response?.data || { message: 'Logout failed' });
     }
 };
+
+// http://31.97.230.38:8080/api/clients method: get all clients
+export const getAllClients = async () => {
+    const token = getAdminToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/clients`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        return Promise.reject(error.response?.data || { message: 'Failed to fetch clients' });
+    }
+};

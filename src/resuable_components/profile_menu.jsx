@@ -12,32 +12,52 @@ import {
 } from "@mui/material";
 import { Logout } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function ProfileMenu() {
     const theme = useTheme();
-    const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
 
     const handleLogout = () => {
-        try {
-            // Clear authentication tokens or user data from localStorage
-            localStorage.removeItem("admin_token");
-            // Redirect to login page
-            navigate("/admin/login");
-        } catch (error) {
-            console.error("Logout failed:", error);
-        }
+        setAnchorEl(null);
+        logout();
     };
-
-
-
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
     };
     const handleMenuClose = () => {
         setAnchorEl(null);
+    };
+
+
+    // Get user initials for avatar
+    const getInitials = () => {
+        if (user?.name) {
+            return user.name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+        }
+        if (user?.username) {
+            return user.username.slice(0, 2).toUpperCase();
+        }
+        return 'U';
+    };
+
+    // Get display name
+    const getDisplayName = () => {
+        return user?.name || user?.username || 'User';
+    };
+
+    // Get role label
+    const getRoleLabel = () => {
+        if (user?.role === 'admin') return 'Administrator';
+        if (user?.role === 'client') return 'Client';
+        return 'User';
     };
 
     return (
@@ -56,7 +76,9 @@ export default function ProfileMenu() {
                         bgcolor: theme.palette.primary.main,
                         color: theme.palette.custom.cream,
                     }}
-                />
+                >
+                    {getInitials()}
+                </Avatar>
             </IconButton>
 
             {/* Profile dropdown menu */}
@@ -112,14 +134,16 @@ export default function ProfileMenu() {
                             bgcolor: theme.palette.secondary.main,
                             color: theme.palette.custom.cream,
                         }}
-                    />
+                    >
+                        {getInitials()}
+                    </Avatar>
                     <Box>
                         <Typography
                             variant="subtitle1"
                             fontWeight={600}
                             sx={{ color: theme.palette.text.primary }}
                         >
-                            System Administrator
+                            {getRoleLabel()}
                         </Typography>
                         <Typography
                             variant="body2"
@@ -128,7 +152,7 @@ export default function ProfileMenu() {
                                 fontWeight: 500
                             }}
                         >
-                            super_admin
+                            {user?.role || 'super_admin'}
                         </Typography>
                     </Box>
                 </Box>
@@ -138,13 +162,13 @@ export default function ProfileMenu() {
                 {/* Email */}
                 <MenuItem disabled>
                     <Typography
-                        variant="body2"
+                        variant="body1"
                         sx={{
-                            color: theme.palette.text.secondary,
+                            color: theme.palette.text.p,
                             wordBreak: "break-word"
                         }}
                     >
-                        johndoe@example.com
+                        {user?.email}
                     </Typography>
                 </MenuItem>
 

@@ -23,29 +23,30 @@ export default function ConfirmationDialog({ open, onCancel, onDelete, title, me
                 open={open}
                 slots={{ transition: Transition }}
                 keepMounted
-                onClose={onCancel}
+                // onClose={onCancel}
                 aria-describedby="alert-dialog-slide-description"
                 maxWidth="xs"
             >
-                <DialogTitle>{title}</DialogTitle>
+                <DialogTitle variant='h5'>
+                    {title}
+                </DialogTitle>
                 <IconButton
                     onClick={onCancel}
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
+                    sx={{ position: 'absolute', top: 8, right: 8, }}
                 >
                     <Close />
                 </IconButton>
-                <DialogContent>
-                    <DialogContentText id="alert-dialog-slide-description">
+                <DialogContent >
+                    <DialogContentText id="alert-dialog-slide-description" >
                         {message}
                     </DialogContentText>
                 </DialogContent>
-                <DialogActions>
+                <DialogActions >
                     <Button
                         onClick={onDelete}
                         disableElevation
                         sx={{ fontSize: "1.1rem", textTransform: "none", '&:hover': { backgroundColor: palette.secondary.main } }}
                         variant="contained"
-
                     >
                         Delete
                     </Button>

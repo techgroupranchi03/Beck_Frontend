@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -18,16 +18,11 @@ import clientData from './Client';
 import AddClientsDialog from "../../dialoge/admin/add_clients";
 import ConfirmationDialog from "../../dialoge/admin/Confirmation_dialog";
 import EditClientsDialog from "../../dialoge/admin/Edit_clients";
-const palette = {
-  dark: "#132421",
-  primary: "#407f68",
-  accent: "#6b603f",
-  lightGreen: "#96d980",
-  cream: "#fef7c5",
-};
+import { getAllClients } from "../../service/Admin/Admin_auth";
 
 export default function Clients() {
   const theme = useTheme();
+  const { palette } = theme;
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
@@ -35,9 +30,25 @@ export default function Clients() {
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
 
+  const [clients, setClients] = useState([]);
+  console.log("Clients from API:", clients);
 
 
-   // ----------------------------------Handlers--------------------
+  // call the API to get all clients and set the data
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await getAllClients();
+        setClients(res.data);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+    fetchClients();
+  }, []);
+
+
+  // ----------------------------------Handlers--------------------
 
   const handleEditClient = (id) => {
     const found = data.find((c) => c.id === id);
@@ -82,7 +93,7 @@ export default function Clients() {
           <Box display="flex" alignItems="center" gap={1.5}>
             <Avatar
               sx={{
-                bgcolor: palette.primary,
+                bgcolor: palette.primary.main,
                 width: 45,
                 height: 45,
                 fontSize: "0.875rem",
@@ -121,8 +132,8 @@ export default function Clients() {
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              bgcolor: cell.getValue() === "Active" ? palette.lightGreen : "#e0e0e0",
-              color: cell.getValue() === "Active" ? palette.dark : "#666",
+              bgcolor: cell.getValue() === "Active" ? palette.primary.light : palette.grey[300],
+              color: cell.getValue() === "Active" ? palette.primary.dark : palette.text.secondary,
               fontSize: "0.75rem",
               fontWeight: 600,
             }}
@@ -149,14 +160,14 @@ export default function Clients() {
             <IconButton
               onClick={() => handleEditClient(row.original.id)}
               size="small"
-              sx={{ color: palette.primary }}
+              sx={{ color: palette.primary.main }}
             >
               <EditIcon fontSize="small" />
             </IconButton>
             <IconButton
               onClick={() => handleDeleteClient(row.original.id)}
               size="small"
-              sx={{ color: palette.accent }}
+              sx={{ color: palette.secondary.main }}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -164,68 +175,75 @@ export default function Clients() {
         ),
       },
     ],
-    []
+    [theme]
   );
 
- 
-  return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Add New Client Button */}
-      <Box display="flex" justifyContent="end" mb={2}>
-        <Button
-          variant="contained"
-          disableElevation
-          sx={{
-            bgcolor: palette.primary,
-            color: "#fff",
-            "&:hover": { bgcolor: palette.accent },
-          }}
-          onClick={() => setOpenAddDialog(true)}
-        >
-          ADD NEW CLIENT
-        </Button>
-      </Box>
 
-      {/* Material React Table */}
-      <MaterialReactTable
-        columns={columns}
-        data={data}
-        enableColumnActions={false}
-        enableColumnFilters={true}
-        enableSorting
-        enablePagination
-        muiTablePaperProps={{
-          sx: { borderRadius: 2, boxShadow: "0px 2px 6px rgba(0,0,0,0.05)" },
-        }}
-        muiTableHeadCellProps={{
-          sx: {
-            bgcolor: palette.primary,
-            color: "#fff",
-            fontWeight: 600,
-          },
-        }}
-        muiTableBodyRowProps={{
-          hover: true,
-          sx: { "&:hover": { bgcolor: "#f5f5f5" } },
-        }}
-      />
-      <AddClientsDialog
-        open={openAddDialog}
-        onClose={() => setOpenAddDialog(false)}
-      />
-      <ConfirmationDialog
-        open={openConfirm}
-        onCancel={handleCancelDelete}
-        onConfirm={handleConfirmDelete}
-        title="Delete Client"
-        message="Are you sure you want to delete this client? This action cannot be undone."
-      />
-      <EditClientsDialog
-        open={openEditDialog}
-        onClose={() => { setOpenEditDialog(false); setEditingClient(null); }}
-        client={editingClient}
-        onSave={handleSaveEditedClient}
-      />
-    </Container>
+  return (
+    <React.Fragment>
+      <Container sx={{ mt: 4, mb: 4 }}>
+        {/* Add New Client Button */}
+        <Box display="flex" justifyContent="end" mb={2}>
+          <Button
+            variant="contained"
+            disableElevation
+            sx={{
+              bgcolor: palette.primary.main,
+              "&:hover": { bgcolor: palette.secondary.main },
+            }}
+            onClick={() => setOpenAddDialog(true)}
+          >
+            ADD NEW CLIENT
+          </Button>
+        </Box>
+
+        {/* Material React Table */}
+        <MaterialReactTable
+          columns={columns}
+          data={data}
+          enableColumnActions={false}
+          enableColumnFilters={true}
+          enableSorting
+          enablePagination
+          muiTablePaperProps={{
+            sx: { borderRadius: 2, boxShadow: "0px 2px 6px rgba(0,0,0,0.05)" },
+          }}
+          muiTableHeadCellProps={{
+            sx: {
+              bgcolor: palette.primary.main,
+              color: "#fff",
+              fontWeight: 600,
+            },
+          }}
+          muiTableBodyRowProps={{
+            hover: true,
+            sx: {
+              "&:hover": {
+                bgcolor: theme.palette.mode === "light"
+                  ? "#f5f5f5"
+                  : palette.background.paper
+              }
+            },
+          }}
+        />
+        <AddClientsDialog
+          open={openAddDialog}
+          onClose={() => setOpenAddDialog(false)}
+        />
+        <ConfirmationDialog
+          open={openConfirm}
+          onCancel={handleCancelDelete}
+          onConfirm={handleConfirmDelete}
+          title="Delete Client"
+          message="Are you sure you want to delete this client? This action cannot be undone."
+        />
+        <EditClientsDialog
+          open={openEditDialog}
+          onClose={() => { setOpenEditDialog(false); setEditingClient(null); }}
+          client={editingClient}
+          onSave={handleSaveEditedClient}
+        />
+      </Container>
+    </React.Fragment>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import PageNotFound from "./pages/PageNotFound.jsx";
+import PageNotFound from "./PageNotFound.jsx";
 import AdminRoutes from "./routes/admin/AdminRoutes.jsx";
 import ClientsRoutes from "./routes/clients/ClientsRoutes.jsx";
 

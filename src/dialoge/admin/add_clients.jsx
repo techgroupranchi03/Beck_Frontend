@@ -1,18 +1,20 @@
 import * as React from 'react';
 import { useState } from 'react';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import Slide from '@mui/material/Slide';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import Grid from '@mui/material/Grid';
-import IconButton from '@mui/material/IconButton';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Grid,
+  IconButton,
+  Slide,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -117,7 +119,7 @@ export default function AddClientsDialog({ open, onClose }) {
         fullWidth
         maxWidth="md"
         height="auto"
-        disableEscapeKeyDown 
+        disableEscapeKeyDown
         PaperProps={{
           sx: {
             borderRadius: 2,
@@ -143,7 +145,7 @@ export default function AddClientsDialog({ open, onClose }) {
         <DialogContent dividers sx={{ pt: 2 }}>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <Grid container spacing={3}>
-             
+
               <Grid size={{ xs: 12 }}>
                 <TextField
                   autoFocus
@@ -158,7 +160,7 @@ export default function AddClientsDialog({ open, onClose }) {
                   required
                 />
               </Grid>
-               <Grid size={{ xs: 12 }}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   name="companyName"
                   label="Company Name"
@@ -184,7 +186,7 @@ export default function AddClientsDialog({ open, onClose }) {
                 />
               </Grid>
 
-           
+
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   name="phone"
@@ -197,7 +199,7 @@ export default function AddClientsDialog({ open, onClose }) {
                   onChange={handleChange}
                 />
               </Grid>
-             
+
 
               {/* Row 3 */}
               <Grid size={{ xs: 12, sm: 6 }}>
