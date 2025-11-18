@@ -139,11 +139,11 @@ export default function ProfileMenu() {
                     </Avatar>
                     <Box>
                         <Typography
-                            variant="subtitle1"
+                            variant="h5"
                             fontWeight={600}
                             sx={{ color: theme.palette.text.primary }}
                         >
-                            {getRoleLabel()}
+                            {user ? getDisplayName() : 'Super Admin'}
                         </Typography>
                         <Typography
                             variant="body2"

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { adminLogout } from '../service/Admin/Admin_auth';
+import { clientLogout } from '../service/Clients/Clients_auth';
 
 // Create the Auth Context
 const AuthContext = createContext(null);
@@ -23,10 +25,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  console.log("AuthProvider user:", user);
+
   // Fetch user details from API using token
   const fetchUserDetails = async (token, role) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
+      // Use different endpoints based on role
+      const endpoint = role === 'admin' 
+        ? `${API_BASE_URL}/admin/auth/me` 
+        : `${API_BASE_URL}/client/auth/me`;
+
+      const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -128,23 +137,37 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function
-  const logout = () => {
+  const logout = async () => {
     const userRole = user?.role;
     
-    // Clear user state
-    setUser(null);
-
-    // Clear localStorage based on role
-    if (userRole === 'admin') {
-      localStorage.removeItem('admin_token');
-      navigate('/admin/login');
-    } else if (userRole === 'client') {
-      localStorage.removeItem('client_token');
-      navigate('/clients/login');
-    } else {
-      // Clear all if role is unknown
-      localStorage.clear();
-      navigate('/');
+    try {
+      // Call logout API based on role
+      if (userRole === 'admin') {
+       const res = await adminLogout();
+        console.log('adminLogout response:', res);
+        localStorage.removeItem('admin_token');
+        setUser(null);
+        navigate('/admin/login');
+      } else if (userRole === 'client') {
+        const res = await clientLogout();
+        console.log('clientLogout response:', res);
+        localStorage.removeItem('client_token');
+        setUser(null);
+        navigate('/clients/login');
+      } 
+    } catch (error) {
+      console.error('Logout error:', error);
+      if (userRole === 'admin') {
+        localStorage.removeItem('admin_token');
+        navigate('/admin/login');
+      } else if (userRole === 'client') {
+        localStorage.removeItem('client_token');
+        navigate('/clients/login');
+      } else {
+        localStorage.clear();
+        navigate('/');
+      }
+      setUser(null);
     }
   };
 

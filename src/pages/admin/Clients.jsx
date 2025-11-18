@@ -6,7 +6,6 @@ import {
   Typography,
   Container,
   useTheme,
-  useMediaQuery,
   IconButton,
 } from "@mui/material";
 import {
@@ -14,48 +13,56 @@ import {
   Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { MaterialReactTable } from "material-react-table";
-import clientData from './Client';
-import AddClientsDialog from "../../dialoge/admin/add_clients";
+import { formatDate } from "../../utils/dateFormat";
 import ConfirmationDialog from "../../dialoge/admin/Confirmation_dialog";
 import EditClientsDialog from "../../dialoge/admin/Edit_clients";
-import { getAllClients } from "../../service/Admin/Admin_auth";
+import { getAllClients, deleteClient } from "../../service/Admin/Admin_auth";
+import Add_ClientsDialog from "../../dialoge/admin/add_clients";
+import { useSnackbar } from "../../resuable_components/Snackbar";
 
 export default function Clients() {
   const theme = useTheme();
   const { palette } = theme;
+  const { showSnackbar } = useSnackbar();
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
-  const [data, setData] = useState(clientData);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
-
   const [clients, setClients] = useState([]);
-  console.log("Clients from API:", clients);
+  const [loading, setLoading] = useState(false);
 
-
-  // call the API to get all clients and set the data
+  // Fetch all clients from API
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const res = await getAllClients();
-        setClients(res.data);
-      } catch (err) {
-        console.error("Error fetching clients:", err);
-      }
-    };
     fetchClients();
   }, []);
 
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      const res = await getAllClients();
+      setClients(res.data);
+      console.log("Clients from API:", res.data);
+    } catch (err) {
+      console.error("Error fetching clients:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ----------------------------------Handlers--------------------
 
   const handleEditClient = (id) => {
-    const found = data.find((c) => c.id === id);
-    if (found) {
-      setEditingClient(found);
-      setOpenEditDialog(true);
-    }
+    // Just pass the ID, don't fetch the full client data here
+    setEditingClient(id);
+    setOpenEditDialog(true);
+  };
+
+  const handleSaveEditedClient = async () => {
+    // Just close the dialog and refresh
+    setOpenEditDialog(false);
+    setEditingClient(null);
+    await fetchClients();
   };
 
   const handleDeleteClient = (id) => {
@@ -63,9 +70,21 @@ export default function Clients() {
     setOpenConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (clientToDelete != null) {
-      setData((prev) => prev.filter((c) => c.id !== clientToDelete));
+      try {
+        setLoading(true);
+        // Call delete API
+        const res = await deleteClient({ id: clientToDelete });
+        setClients((prev) => prev.filter((c) => c.id !== clientToDelete));
+        await fetchClients();
+        showSnackbar(res.message || 'Client deleted successfully', 'success');
+      } catch (err) {
+        console.error('Error deleting client:', err);
+        showSnackbar('Failed to delete client', 'error');
+      } finally {
+        setLoading(false);
+      }
     }
     setOpenConfirm(false);
     setClientToDelete(null);
@@ -75,13 +94,6 @@ export default function Clients() {
     setOpenConfirm(false);
     setClientToDelete(null);
   };
-
-  const handleSaveEditedClient = (updated) => {
-    setData((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
-    setOpenEditDialog(false);
-    setEditingClient(null);
-  };
-
 
   // Define columns for the table
   const columns = useMemo(
@@ -100,27 +112,24 @@ export default function Clients() {
                 fontWeight: "bold",
               }}
             >
-              {row.original.avatar}
+              {row.original.name?.charAt(0)?.toUpperCase() || "?"}
             </Avatar>
             <Typography variant="body2">{row.original.name}</Typography>
           </Box>
         ),
       },
       {
-        header: "Email",
-        accessorKey: "email",
+        header: "Company",
+        accessorKey: "company",
       },
       {
         header: "Phone",
         accessorKey: "phone",
       },
       {
-        header: "Company",
-        accessorKey: "company",
-      },
-      {
-        header: "Registration Date",
-        accessorKey: "registrationDate",
+        header: "Valid From",
+        accessorKey: "valid_from",
+        Cell: ({ cell }) => formatDate(cell.getValue()),
       },
       {
         header: "Status",
@@ -146,12 +155,11 @@ export default function Clients() {
         header: "Plan",
         accessorKey: "plan",
       },
-
       {
-        header: "Validity Date",
-        accessorKey: "validityDate",
+        header: "Valid To",
+        accessorKey: "valid_to",
+        Cell: ({ cell }) => formatDate(cell.getValue()),
       },
-      // Action edit and delete icons  button
       {
         header: "Actions",
         accessorKey: "actions",
@@ -175,9 +183,8 @@ export default function Clients() {
         ),
       },
     ],
-    [theme]
+    [theme, clients]
   );
-
 
   return (
     <React.Fragment>
@@ -200,11 +207,12 @@ export default function Clients() {
         {/* Material React Table */}
         <MaterialReactTable
           columns={columns}
-          data={data}
+          data={clients}
           enableColumnActions={false}
           enableColumnFilters={true}
           enableSorting
           enablePagination
+          state={{ isLoading: loading }}
           muiTablePaperProps={{
             sx: { borderRadius: 2, boxShadow: "0px 2px 6px rgba(0,0,0,0.05)" },
           }}
@@ -226,21 +234,30 @@ export default function Clients() {
             },
           }}
         />
-        <AddClientsDialog
+
+        <Add_ClientsDialog
           open={openAddDialog}
-          onClose={() => setOpenAddDialog(false)}
+          onClose={() => {
+            setOpenAddDialog(false);
+            fetchClients(); // Refresh list after adding
+          }}
         />
+
         <ConfirmationDialog
           open={openConfirm}
           onCancel={handleCancelDelete}
-          onConfirm={handleConfirmDelete}
+          onDelete={handleConfirmDelete}
           title="Delete Client"
           message="Are you sure you want to delete this client? This action cannot be undone."
         />
+
         <EditClientsDialog
           open={openEditDialog}
-          onClose={() => { setOpenEditDialog(false); setEditingClient(null); }}
-          client={editingClient}
+          onClose={() => {
+            setOpenEditDialog(false);
+            setEditingClient(null);
+          }}
+          clientId={editingClient}
           onSave={handleSaveEditedClient}
         />
       </Container>

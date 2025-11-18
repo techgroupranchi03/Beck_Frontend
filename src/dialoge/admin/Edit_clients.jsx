@@ -1,268 +1,376 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
-import Slide from '@mui/material/Slide';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import Grid from '@mui/material/Grid';
-import IconButton from '@mui/material/IconButton';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Grid,
+  IconButton,
+  Slide,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  useTheme,
+  Typography,
+  InputAdornment,
+  FormHelperText,
+  CircularProgress,
+} from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import dayjs from 'dayjs';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { getClientbyId, editClient } from '../../service/Admin/Admin_auth';
+import { useSnackbar } from '../../resuable_components/Snackbar';
 
-// Reuse same theme as Add Clients
-const theme = createTheme({
-    palette: {
-        mode: 'light',
-        primary: { main: '#407f68' },
-        secondary: { main: '#6b603f' },
-        background: { default: '#fef7c5', paper: '#ffffff' },
-        text: { primary: '#132421' },
-    },
-    components: {
-        MuiTextField: {
-            styleOverrides: {
-                root: {
-                    '& .MuiOutlinedInput-root': {
-                        '& fieldset': { borderColor: '#407f68' },
-                        '&:hover fieldset': { borderColor: '#407f68' },
-                        '&.Mui-focused fieldset': { borderColor: '#407f68' },
-                    },
-                },
-            },
-        },
-        MuiButton: {
-            styleOverrides: {
-                root: { textTransform: 'none', fontWeight: 600 },
-                contained: {
-                    backgroundColor: '#407f68',
-                    color: '#ffffff',
-                    '&:hover': { backgroundColor: '#356a58' },
-                },
-            },
-        },
-    },
-});
 
 const Transition = React.forwardRef(function Transition(props, ref) {
-    return <Slide direction="up" ref={ref} {...props} />;
+  return <Slide direction="up" ref={ref} {...props} />;
 });
 
-export default function EditClientsDialog({ open, onClose, client, onSave }) {
-    const [formData, setFormData] = useState({
-        id: undefined,
-        name: '',
-        email: '',
-        phone: '',
-        companyName: '',
-        plan: '',
-        validityDate: null,
-        password: '',
-        state: 'active',
-    });
+export default function EditClientsDialog({ open, onClose, clientId, onSave }) {
+  const theme = useTheme();
+  const { palette } = theme;
+  const { showSnackbar } = useSnackbar();
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [company, setCompany] = useState('');
+  const [plan, setPlan] = useState('');
+  const [valid_from, setValid_from] = useState('');
+  const [valid_to, setValid_to] = useState('');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState('active');
+  const [errors, setErrors] = useState({});
 
-    console.log("Editing client:", client);
+  console.log("EditClientsDialog", errors);
 
-    // Prefill when client changes
-    useEffect(() => {
-        if (client) {
-            setFormData({
-                id: client.id,
-                name: client.name || '',
-                email: client.email || '',
-                phone: client.phone || '',
-                companyName: client.company || client.companyName || '',
-                plan: client.plan?.toLowerCase?.() === 'premium' ? 'premium' : 'basic',
-                validityDate: client.validityDate ? dayjs(client.validityDate) : null,
-                password: '',
-                state: client.status?.toLowerCase?.() === 'inactive' ? 'inactive' : 'active',
-            });
+  // Fetch client data when dialog opens or clientId changes
+  useEffect(() => {
+    const fetchClientData = async () => {
+      if (clientId && open) {
+        setFetchingData(true);
+        setErrors({});
+        try {
+          const response = await getClientbyId({ id: clientId });
+          console.log('Client data:', response.data);
+          const client = response.data;
+
+          // Populate form fields
+          setName(client.name || '');
+          setPhone(client.phone || '');
+          setCompany(client.company || '');
+          setPlan(client.plan?.toLowerCase() || '');
+
+          // Format dates to YYYY-MM-DD for date input
+          if (client.valid_from) {
+            const dateFrom = new Date(client.valid_from);
+            setValid_from(dateFrom.toISOString().split('T')[0]);
+          } else {
+            setValid_from('');
+          }
+
+          if (client.valid_to) {
+            const dateTo = new Date(client.valid_to);
+            setValid_to(dateTo.toISOString().split('T')[0]);
+          } else {
+            setValid_to('');
+          }
+
+          setPassword(''); // Keep empty for security
+          setStatus(client.status?.toLowerCase() || 'active');
+        } catch (error) {
+          console.error('Error fetching client data:', error);
+        } finally {
+          setFetchingData(false);
         }
-    }, [client, open]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
     };
 
-    const handleDateChange = (date) => {
-        setFormData((prev) => ({ ...prev, validityDate: date }));
-    };
+    fetchClientData();
+  }, [clientId, open]);
 
-    const handleSubmit = () => {
-        if (onSave) {
-            const normalized = {
-                ...formData,
-                validityDate: formData.validityDate ? dayjs(formData.validityDate).format('YYYY-MM-DD') : null,
-                company: formData.companyName,
-                status: formData.state === 'inactive' ? 'Inactive' : 'Active',
-            };
-            onSave(normalized);
-        }
-        onClose();
-    };
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      setErrors({});
 
-    const handleCancel = () => {
-        onClose();
-    };
+      const formData = {
+        id: clientId,
+        name,
+        phone,
+        company,
+        plan,
+        valid_from,
+        valid_to,
+        status,
+      };
 
-    const handleDialogClose = (event, reason) => {
-        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-            return;
-        }
-        handleCancel();
-    };
+      // Only include password if it's been changed
+      if (password && password.trim() !== '') {
+        formData.password = password;
+      }
+      const res = await editClient(formData);
+      showSnackbar(res.message || 'Client updated successfully', 'success');
+      handleCancel();
+      onSave();
+    } catch (error) {
+      console.error('Error updating client:', error);
 
-    return (
-        <ThemeProvider theme={theme}>
-            <Dialog
-                open={open}
-                TransitionComponent={Transition}
-                keepMounted
-                onClose={handleDialogClose}
-                aria-describedby="edit-client-dialog"
+      if (error.errors && Array.isArray(error.errors)) {
+        const errorMap = {};
+
+        error.errors.forEach(err => {
+          Object.keys(err).forEach(field => {
+            errorMap[field] = err[field];
+          });
+        });
+        setErrors(errorMap);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setName('');
+    setPhone('');
+    setCompany('');
+    setPlan('');
+    setValid_from('');
+    setValid_to('');
+    setPassword('');
+    setStatus('active');
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      TransitionComponent={Transition}
+      keepMounted
+      aria-describedby="edit-client-dialog"
+      fullWidth
+      maxWidth="md"
+      disableEscapeKeyDown
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          m: { xs: 1, sm: 2 },
+          backgroundColor: palette.background.paper,
+        },
+      }}
+      sx={{
+        '& .MuiBackdrop-root': {
+          backgroundColor: 'rgba(0,0,0,0.6)',
+        },
+      }}
+    >
+      {/* HEADER */}
+      <DialogTitle sx={{ color: palette.text.primary, fontWeight: 600, pb: 1 }}>
+        Edit Client
+      </DialogTitle>
+
+      <IconButton
+        onClick={handleCancel}
+        disabled={loading || fetchingData}
+        sx={{ position: 'absolute', top: 8, right: 8 }}
+      >
+        <CloseIcon />
+      </IconButton>
+
+      {/* CONTENT */}
+      <DialogContent dividers sx={{ pt: 2 }}>
+        {fetchingData ? (
+          <Grid container justifyContent="center" alignItems="center" sx={{ minHeight: 300 }}>
+            <CircularProgress />
+          </Grid>
+        ) : (
+          <Grid container spacing={3}>
+            {/* ROW 1 */}
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                autoFocus
+                name="name"
+                label="Name"
+                size="small"
                 fullWidth
-                maxWidth="md"
-                disableEscapeKeyDown
-                PaperProps={{
-                    sx: {
-                        borderRadius: 2,
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                        m: { xs: 1, sm: 2 },
-                    },
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={loading}
+                error={Boolean(errors?.name)}
+                helperText={errors?.name}
+
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                name="companyName"
+                label="Company Name"
+                size="small"
+                fullWidth
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                disabled={loading}
+                error={Boolean(errors?.company)}
+                helperText={errors?.company}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                name="phone"
+                label="Phone"
+                size="small"
+                fullWidth
+                value={phone}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // allow only numbers and max length 10
+                  if (/^\d{0,10}$/.test(val)) {
+                    setPhone(val);
+                  }
                 }}
-                sx={{
-                    '& .MuiBackdrop-root': { backgroundColor: 'rgba(19, 36, 33, 0.7)' },
+                inputProps={{
+                  maxLength: 10,
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*',
                 }}
-            >
-                <DialogTitle sx={{ color: '#132421', fontWeight: 600, pb: 1 }}>
-                    Edit Client
-                </DialogTitle>
-                <IconButton onClick={handleCancel} sx={{ position: 'absolute', top: 8, right: 8 }}>
-                    <CloseIcon />
-                </IconButton>
-                <DialogContent dividers sx={{ pt: 2 }}>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <Grid container spacing={4}>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    autoFocus
-                                    name="name"
-                                    label="Name"
-                                    type="text"
-                                    size="small"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    name="companyName"
-                                    label="Company Name"
-                                    type="text"
-                                    size="small"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={formData.companyName}
-                                    onChange={handleChange}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextField
-                                    name="email"
-                                    label="Email"
-                                    type="email"
-                                    size="small"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextField
-                                    name="phone"
-                                    label="Phone"
-                                    type="tel"
-                                    size="small"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Plan</InputLabel>
-                                    <Select name="plan" value={formData.plan} onChange={handleChange} label="Plan">
-                                        <MenuItem value="">
-                                            <em>None</em>
-                                        </MenuItem>
-                                        <MenuItem value="basic">Basic</MenuItem>
-                                        <MenuItem value="premium">Premium</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <DatePicker
-                                    label="Validity Date"
-                                    value={formData.validityDate}
-                                    onChange={handleDateChange}
-                                    slotProps={{
-                                        textField: { fullWidth: true, size: 'small', variant: 'outlined' },
-                                    }}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextField
-                                    name="password"
-                                    label="Password"
-                                    type="password"
-                                    size="small"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>State</InputLabel>
-                                    <Select name="state" value={formData.state} onChange={handleChange} label="State">
-                                        <MenuItem value="active">Active</MenuItem>
-                                        <MenuItem value="inactive">Inactive</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                        </Grid>
-                    </LocalizationProvider>
-                </DialogContent>
-                <DialogActions sx={{ p: 2, justifyContent: 'end' }}>
-                    <Button
-                        onClick={handleSubmit}
-                        variant="contained"
-                        disableElevation    
-                        sx={{ textTransform: 'none' }}
-                        disabled={!formData.name || !formData.email}
-                    >
-                        Update
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </ThemeProvider>
-    );
+                required
+                disabled={loading}
+                error={Boolean(errors?.phone)}
+                helperText={errors?.phone}
+              />
+            </Grid>
+
+            {/* ROW 3 */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <FormControl size="small" fullWidth disabled={loading}>
+                <InputLabel>Plan*</InputLabel>
+                <Select
+                  name="plan"
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value)}
+                  label="Plan"
+                >
+                  <MenuItem value="basic">Basic</MenuItem>
+                  <MenuItem value="premium">Premium</MenuItem>
+                </Select>
+                {errors?.plan && (
+                  <FormHelperText sx={{ color: 'error.main' }}>{errors.plan}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <FormControl size="small" fullWidth disabled={loading}>
+                <InputLabel>State*</InputLabel>
+                <Select
+                  name="status"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  label="Status"
+                >
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="inactive">Inactive</MenuItem>
+                </Select>
+                {errors?.status && (
+                  <FormHelperText sx={{ color: 'error.main' }}>{errors.status}</FormHelperText>
+                )}
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                name="password"
+                label="Password (leave blank to keep current)"
+                type={showPassword ? 'text' : 'password'}
+                size="small"
+                fullWidth
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                helperText="Only fill this if you want to change the password"
+                slotProps={{
+                  input: {
+                    endAdornment: password ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          sx={{ color: palette.text.primary }}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ) : null,
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: palette.text.primary }}>
+                Valid From *
+              </Typography>
+              <TextField
+                name="valid_from"
+                type="date"
+                size="small"
+                fullWidth
+                variant="outlined"
+                value={valid_from}
+                onChange={(e) => setValid_from(e.target.value)}
+                disabled={loading}
+                error={Boolean(errors?.valid_from)}
+                helperText={errors?.valid_from}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Typography variant="body2" sx={{ mb: 1, color: palette.text.primary }}>
+                Valid To *
+              </Typography>
+              <TextField
+                name="valid_to"
+                type="date"
+                size="small"
+                fullWidth
+                variant="outlined"
+                value={valid_to}
+                onChange={(e) => setValid_to(e.target.value)}
+                disabled={loading}
+                error={Boolean(errors?.valid_to)}
+                helperText={errors?.valid_to}
+              />
+            </Grid>
+          </Grid>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2 }}>
+        <Button
+          variant="contained"
+          disableElevation
+          onClick={handleSubmit}
+          disabled={loading || fetchingData}
+          sx={{
+            textTransform: 'none',
+            backgroundColor: palette.primary.main,
+            '&:hover': { backgroundColor: palette.secondary.main },
+          }}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+        >
+          {loading ? 'Updating...' : 'Update Client'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
 }

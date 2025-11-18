@@ -5,29 +5,44 @@ const getClientToken = () => {
     return localStorage.getItem('client_token');
 };
 
-// Admin login API
-export const clientLogin = async (credentials) => {
+export const clientSendOtp = async (credentials) => {
     try {
         const response = await axios.post(
             `${BASE_URL}/client/auth/login`,
-            credentials);
-            console.log('Client login response data:', response.data);
+            credentials
+        );
+        console.log('send OTP response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Client login error:', error);
-        return Promise.reject(error.response?.data || { message: 'Login failed' });
+        console.error('Client OTP sending error:', error);
+        return Promise.reject(error.response?.data || { message: 'OTP sending failed' });
+    }
+};
+
+// Client verify OTP API
+export const verfiyOtp = async (credentials) => {
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/client/auth/verify-otp`,
+            credentials
+        );
+        console.log('Client OTP verification response:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Client OTP verification error:', error);
+        return Promise.reject(error.response?.data || { message: 'OTP verification failed' });
     }
 };
 
 // client logout API
 export const clientLogout = async () => {
-    const token = getAdminToken();
+    const token = getClientToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/logout`,
+            `${BASE_URL}/client/auth/logout`,
             {
                 headers: {
-                    Authorization: `Bearer ${token}`,
+                    token: `Bearer ${token}`,
                 },
             }
         );

@@ -1,167 +1,4 @@
-// import React, { useState } from "react";
-// import { useNavigate } from "react-router-dom";
-// import {
-//     Box,
-//     Button,
-//     Container,
-//     TextField,
-//     Typography,
-//     InputAdornment,
-//     IconButton,
-//     Avatar,
-//     useTheme,
-//     CircularProgress,
-// } from "@mui/material";
-// import { Visibility, VisibilityOff } from "@mui/icons-material";
-// import { clientLogin } from "../../service/Clients/Clients_auth";
-
-// const Clients_login = () => {
-//     const theme = useTheme();
-//     const [showPassword, setShowPassword] = useState(false);
-//     const [username, setUsername] = useState("");
-//     const [password, setPassword] = useState("");
-//     const [error, setError] = useState("");
-//     const [loading, setLoading] = useState(false);
-//     const navigate = useNavigate();
-
-
-//     const handleLogin = async () => {
-//         setError("");
-//         setLoading(true);
-//         try {
-//             const response = await clientLogin({ email: username, password });
-//             console.log('Login response:', response);
-//             localStorage.setItem("client_token", response.data.token);
-//             navigate("/clients/dashboard");
-//         } catch (err) {
-//             setError(err.message || "Login failed. Please check your credentials.");
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     return (
-//         <Box
-//             sx={{
-//                 backgroundColor: theme.palette.background.creme,
-//                 minHeight: "100vh",
-//                 display: "flex",
-//                 alignItems: "center",
-//                 justifyContent: "center",
-//                 p: 2,
-//             }}
-//         >
-//             <Container
-//                 maxWidth="xs"
-//                 sx={{
-//                     backgroundColor: theme.palette.background.paper,
-//                     borderRadius: 5,
-//                     boxShadow: 2,
-//                     p: 4,
-//                     textAlign: "center",
-//                 }}
-//             >
-//                 {/* Logo and App Name */}
-//                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
-//                     <Avatar
-//                         src="../images/logo.png"
-//                         alt="Beck HolidayHomes Logo"
-//                         sx={{ width: 64, height: 64, mb: 1 }}
-//                     />
-//                     <Typography
-//                         variant="h4"
-//                         fontWeight="bold"
-//                         sx={{ color: theme.palette.text.primary }}
-//                     >
-//                         Beck HolidayHomes
-//                     </Typography>
-//                     <Typography
-//                         variant="subtitle1"
-//                         sx={{ color: theme.palette.secondary.main }}
-//                     >
-//                         Clients Login
-//                     </Typography>
-//                 </Box>
-
-//                 {/* Username Field */}
-//                 <TextField
-//                     fullWidth
-//                     label="Username"
-//                     name="username"
-//                     required
-//                     value={username}
-//                     onChange={(e) => setUsername(e.target.value)}
-//                     variant="outlined"
-//                     margin="normal"
-//                     error={!!error}
-//                     slotProps={{
-//                         inputLabel: { sx: { color: theme.palette.text.primary } }
-//                     }}
-//                 />
-//                 <TextField
-//                     fullWidth
-//                     label="Password"
-//                     name="password"
-//                     type={showPassword ? "text" : "password"}
-//                     value={password}
-//                     onChange={(e) => setPassword(e.target.value)}
-//                     variant="outlined"
-//                     margin="normal"
-//                     required
-//                     error={!!error}
-//                     slotProps={{
-//                         inputLabel: { sx: { color: theme.palette.text.primary } },
-//                         input: {
-//                             endAdornment: password ? (
-//                                 <InputAdornment position="end">
-//                                     <IconButton
-//                                         onClick={() => setShowPassword(!showPassword)}
-//                                         edge="end"
-//                                         sx={{ color: theme.palette.text.primary }}
-//                                         aria-label={showPassword ? "Hide password" : "Show password"}
-//                                     >
-//                                         {showPassword ? <VisibilityOff /> : <Visibility />}
-//                                     </IconButton>
-//                                 </InputAdornment>
-//                             ) : null,
-//                         },
-//                     }}
-//                 />
-
-//                 {/* Error Message */}
-//                 {error && (
-//                     <Typography color="error" variant="body1" sx={{ mt: 1 }}>
-//                         {error}
-//                     </Typography>
-//                 )}
-
-//                 <Button
-//                     fullWidth
-//                     variant="contained"
-//                     disableElevation
-//                     onClick={handleLogin}
-//                     sx={{
-//                         mt: 3,
-//                         py: 1.2,
-//                         backgroundColor: theme.palette.primary.main,
-//                         "&:hover": { backgroundColor: "#326655" },
-//                         fontWeight: "bold",
-//                         borderRadius: 2,
-//                         textTransform: "none",
-//                     }}
-
-//                 >
-//                     {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
-//                 </Button>
-//             </Container>
-//         </Box>
-//     );
-// };
-
-// export default Clients_login;
-
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
     Box,
@@ -169,26 +6,30 @@ import {
     Container,
     TextField,
     Typography,
-    InputAdornment,
-    IconButton,
     Avatar,
     useTheme,
     CircularProgress,
+    IconButton,
 } from "@mui/material";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { clientLogin } from "../../service/Clients/Clients_auth";
 import { useAuth } from "../../context/AuthContext";
+import { ArrowBack } from "@mui/icons-material";
+import { clientSendOtp, verfiyOtp } from "../../service/Clients/Clients_auth";
+
 const Clients_login = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const { login, isAuthenticated } = useAuth();
     
-    const [showPassword, setShowPassword] = useState(false);
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [step, setStep] = useState(1); // 1: phone input, 2: OTP verification
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [otp, setOtp] = useState(["", "", "", ""]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+
+    // Refs for OTP input fields
+    const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
     // Redirect if already authenticated
     useEffect(() => {
@@ -198,47 +39,144 @@ const Clients_login = () => {
         }
     }, [isAuthenticated, navigate, location]);
 
-    const handleLogin = async () => {
+    // Resend timer countdown
+    useEffect(() => {
+        if (resendTimer > 0) {
+            const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [resendTimer]);
+
+    // Auto-focus first OTP input when step changes to 2
+    useEffect(() => {
+        if (step === 2 && otpRefs[0].current) {
+            otpRefs[0].current.focus();
+        }
+    }, [step]);
+
+    // Format phone number
+    const formatPhoneNumber = (value) => {
+        const phone = value.replace(/\D/g, '');
+        if (phone.length <= 10) {
+            return phone;
+        }
+        return phone.slice(0, 10);
+    };
+
+    const handleSendOTP = async () => {
         setError("");
         setLoading(true);
         
         try {
-            // Call login API (note: using email as username)
-            const response = await clientLogin({ email: username, password });
-            console.log('Login response:', response);
+            // TODO: Call API to send OTP to phone number
+            const res = await clientSendOtp({ phone: phoneNumber });
+            console.log('send OTP response:', res);
+            // Move to OTP verification step
+            setStep(2);
+            setResendTimer(120); // 120 seconds = 2 minutes
+        } catch (err) {
+            setError(err.message || "Failed to send OTP. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async () => {
+        setError("");
+        setLoading(true);
+        
+        try {
+            const otpString = otp.join("");
+            
+            // Call verifyOtp API
+            const response = await verfiyOtp({ 
+                phone: phoneNumber,
+                otp: otpString 
+            });
+            
+            console.log('OTP verification response:', response);
             
             // Extract token from response
-            const token = response.data.token;
+            const token = response.data?.token || response.token;
             
             if (!token) {
                 setError("Invalid response from server. Token not found.");
-                setLoading(false);
                 return;
             }
 
-            // Use the auth context login function (only pass token)
-            // This will automatically fetch user details from /api/auth/me
+            // Use the auth context login function
             const success = await login(token, 'client');
             
             if (success) {
-                // Navigate to the page they were trying to access, or dashboard
                 const from = location.state?.from || '/clients/dashboard';
                 navigate(from, { replace: true });
             } else {
                 setError("Failed to authenticate. Please try again.");
             }
         } catch (err) {
-            console.error('Login error:', err);
-            setError(err.message || "Login failed. Please check your credentials.");
+            console.error('OTP verification error:', err);
+            setError(err.message || "OTP verification failed. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Handle Enter key press
+    const handleOTPChange = (index, value) => {
+        // Only allow single digit
+        const digit = value.replace(/\D/g, '').slice(-1);
+        
+        const newOtp = [...otp];
+        newOtp[index] = digit;
+        setOtp(newOtp);
+        setError("");
+
+        // Auto-focus next input
+        if (digit && index < 3) {
+            otpRefs[index + 1].current?.focus();
+        }
+    };
+
+    const handleOTPKeyDown = (index, e) => {
+        // Handle backspace
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            otpRefs[index - 1].current?.focus();
+        }
+        
+        // Handle Enter key
+        if (e.key === 'Enter' && otp.every(digit => digit) && !loading) {
+            handleVerifyOTP();
+        }
+    };
+
+    const handleOTPPaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+        
+        if (pastedData.length === 4) {
+            const newOtp = pastedData.split('');
+            setOtp(newOtp);
+            otpRefs[3].current?.focus();
+        }
+    };
+
+    const handleResendOTP = async () => {
+        if (resendTimer > 0) return;
+        
+        setOtp(["", "", "", ""]);
+        setError("");
+        await handleSendOTP();
+    };
+
+    const handleBackToPhone = () => {
+        setStep(1);
+        setOtp(["", "", "", ""]);
+        setError("");
+    };
+
+    // Handle Enter key press for phone input
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && username && password && !loading) {
-            handleLogin();
+        if (e.key === 'Enter' && !loading && step === 1 && phoneNumber) {
+            handleSendOTP();
         }
     };
 
@@ -261,10 +199,27 @@ const Clients_login = () => {
                     boxShadow: 2,
                     p: 4,
                     textAlign: "center",
+                    position: "relative",
                 }}
             >
+                {/* Back Button - Only show on OTP step */}
+                {step === 2 && (
+                    <IconButton
+                        onClick={handleBackToPhone}
+                        disabled={loading}
+                        sx={{
+                            position: "absolute",
+                            left: 16,
+                            top: 16,
+                            color: theme.palette.secondary.main,
+                        }}
+                    >
+                        <ArrowBack />
+                    </IconButton>
+                )}
+
                 {/* Logo and App Name */}
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3, mt: step === 2 ? 3 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
                         alt="Beck HolidayHomes Logo"
@@ -281,97 +236,188 @@ const Clients_login = () => {
                         variant="subtitle1"
                         sx={{ color: theme.palette.secondary.main }}
                     >
-                        Client Login
+                        {step === 1 ? 'Client Login' : 'Enter Your OTP code here'}
                     </Typography>
                 </Box>
 
-                {/* Email/Username Field */}
-                <TextField
-                    fullWidth
-                    label="Email"
-                    name="username"
-                    type="email"
-                    required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    variant="outlined"
-                    margin="normal"
-                    error={!!error}
-                    disabled={loading}
-                    slotProps={{
-                        inputLabel: { sx: { color: theme.palette.text.primary } }
-                    }}
-                />
-                
-                {/* Password Field */}
-                <TextField
-                    fullWidth
-                    label="Password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    variant="outlined"
-                    margin="normal"
-                    required
-                    error={!!error}
-                    disabled={loading}
-                    slotProps={{
-                        inputLabel: { sx: { color: theme.palette.text.primary } },
-                        input: {
-                            endAdornment: password ? (
-                                <InputAdornment position="end">
-                                    <IconButton
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        edge="end"
-                                        sx={{ color: theme.palette.text.primary }}
-                                        aria-label={showPassword ? "Hide password" : "Show password"}
-                                        disabled={loading}
-                                    >
-                                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : null,
-                        },
-                    }}
-                />
+                {step === 1 ? (
+                    <>
+                        {/* Phone Number Field */}
+                        <TextField
+                            fullWidth
+                            name="phoneNumber"
+                            type="tel"
+                            required
+                            autoFocus
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
+                            onKeyPress={handleKeyPress}
+                            variant="outlined"
+                            margin="normal"
+                            error={!!error}
+                            disabled={loading}
+                            placeholder="Enter 10-digit phone number"
+                        />
 
-                {/* Error Message */}
-                {error && (
-                    <Typography
-                        variant="body1"
-                        sx={{
-                            color: "error.main",
-                            mt: 2,
-                            textAlign: "left",
-                        }}
-                    >
-                        {error}
-                    </Typography>
+                        {/* Error Message */}
+                        {error && (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: "error.main",
+                                    mt: 1,
+                                    textAlign: "left",
+                                }}
+                            >
+                                {error}
+                            </Typography>
+                        )}
+
+                        {/* Send OTP Button */}
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            disableElevation
+                            onClick={handleSendOTP}
+                            // disabled={loading || !phoneNumber || phoneNumber.length < 10}
+                            sx={{
+                                mt: 3,
+                                py: 1.2,
+                                backgroundColor: theme.palette.primary.main,
+                                "&:hover": { backgroundColor: "#326655" },
+                                "&:disabled": { backgroundColor: "#9db5a9" },
+                                fontWeight: "bold",
+                                borderRadius: 2,
+                                textTransform: "none",
+                            }}
+                        >
+                            {loading ? <CircularProgress size={24} color="inherit" /> : "Send OTP"}
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        {/* OTP Input Fields */}
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                gap: 2,
+                                mt: 3,
+                                mb: 2,
+                            }}
+                        >
+                            {otp.map((digit, index) => (
+                                <TextField
+                                    key={index}
+                                    inputRef={otpRefs[index]}
+                                    value={digit}
+                                    onChange={(e) => handleOTPChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleOTPKeyDown(index, e)}
+                                    onPaste={index === 0 ? handleOTPPaste : undefined}
+                                    variant="outlined"
+                                    disabled={loading}
+                                    inputProps={{
+                                        maxLength: 1,
+                                        style: {
+                                            textAlign: "center",
+                                            fontSize: "24px",
+                                            fontWeight: "bold",
+                                            padding: "16px",
+                                        },
+                                    }}
+                                    sx={{
+                                        width: "60px",
+                                        "& .MuiOutlinedInput-root": {
+                                            borderRadius: "12px",
+                                            backgroundColor: digit ? theme.palette.primary.main : "transparent",
+                                            "& fieldset": {
+                                                borderColor: digit ? theme.palette.primary.main : theme.palette.divider,
+                                                borderWidth: "2px",
+                                            },
+                                            "&:hover fieldset": {
+                                                borderColor: digit ? theme.palette.primary.main : theme.palette.primary.light,
+                                            },
+                                            "&.Mui-focused fieldset": {
+                                                borderColor: theme.palette.primary.main,
+                                            },
+                                            "& input": {
+                                                color: digit ? theme.palette.background.paper : theme.palette.text.primary,
+                                            },
+                                        },
+                                    }}
+                                />
+                            ))}
+                        </Box>
+
+                        {/* Timer Display */}
+                        {resendTimer > 0 && (
+                            <Typography
+                                variant="body2"
+                                sx={{ 
+                                    color: theme.palette.text.secondary,
+                                    mb: 2,
+                                }}
+                            >
+                                Time remaining: {Math.floor(resendTimer / 60)}:{(resendTimer % 60).toString().padStart(2, '0')}
+                            </Typography>
+                        )}
+
+                        {/* Error Message */}
+                        {error && (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: "error.main",
+                                    mb: 2,
+                                    textAlign: "center",
+                                }}
+                            >
+                                {error}
+                            </Typography>
+                        )}
+
+                        {/* Verify Button */}
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            disableElevation
+                            onClick={handleVerifyOTP}
+                            // disabled={loading || !otp.every(digit => digit)}
+                            sx={{
+                                mt: 2,
+                                py: 1.2,
+                                backgroundColor: theme.palette.primary.main,
+                                "&:hover": { backgroundColor: "#326655" },
+                                "&:disabled": { backgroundColor: "#9db5a9" },
+                                fontWeight: "bold",
+                                borderRadius: 2,
+                                textTransform: "none",
+                            }}
+                        >
+                            {loading ? <CircularProgress size={24} color="inherit" /> : "Verify OTP"}
+                        </Button>
+
+                        {/* Resend OTP */}
+                        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                Didn't receive OTP?
+                            </Typography>
+                            <Button
+                                variant="text"
+                                onClick={handleResendOTP}
+                                disabled={resendTimer > 0 || loading}
+                                sx={{
+                                    ml: 1,
+                                    textTransform: "none",
+                                    color: theme.palette.primary.main,
+                                    "&:disabled": { color: theme.palette.text.disabled }
+                                }}
+                            >
+                                {resendTimer > 0 ? `Resend ` : "Resend"}
+                            </Button>
+                        </Box>
+                    </>
                 )}
-
-                {/* Login Button */}
-                <Button
-                    fullWidth
-                    variant="contained"
-                    disableElevation
-                    onClick={handleLogin}
-                    disabled={loading || !username || !password}
-                    sx={{
-                        mt: 3,
-                        py: 1.2,
-                        backgroundColor: theme.palette.primary.main,
-                        "&:hover": { backgroundColor: "#326655" },
-                        "&:disabled": { backgroundColor: "#9db5a9" },
-                        fontWeight: "bold",
-                        borderRadius: 2,
-                        textTransform: "none",
-                    }}
-                >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
-                </Button>
             </Container>
         </Box>
     );
