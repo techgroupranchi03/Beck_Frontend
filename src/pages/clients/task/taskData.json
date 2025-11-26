@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "title": "HVAC System Inspection",
+    "description": "Quarterly inspection of heating and cooling systems",
+    "task_type": "inspection",
+    "assigned_to": "Kelvin Langosh",
+    "status": "pending"
+  },
+  {
+    "id": 2,
+    "title": "Pool Maintenance",
+    "description": "Weekly pool cleaning and chemical balance check",
+    "task_type": "maintenance",
+    "status": "progress"
+  },
+  {
+    "id": 3,
+    "title": "Furniture Delivery",
+    "description": "Deliver new bedroom furniture to property A",
+    "task_type": "delivery",
+    "assigned_to": "Henry Lynch",
+    "status": "pending"
+  },
+  {
+    "id": 4,
+    "title": "Roof Inspection",
+    "description": "Annual roof condition assessment",
+    "task_type": "inspection",
+    "assigned_to": "Molly Purdy",
+    "status": "progress"
+  },
+  {
+    "id": 5,
+    "title": "Appliance Delivery",
+    "description": "Deliver and install new refrigerator",
+    "task_type": "delivery",
+    "assigned_to": "Glenda Douglas",
+    "status": "canceled"
+  },
+  {
+    "id": 6,
+    "title": "Garden Maintenance",
+    "description": "Monthly landscaping and lawn care",
+    "task_type": "maintenance",
+    "assigned_to": "Leone Williamson",
+    "status": "pending"
+  },
+  {
+    "id": 7,
+    "title": "Plumbing Inspection",
+    "description": "Check all water fixtures and pipes for leaks",
+    "task_type": "inspection",
+    "assigned_to": "Wyman Jast",
+    "status": "progress"
+  },
+  {
+    "id": 8,
+    "title": "Carpet Cleaning",
+    "description": "Deep clean all carpets in the property",
+    "task_type": "maintenance",
+    "assigned_to": "Mckenna Friesen",
+    "status": "pending"
+  }
+]

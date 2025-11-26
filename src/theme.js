@@ -81,6 +81,7 @@ export const darkTheme = createTheme({
       main: palette.accent,
     },
     background: {
+      creme: "#fef7c5",
       default: "#1a1a1a",
       paper: "#2d2d2d",
     },

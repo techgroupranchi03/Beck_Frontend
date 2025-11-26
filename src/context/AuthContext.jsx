@@ -25,12 +25,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  console.log("AuthProvider user:", user);
-
-  // Fetch user details from API using token
+  // Fetch user details 
   const fetchUserDetails = async (token, role) => {
     try {
-      // Use different endpoints based on role
       const endpoint = role === 'admin' 
         ? `${API_BASE_URL}/admin/auth/me` 
         : `${API_BASE_URL}/client/auth/me`;
@@ -42,7 +39,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.success) {
-        // Extract user data based on role
         const userData = response.data.data.admin || response.data.data.client;
         
         if (userData) {
@@ -57,7 +53,6 @@ export const AuthProvider = ({ children }) => {
       return false;
     } catch (error) {
       console.error('Error fetching user details:', error);
-      // If token is invalid or expired, clear it
       if (error.response?.status === 401) {
         if (role === 'admin') {
           localStorage.removeItem('admin_token');

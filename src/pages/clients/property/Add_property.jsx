@@ -4,24 +4,16 @@ import {
     DialogTitle,
     DialogContent,
     IconButton,
-    Typography,
-    Slide,
     useTheme,
     Grid,
     TextField,
-    MenuItem,
     Button,
     Box,
-    FormControl,
-    InputLabel,
-    Select,
+    FormHelperText,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { CloudUpload } from "@mui/icons-material";
-import dayjs from 'dayjs';
+import Slide from "@mui/material/Slide";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
@@ -31,56 +23,50 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
     const theme = useTheme();
     const { palette } = theme;
 
-    // ✅ Form State
+    //Form State
     const [formData, setFormData] = useState({
-        propertyName: "",
-        propertyType: "",
+        name: "",
         address: "",
-        ownershipStatus: "",
-        built: null,
-        status: "Active",
-        floors: "",
-        rooms: "",
-        bathrooms: "",
-        size: "",
-        features: "",
+        image: "",
+        imageFile: null, 
+    });
+
+    // Error State
+    const [errors, setErrors] = useState({
+        name: "",
+        address: "",
         image: "",
     });
 
-    // Prefill when editing
+
+    // editing 
     useEffect(() => {
         if (open && initialData) {
             setFormData({
-                propertyName: initialData.name ?? "",
-                propertyType: initialData.type ?? "",
+                name: initialData.name ?? "",
                 address: initialData.address ?? "",
-                ownershipStatus: initialData.ownershipStatus ?? "",
-                built: initialData.built ? Number(String(initialData.built)) : null,
-                status: initialData.status ?? "Active",
-                floors: initialData.details?.floors ?? "",
-                rooms: initialData.details?.rooms ?? "",
-                bathrooms: initialData.details?.bathrooms ?? "",
-                size: initialData.size ?? "",
-                features: Array.isArray(initialData.details?.features)
-                    ? initialData.details.features.join(", ")
-                    : (initialData.features ?? ""),
-                image: initialData.image ?? "",
+                image: initialData.image_url ?? "",
+                imageFile: null,
+            });
+            // Clear errors
+            setErrors({
+                name: "",
+                address: "",
+                image: "",
             });
         }
         if (open && !initialData && mode === "create") {
             // reset on open for create
             setFormData({
-                propertyName: "",
-                propertyType: "",
+                name: "",
                 address: "",
-                ownershipStatus: "",
-                built: null,
-                status: "Active",
-                floors: "",
-                rooms: "",
-                bathrooms: "",
-                size: "",
-                features: "",
+                image: "",
+                imageFile: null,
+            });
+            // Clear errors
+            setErrors({
+                name: "",
+                address: "",
                 image: "",
             });
         }
@@ -88,21 +74,28 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
 
     const handleChange = (e) => {
         const { name, value, files } = e.target;
-        // Handle file input (optional)
-        if (name === "image" && files) {
+        // Handle file input
+        if (name === "image" && files && files[0]) {
             setFormData((prev) => ({
                 ...prev,
-                image: URL.createObjectURL(files[0]), // Preview
+                image: URL.createObjectURL(files[0]), 
+                imageFile: files[0], 
             }));
+            // Clear image error
+            setErrors((prev) => ({ ...prev, image: "" }));
         } else {
             setFormData((prev) => ({ ...prev, [name]: value }));
+            // Clear error for the field
+            if (name === "name" || name === "address") {
+                setErrors((prev) => ({ ...prev, [name]: "" }));
+            }
         }
     };
 
-    const handleCreate = () => {
-        console.log("Property Submitted:", formData);
-        if (onSubmit) onSubmit(formData);
-        onClose();
+    const handleCreate = async () => {
+        if (onSubmit) {
+            await onSubmit(formData, setErrors);
+        }
     };
 
     return (
@@ -140,171 +133,14 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                         <TextField
                             fullWidth
                             label="Property Name"
-                            name="propertyName"
-                            value={formData.propertyName}
+                            name="name"
+                            value={formData.name}
                             onChange={handleChange}
                             variant="outlined"
                             size="small"
-                        />
-                    </Grid>
-
-                    {/* Property Type */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth variant="outlined" size="small">
-                            <InputLabel>Property Type</InputLabel>
-                            <Select
-                                label="Property Type"
-                                name="propertyType"
-                                value={formData.propertyType}
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="Apartment">Apartment</MenuItem>
-                                <MenuItem value="House">House</MenuItem>
-                                <MenuItem value="Condo">Condo</MenuItem>
-                                <MenuItem value="Townhouse">Townhouse</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                    {/* Property Status */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth variant="outlined" size="small">
-                            <InputLabel>Property Status</InputLabel>
-                            <Select
-                                label="Property Status"
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="Active">Active</MenuItem>
-                                <MenuItem value="Inactive">Inactive</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-
-
-
-                    {/* Ownership Status */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth variant="outlined" size="small">
-                            <InputLabel>Ownership Status</InputLabel>
-                            <Select
-                                label="Ownership Status"
-                                name="ownershipStatus"
-                                value={formData.ownershipStatus}
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="Owned">Owned</MenuItem>
-                                <MenuItem value="Rented">Rented</MenuItem>
-                                <MenuItem value="Leased">Leased</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-
-                    {/* Built Year */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <DatePicker
-                                label="Built Year"
-                                views={['year']}
-                                format="YYYY"
-                                value={formData.built ? dayjs().year(formData.built) : null}
-                                onChange={(newValue) => {
-                                    setFormData({
-                                        ...formData,
-                                        built: newValue ? newValue.year() : null,
-                                    });
-                                }}
-                                slotProps={{
-                                    textField: { fullWidth: true, size: 'small', variant: 'outlined' },
-                                }}
-                            />
-                        </LocalizationProvider>
-                    </Grid>
-                    {/* Floors */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            fullWidth
-                            label="Number of Floors"
-                            name="floors"
-                            type="number"
-                            value={formData.floors}
-                            onChange={handleChange}
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
-                                    WebkitAppearance: 'none',
-                                    margin: 0,
-                                },
-                            }}
-                        />
-                    </Grid>
-
-                    {/* Rooms */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            fullWidth
-                            label="Rooms"
-                            name="rooms"
-                            type="number"
-                            value={formData.rooms}
-                            onChange={handleChange}
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
-                                    WebkitAppearance: 'none',
-                                    margin: 0,
-                                },
-                            }}
-                        />
-                    </Grid>
-
-                    {/* Bathrooms */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            fullWidth
-                            label="Bathrooms"
-                            name="bathrooms"
-                            type="number"
-                            value={formData.bathrooms}
-                            onChange={handleChange}
-                            variant="outlined"
-                            size="small"
-                            sx={{
-                                '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
-                                    WebkitAppearance: 'none',
-                                    margin: 0,
-                                },
-                            }}
-                        />
-                    </Grid>
-
-                    {/* Size */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            fullWidth
-                            label="Size (e.g. 2500 sq ft)"
-                            name="size"
-                            value={formData.size}
-                            onChange={handleChange}
-                            variant="outlined"
-                            size="small"
-                        />
-                    </Grid>
-
-                    {/* Features */}
-                    <Grid size={{ xs: 12 }}>
-                        <TextField
-                            fullWidth
-                            label="Features (comma separated)"
-                            name="features"
-                            value={formData.features}
-                            onChange={handleChange}
-                            variant="outlined"
-                            size="small"
-                            multiline
-                            rows={2}
+                            error={!!errors.name}
+                            helperText={errors.name}
+                            required
                         />
                     </Grid>
 
@@ -320,8 +156,12 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                             rows={3}
                             variant="outlined"
                             size="small"
+                            error={!!errors.address}
+                            helperText={errors.address}
+                            required
                         />
                     </Grid>
+
                     {/* Property Image */}
                     <Grid size={{ xs: 12 }}>
                         <Button
@@ -331,16 +171,15 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                             size="large"
                             startIcon={<CloudUpload />}
                             sx={{
-
-                                borderColor: palette.primary.main,
-                                color: palette.primary.main,
+                                borderColor: errors.image ? palette.error.main : palette.primary.main,
+                                color: errors.image ? palette.error.main : palette.primary.main,
                                 "&:hover": {
-                                    borderColor: palette.secondary.main,
-                                    color: palette.secondary.main,
+                                    borderColor: errors.image ? palette.error.dark : palette.secondary.main,
+                                    color: errors.image ? palette.error.dark : palette.secondary.main,
                                 },
                             }}
                         >
-                            Upload Image
+                            Upload Image *
                             <input
                                 type="file"
                                 accept="image/*"
@@ -349,6 +188,11 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                                 onChange={handleChange}
                             />
                         </Button>
+                        {errors.image && (
+                            <FormHelperText error sx={{ ml: 2, mt: 0.5 }}>
+                                {errors.image}
+                            </FormHelperText>
+                        )}
 
                         {/* Image Preview */}
                         {formData.image && (
@@ -365,7 +209,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                                     }}
                                 />
                                 <IconButton
-                                    onClick={() => setFormData({ ...formData, image: "" })}
+                                    onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
                                     sx={{
                                         position: "absolute",
                                         top: 8,

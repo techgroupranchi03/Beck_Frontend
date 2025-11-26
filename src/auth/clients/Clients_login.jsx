@@ -21,7 +21,7 @@ const Clients_login = () => {
     const location = useLocation();
     const { login, isAuthenticated } = useAuth();
     
-    const [step, setStep] = useState(1); // 1: phone input, 2: OTP verification
+    const [step, setStep] = useState(1); 
     const [phoneNumber, setPhoneNumber] = useState("");
     const [otp, setOtp] = useState(["", "", "", ""]);
     const [error, setError] = useState("");
@@ -94,19 +94,15 @@ const Clients_login = () => {
                 otp: otpString 
             });
             
-            console.log('OTP verification response:', response);
             
             // Extract token from response
-            const token = response.data?.token || response.token;
-            
+            const token = response.data?.token || response.token; 
             if (!token) {
                 setError("Invalid response from server. Token not found.");
                 return;
             }
-
             // Use the auth context login function
             const success = await login(token, 'client');
-            
             if (success) {
                 const from = location.state?.from || '/clients/dashboard';
                 navigate(from, { replace: true });
@@ -114,7 +110,6 @@ const Clients_login = () => {
                 setError("Failed to authenticate. Please try again.");
             }
         } catch (err) {
-            console.error('OTP verification error:', err);
             setError(err.message || "OTP verification failed. Please try again.");
         } finally {
             setLoading(false);
@@ -233,8 +228,8 @@ const Clients_login = () => {
                         Beck HolidayHomes
                     </Typography>
                     <Typography
-                        variant="subtitle1"
-                        sx={{ color: theme.palette.secondary.main }}
+                        variant="h6"
+                        sx={{ color: theme.palette.text.secondary }}
                     >
                         {step === 1 ? 'Client Login' : 'Enter Your OTP code here'}
                     </Typography>

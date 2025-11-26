@@ -49,7 +49,7 @@ const ProtectedRoute = ({
       ? '/admin/login' 
       : requiredRole === 'client'
       ? '/clients/login'
-      : redirectTo || '/';
+      : redirectTo || '/clients/login';
 
     // Redirect to login, preserving the attempted location
     return (

@@ -7,30 +7,27 @@ import {
   Container,
   useTheme,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
+  PersonAdd as PersonAddIcon,
 } from "@mui/icons-material";
 import { MaterialReactTable } from "material-react-table";
-import { formatDate } from "../../utils/dateFormat";
 import ConfirmationDialog from "../../dialoge/admin/Confirmation_dialog";
-import EditClientsDialog from "../../dialoge/admin/Edit_clients";
-import { getAllClients, deleteClient } from "../../service/Admin/Admin_auth";
-import Add_ClientsDialog from "../../dialoge/admin/add_clients";
+import { getAllClients, deleteClient, addClient, editClient } from "../../service/Admin/Admin_auth";
 import { useSnackbar } from "../../resuable_components/Snackbar";
 
 export default function Clients() {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
-  const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Fetch all clients from API
   useEffect(() => {
@@ -42,7 +39,6 @@ export default function Clients() {
     try {
       const res = await getAllClients();
       setClients(res.data);
-      console.log("Clients from API:", res.data);
     } catch (err) {
       console.error("Error fetching clients:", err);
     } finally {
@@ -50,23 +46,84 @@ export default function Clients() {
     }
   };
 
-  // ----------------------------------Handlers--------------------
+  // Status and Plan options
+  const statusOptions = ['active', 'inactive'];
+  const planOptions = ['basic', 'premium'];
 
-  const handleEditClient = (id) => {
-    // Just pass the ID, don't fetch the full client data here
-    setEditingClient(id);
-    setOpenEditDialog(true);
+  // CREATE
+  const handleCreateClient = async ({ values, table }) => {
+    try {
+      setLoading(true);
+
+      // Format dates to YYYY-MM-DD
+      const formattedValues = { ...values };
+      if (formattedValues.valid_from) {
+        const dateFrom = new Date(formattedValues.valid_from);
+        formattedValues.valid_from = dateFrom.toISOString().split('T')[0];
+      }
+      if (formattedValues.valid_to) {
+        const dateTo = new Date(formattedValues.valid_to);
+        formattedValues.valid_to = dateTo.toISOString().split('T')[0];
+      }
+
+      const res = await addClient(formattedValues);
+      showSnackbar(res.message || "Client created successfully", "success");
+      await fetchClients();
+      table.setCreatingRow(null);
+    } catch (error) {
+      if (error.errors && Array.isArray(error.errors)) {
+        const apiErrors = {};
+        error.errors.forEach((err) => {
+          Object.keys(err).forEach((field) => {
+            apiErrors[field] = err[field];
+          });
+        });
+        setValidationErrors(apiErrors);
+      }
+      console.error("Error creating client:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveEditedClient = async () => {
-    // Just close the dialog and refresh
-    setOpenEditDialog(false);
-    setEditingClient(null);
-    await fetchClients();
+  // UPDATE
+  const handleSaveClient = async ({ values, table, row }) => {
+    try {
+      setLoading(true);
+
+      // Format dates to YYYY-MM-DD
+      const formattedValues = { ...values };
+      if (formattedValues.valid_from) {
+        const dateFrom = new Date(formattedValues.valid_from);
+        formattedValues.valid_from = dateFrom.toISOString().split('T')[0];
+      }
+      if (formattedValues.valid_to) {
+        const dateTo = new Date(formattedValues.valid_to);
+        formattedValues.valid_to = dateTo.toISOString().split('T')[0];
+      }
+      const res = await editClient({ id: row.original.id, ...formattedValues });
+      showSnackbar(res.message || "Client updated successfully", "success");
+      await fetchClients();
+      table.setEditingRow(null);
+    } catch (error) {
+      if (error.errors && Array.isArray(error.errors)) {
+        const apiErrors = {};
+        error.errors.forEach((err) => {
+          Object.keys(err).forEach((field) => {
+            apiErrors[field] = err[field];
+          });
+        });
+        setValidationErrors(apiErrors);
+      }
+      console.error("Error updating client:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteClient = (id) => {
-    setClientToDelete(id);
+  // DELETE
+  const openDeleteDialog = (row) => {
+    setClientToDelete(row.original.id);
     setOpenConfirm(true);
   };
 
@@ -74,11 +131,9 @@ export default function Clients() {
     if (clientToDelete != null) {
       try {
         setLoading(true);
-        // Call delete API
         const res = await deleteClient({ id: clientToDelete });
-        setClients((prev) => prev.filter((c) => c.id !== clientToDelete));
-        await fetchClients();
         showSnackbar(res.message || 'Client deleted successfully', 'success');
+        await fetchClients();
       } catch (err) {
         console.error('Error deleting client:', err);
         showSnackbar('Failed to delete client', 'error');
@@ -99,8 +154,25 @@ export default function Clients() {
   const columns = useMemo(
     () => [
       {
-        header: "Name",
+        accessorKey: 'id',
+        header: 'ID',
+        enableHiding: true,
+        enableEditing: false,
+      },
+      {
         accessorKey: "name",
+        header: "Name",
+        size: 200,
+        muiEditTextFieldProps: {
+          required: true,
+          error: !!validationErrors?.name,
+          helperText: validationErrors?.name,
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              name: undefined,
+            }),
+        },
         Cell: ({ row }) => (
           <Box display="flex" alignItems="center" gap={1.5}>
             <Avatar
@@ -119,127 +191,277 @@ export default function Clients() {
         ),
       },
       {
-        header: "Company",
         accessorKey: "company",
+        header: "Company",
+        size: 150,
+        muiEditTextFieldProps: {
+          error: !!validationErrors?.company,
+          helperText: validationErrors?.company,
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              company: undefined,
+            }),
+        },
       },
       {
-        header: "Phone",
         accessorKey: "phone",
+        header: "Phone",
+        size: 150,
+        muiEditTextFieldProps: {
+          required: true,
+          error: !!validationErrors?.phone,
+          helperText: validationErrors?.phone,
+          placeholder: 'Enter phone number',
+          inputProps: {
+            maxLength: 10,
+            inputMode: "numeric",
+            pattern: "[0-9]*",
+          },
+          onChange: (e) => {
+            const val = e.target.value;
+            // Allow only numbers and max length 10
+            if (!/^\d{0,10}$/.test(val)) {
+              e.target.value = val.slice(0, -1);
+            }
+          },
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              phone: undefined,
+            }),
+        },
       },
       {
-        header: "Valid From",
-        accessorKey: "valid_from",
-        Cell: ({ cell }) => formatDate(cell.getValue()),
-      },
-      {
-        header: "Status",
-        accessorKey: "status",
-        Cell: ({ cell }) => (
-          <Box
-            sx={{
-              display: "inline-block",
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 1,
-              bgcolor: cell.getValue() === "Active" ? palette.primary.light : palette.grey[300],
-              color: cell.getValue() === "Active" ? palette.primary.dark : palette.text.secondary,
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
-            {cell.getValue()}
-          </Box>
-        ),
-      },
-      {
-        header: "Plan",
         accessorKey: "plan",
+        header: "Plan",
+        size: 120,
+        editVariant: 'select',
+        editSelectOptions: planOptions,
+        muiEditTextFieldProps: {
+          select: true,
+          required: true,
+          error: !!validationErrors?.plan,
+          helperText: validationErrors?.plan,
+          SelectProps: {
+            displayEmpty: true,
+            renderValue: (selected) => {
+              if (!selected) {
+                return <em>Select Plan</em>;
+              }
+              return selected.charAt(0).toUpperCase() + selected.slice(1);
+            },
+          },
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              plan: undefined,
+            }),
+        },
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
+          return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
+        },
       },
       {
-        header: "Valid To",
+        accessorKey: "status",
+        header: "Status",
+        size: 130,
+        editVariant: 'select',
+        editSelectOptions: statusOptions,
+        muiEditTextFieldProps: {
+          select: true,
+          required: true,
+          error: !!validationErrors?.status,
+          helperText: validationErrors?.status,
+          SelectProps: {
+            displayEmpty: true,
+            renderValue: (selected) => {
+              if (!selected) {
+                return <em>Select Status</em>;
+              }
+              return selected.charAt(0).toUpperCase() + selected.slice(1);
+            },
+          },
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              status: undefined,
+            }),
+        },
+        Cell: ({ cell }) => {
+          const status = cell.getValue();
+          const isActive = status?.toLowerCase() === 'active';
+
+          return (
+            <Box
+              sx={{
+                display: "inline-block",
+                px: 1.5,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: isActive ? palette.primary.light : palette.grey[300],
+                color: isActive ? palette.primary.dark : palette.text.secondary,
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                textTransform: 'capitalize',
+              }}
+            >
+              {status}
+            </Box>
+          );
+        },
+      },
+      {
+        accessorKey: "valid_from",
+        header: "Valid From",
+        size: 150,
+        muiEditTextFieldProps: ({ row }) => {
+          const date = row.original.valid_from;
+          let formattedDate = '';
+          if (date) {
+            const dateObj = new Date(date);
+            formattedDate = dateObj.toISOString().split('T')[0];
+          }
+          return {
+            type: 'date',
+            required: true,
+            error: !!validationErrors?.valid_from,
+            helperText: validationErrors?.valid_from,
+            value: formattedDate,
+            onFocus: () =>
+              setValidationErrors({
+                ...validationErrors,
+                valid_from: undefined,
+              }),
+          };
+        },
+        Cell: ({ cell }) => {
+          const date = cell.getValue();
+          if (!date) return '';
+          return new Date(date).toLocaleDateString();
+        },
+      },
+      {
         accessorKey: "valid_to",
-        Cell: ({ cell }) => formatDate(cell.getValue()),
-      },
-      {
-        header: "Actions",
-        accessorKey: "actions",
-        Cell: ({ row }) => (
-          <Box display="flex" gap={1}>
-            <IconButton
-              onClick={() => handleEditClient(row.original.id)}
-              size="small"
-              sx={{ color: palette.primary.main }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              onClick={() => handleDeleteClient(row.original.id)}
-              size="small"
-              sx={{ color: palette.secondary.main }}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        ),
+        header: "Valid To",
+        size: 150,
+        muiEditTextFieldProps: ({ row }) => {
+          const date = row.original.valid_to;
+          let formattedDate = '';
+          if (date) {
+            const dateObj = new Date(date);
+            formattedDate = dateObj.toISOString().split('T')[0];
+          }
+          return {
+            type: 'date',
+            required: true,
+            error: !!validationErrors?.valid_to,
+            helperText: validationErrors?.valid_to,
+            value: formattedDate,
+            onFocus: () =>
+              setValidationErrors({
+                ...validationErrors,
+                valid_to: undefined,
+              }),
+          };
+        },
+        Cell: ({ cell }) => {
+          const date = cell.getValue();
+          if (!date) return '';
+          return new Date(date).toLocaleDateString();
+        },
       },
     ],
-    [theme, clients]
+    [validationErrors, palette]
   );
 
   return (
     <React.Fragment>
-      <Container sx={{ mt: 4, mb: 4 }}>
-        {/* Add New Client Button */}
-        <Box display="flex" justifyContent="end" mb={2}>
-          <Button
-            variant="contained"
-            disableElevation
-            sx={{
-              bgcolor: palette.primary.main,
-              "&:hover": { bgcolor: palette.secondary.main },
-            }}
-            onClick={() => setOpenAddDialog(true)}
-          >
-            ADD NEW CLIENT
-          </Button>
-        </Box>
-
-        {/* Material React Table */}
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         <MaterialReactTable
           columns={columns}
           data={clients}
+          state={{
+            isLoading: loading,
+            columnVisibility: { id: false }
+          }}
+          editDisplayMode="row"
+          enableEditing
+          enableRowActions
+          positionActionsColumn="last"
+          createDisplayMode="row"
+          onCreatingRowSave={handleCreateClient}
+          onCreatingRowCancel={() => setValidationErrors({})}
+          onEditingRowSave={handleSaveClient}
+          onEditingRowCancel={() => setValidationErrors({})}
+          renderRowActions={({ row, table }) => (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Tooltip title="Edit">
+                <IconButton
+                  onClick={() => table.setEditingRow(row)}
+                  size="small"
+                  sx={{ color: palette.primary.main }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  onClick={() => openDeleteDialog(row)}
+                  size="small"
+                  sx={{ color: palette.secondary.main }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )}
+          renderTopToolbarCustomActions={({ table }) => (
+            <Button
+              variant="contained"
+              disableElevation
+              size='small'
+              onClick={() => {
+                table.setCreatingRow(true);
+              }}
+              startIcon={<PersonAddIcon fontSize='large' />}
+              sx={{
+                fontSize: '1rem',
+                bgcolor: palette.secondary.main,
+                "&:hover": { bgcolor: palette.primary.main },
+              }}
+            >
+              Add New Client
+            </Button>
+          )}
           enableColumnActions={false}
           enableColumnFilters={true}
           enableSorting
           enablePagination
-          state={{ isLoading: loading }}
           muiTablePaperProps={{
-            sx: { borderRadius: 2, boxShadow: "0px 2px 6px rgba(0,0,0,0.05)" },
+            elevation: 2,
+            sx: {
+              borderRadius: 2,
+              boxShadow: '0px 2px 6px rgba(0,0,0,0.05)',
+            },
           }}
           muiTableHeadCellProps={{
             sx: {
               bgcolor: palette.primary.main,
-              color: "#fff",
+              color: '#fff',
               fontWeight: 600,
             },
           }}
           muiTableBodyRowProps={{
             hover: true,
             sx: {
-              "&:hover": {
-                bgcolor: theme.palette.mode === "light"
-                  ? "#f5f5f5"
+              '&:hover': {
+                bgcolor: theme.palette.mode === 'light'
+                  ? '#f5f5f5'
                   : palette.background.paper
               }
             },
-          }}
-        />
-
-        <Add_ClientsDialog
-          open={openAddDialog}
-          onClose={() => {
-            setOpenAddDialog(false);
-            fetchClients(); // Refresh list after adding
           }}
         />
 
@@ -249,16 +471,6 @@ export default function Clients() {
           onDelete={handleConfirmDelete}
           title="Delete Client"
           message="Are you sure you want to delete this client? This action cannot be undone."
-        />
-
-        <EditClientsDialog
-          open={openEditDialog}
-          onClose={() => {
-            setOpenEditDialog(false);
-            setEditingClient(null);
-          }}
-          clientId={editingClient}
-          onSave={handleSaveEditedClient}
         />
       </Container>
     </React.Fragment>

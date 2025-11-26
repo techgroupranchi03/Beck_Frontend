@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -10,61 +10,45 @@ import {
   Typography,
   useTheme,
   Grid,
-  Chip,
+  Pagination,
 } from "@mui/material";
 import ActionMenu from "../../../resuable_components/ActionMenu";
 import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog";
 import Add_property from "./Add_property";
-const properties = [
-  {
-    id: 1,
-    name: "Greenwood Villa",
-    address: "24 Maple Street, Springfield, IL 62704",
-    type: "Residential",
-    size: "2,500 sq ft",
-    details: {
-      floors: 2,
-      rooms: 4,
-      bathrooms: 2,
-      features: ["Garden", "Balcony", "Garage"],
-    },
-    image:
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=60",
-    status: "Active",
-    built: "2015",
-    owner: "Alice Johnson",
-    ownershipStatus: "Owned",
-  },
-  {
-    id: 2,
-    name: "Sunny Side Cottage",
-    address: "18 Pinewood Lane, Austin, TX 73301",
-    type: "Residential",
-    size: "1,800 sq ft",
-    details: {
-      floors: 1,
-      rooms: 3,
-      bathrooms: 2,
-      features: ["Patio", "Fireplace"],
-    },
-    image:
-      "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8cmVhbCUyMGVzdGF0ZXxlbnwwfHwwfHx8MA%3D%3D",
-    status: "Active",
-    built: "2018",
-    owner: "Bob Smith",
-    ownershipStatus: "Rented",
-  },
-];
+import { getClientProperties, createClientProperty, updateClientProperty, deleteClientProperty } from "../../../service/Clients/Properties";
+import { useSnackbar } from "../../../resuable_components/Snackbar";
 
 const PropertyManagement = () => {
   const theme = useTheme();
   const { palette } = theme;
-
-  const [propertiesList, setPropertiesList] = useState(properties);
+  const { showSnackbar } = useSnackbar();
+  const [propertiesList, setPropertiesList] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [addPropertyOpen, setAddPropertyOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+
+ // console.log("Properties List:", propertiesList);
+
+  // getclient properties call api 
+  const getAllProperties = async () => {
+    try {
+      const res = await getClientProperties(page);
+      //console.log("Fetched properties:", res);
+      setPropertiesList(res.data);
+      setTotalPages(res.pagination.total_pages || 1);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    }
+  };
+  useEffect(() => {
+    getAllProperties();
+  }, [page]);
+
+
 
   const handleEdit = (property) => {
     setSelectedProperty(property);
@@ -73,11 +57,20 @@ const PropertyManagement = () => {
   };
 
 
-  const handleDelete = () => {
-    console.log("Delete property:", selectedProperty);
-    // Add your delete logic here
-    setDeleteDialogOpen(false);
-    setSelectedProperty(null);
+  const handleDelete = async () => {
+    //console.log("Delete property:", selectedProperty);
+    try {
+      await deleteClientProperty(selectedProperty.id);
+      // Refresh the list after deletion
+      getAllProperties();
+      showSnackbar("Property deleted successfully", "success");
+      setDeleteDialogOpen(false);
+      setSelectedProperty(null);
+    } catch (error) {
+      console.error("Error deleting property:", error);
+      setDeleteDialogOpen(false);
+      setSelectedProperty(null);
+    }
   };
 
   return (
@@ -106,34 +99,19 @@ const PropertyManagement = () => {
               <Card
                 sx={{
                   borderRadius: 3,
-                  boxShadow: 3,
+                  boxShadow: 1,
                   overflow: "hidden",
                   position: "relative",
                 }}
               >
                 <CardMedia
                   component="img"
-                  height="180"
-                  image={property.image}
+                  height="250"
+                  image={property.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=60"}
                   alt={property.name}
+                  sx={{ objectFit: "cover" }}
                 />
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    bgcolor: palette.primary.light,
-                    color: palette.primary.dark,
-                    px: 2,
-                    py: 0.5,
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
-                    borderBottomRightRadius: 12,
-                  }}
-                >
-                  {property.status}
-                </Box>
-                <CardContent sx={{ pt: 0.5 }}>
+                <CardContent sx={{ pt: 0.5, }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h5" >
                       {property.name}
@@ -149,47 +127,23 @@ const PropertyManagement = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     {property.address}
                   </Typography>
-
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Type:</strong> {property.type}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Size:</strong> {property.size}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Floors:</strong> {property.details.floors} |{" "}
-                    <strong>Rooms:</strong> {property.details.rooms} |{" "}
-                    <strong>Bathrooms:</strong> {property.details.bathrooms}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    <strong>Features:</strong> {property.details.features.join(", ")}
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      mt: 2,
-                      borderTop: "1px solid #eee",
-                      pt: 1,
-                    }}
-                  >
-                    <Typography variant="body2">
-                      <strong>Built:</strong> {property.built.toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Owner:</strong> {property.owner}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Ownership:</strong> {property.ownershipStatus}
-                    </Typography>
-                  </Box>
                 </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
+
+        {totalPages > 1 &&
+          <Stack spacing={2} mt={4} alignItems="center">
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(event, value) => setPage(value)}
+              color="primary"
+            />
+          </Stack>
+        }
+
         <ConfirmationDialog
           open={deleteDialogOpen}
           onCancel={() => {
@@ -210,37 +164,61 @@ const PropertyManagement = () => {
           }}
           mode={isEdit ? 'edit' : 'create'}
           initialData={isEdit ? selectedProperty : null}
-          onSubmit={(data) => {
-            // map form data to property shape
-            const mapToProperty = (form, existing) => ({
-              id: existing?.id ?? (Math.max(0, ...propertiesList.map(p => p.id)) + 1),
-              name: form.propertyName,
-              address: form.address,
-              type: form.propertyType,
-              size: form.size,
-              details: {
-                floors: Number(form.floors) || 0,
-                rooms: Number(form.rooms) || 0,
-                bathrooms: Number(form.bathrooms) || 0,
-                features: form.features ? form.features.split(',').map(s => s.trim()).filter(Boolean) : [],
-              },
-              image: form.image || existing?.image || '',
-              status: form.status,
-              built: form.built ? String(form.built) : (existing?.built ?? ''),
-              owner: existing?.owner ?? '',
-              ownershipStatus: form.ownershipStatus,
-            });
+          onSubmit={async (data, setErrors) => {
+            try {
+              // Create FormData for file upload
+              const formData = new FormData();
+              formData.append('name', data.name);
+              formData.append('address', data.address);
 
-            if (isEdit && selectedProperty) {
-              const updated = mapToProperty(data, selectedProperty);
-              setPropertiesList(prev => prev.map(p => p.id === selectedProperty.id ? updated : p));
-            } else {
-              const created = mapToProperty(data, null);
-              setPropertiesList(prev => [created, ...prev]);
+              // Handle image file
+              if (data.imageFile) {
+                formData.append('image', data.imageFile);
+              }
+
+              if (isEdit && selectedProperty) {
+                // Update existing property
+                await updateClientProperty(selectedProperty.id, formData);
+              } else {
+                // Create new property
+                await createClientProperty(formData);
+              }
+              // Refresh the list and close dialog on success
+              getAllProperties();
+              setAddPropertyOpen(false);
+              setIsEdit(false);
+              setSelectedProperty(null);
+              showSnackbar(`Property ${isEdit ? "updated" : "created"} successfully`, "success");
+            } catch (error) {
+              console.error("Error saving property:", error);
+
+              // Map API errors to form fields
+              if (error.errors && Array.isArray(error.errors)) {
+                const apiErrors = {
+                  name: "",
+                  address: "",
+                  image: "",
+                };
+
+                error.errors.forEach((err) => {
+                  if (err.name) {
+                    apiErrors.name = err.name;
+                  }
+                  if (err.address) {
+                    apiErrors.address = err.address;
+                  }
+                  if (err.image) {
+                    apiErrors.image = err.image;
+                  }
+                });
+
+                // Set errors in the form
+                if (setErrors) {
+                  setErrors(apiErrors);
+                }
+              }
+              // Dialog stays open to show errors
             }
-            setAddPropertyOpen(false);
-            setIsEdit(false);
-            setSelectedProperty(null);
           }}
         />
       </Container>
