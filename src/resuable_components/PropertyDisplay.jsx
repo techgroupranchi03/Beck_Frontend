@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Box, Avatar, Typography, Stack, Paper, IconButton } from '@mui/material';
 import { Business, ChevronLeft, ChevronRight } from '@mui/icons-material';
 
-const PropertyDisplay = ({ property }) => {
+const PropertyDisplay = ({ property, onScrollStateChange }) => {
   const scrollContainerRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -10,8 +10,16 @@ const PropertyDisplay = ({ property }) => {
   const checkScrollPosition = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+      const newCanScrollLeft = scrollLeft > 0;
+      const newCanScrollRight = scrollLeft < scrollWidth - clientWidth - 1;
+
+      setCanScrollLeft(newCanScrollLeft);
+      setCanScrollRight(newCanScrollRight);
+
+      // Notify parent about scroll state changes
+      if (onScrollStateChange) {
+        onScrollStateChange({ canScrollLeft: newCanScrollLeft, canScrollRight: newCanScrollRight });
+      }
     }
   };
 
@@ -38,7 +46,7 @@ const PropertyDisplay = ({ property }) => {
     }
   };
 
-    console.log("PropertyDisplay property:", property);
+  console.log("PropertyDisplay property:", property);
   // Handle array of properties
   if (Array.isArray(property)) {
     return (
@@ -54,7 +62,7 @@ const PropertyDisplay = ({ property }) => {
               transform: 'translateY(-50%)',
               zIndex: 2,
               color: 'primary.main',
-              '&:hover': { 
+              '&:hover': {
                 color: 'primary.dark',
                 bgcolor: 'transparent',
               },
@@ -74,7 +82,7 @@ const PropertyDisplay = ({ property }) => {
               transform: 'translateY(-50%)',
               zIndex: 2,
               color: 'primary.main',
-              '&:hover': { 
+              '&:hover': {
                 color: 'primary.dark',
                 bgcolor: 'transparent',
               },
@@ -96,68 +104,67 @@ const PropertyDisplay = ({ property }) => {
             },
           }}
         >
-        
-        <Stack direction="row" spacing={2} sx={{ pb: 1 }}>
-          {property.map((prop) => (
-            <Paper
-              key={prop.id}
-              elevation={1}
-              sx={{
-                p: 2,
-                minWidth: 200,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                borderRadius: 2,
-                '&:hover': {
-                  boxShadow: 3,
-                  transform: 'translateY(-2px)',
-                  transition: 'all 0.3s ease',
-                },
-              }}
-            >
-              <Avatar
-                src={prop.image_url}
-                alt={prop.name}
+          <Stack direction="row" spacing={2} sx={{ pb: 1 }}>
+            {property.map((prop) => (
+              <Paper
+                key={prop.id}
+                elevation={1}
                 sx={{
-                  width: 50,
-                  height: 50,
-                  border: '2px solid',
-                  borderColor: 'divider',
+                  p: 2,
+                  minWidth: 200,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  borderRadius: 2,
+                  '&:hover': {
+                    boxShadow: 3,
+                    transform: 'translateY(-2px)',
+                    transition: 'all 0.3s ease',
+                  },
                 }}
               >
-                {!prop.image_url && <Business />}
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  variant="body2"
+                <Avatar
+                  src={prop.image_url}
+                  alt={prop.name}
                   sx={{
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    width: 50,
+                    height: 50,
+                    border: '2px solid',
+                    borderColor: 'divider',
                   }}
                 >
-                  {prop.name}
-                </Typography>
-                {prop.address && (
+                  {!prop.image_url && <Business />}
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography
-                    variant="caption"
-                    color="text.secondary"
+                    variant="body2"
                     sx={{
-                      display: 'block',
+                      fontWeight: 600,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {prop.address}
+                    {prop.name}
                   </Typography>
-                )}
-              </Box>
-            </Paper>
-          ))}
-        </Stack>
+                  {prop.address && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        display: 'block',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {prop.address}
+                    </Typography>
+                  )}
+                </Box>
+              </Paper>
+            ))}
+          </Stack>
         </Box>
       </Box>
     );
@@ -169,7 +176,12 @@ const PropertyDisplay = ({ property }) => {
   const address = property?.address;
 
   return (
-    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ maxWidth: 250 }}>
+    <Stack
+      direction="row"
+      spacing={1.5}
+      alignItems="center"
+      sx={{ maxWidth: 250 }}
+    >
       <Avatar
         src={imageUrl}
         alt={propertyName}

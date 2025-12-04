@@ -3,12 +3,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../../Layout.jsx';
 import ClientsDashboard from '../../pages/clients/ClientsDashboard.jsx';
 import PropertyManagement from '../../pages/clients/property/PropertyManagement.jsx';
-import InventoryManagement from '../../pages/clients/inventory/InventoryManagement.jsx';
 import TeamManagement from '../../pages/clients/team/TeamManagement.jsx';
 import Clients_login from '../../auth/clients/Clients_login.jsx';
-// import { TaskList } from '../../pages/clients/task/TaskList.jsx';
+import TaskList from '../../../Trash/TaskList.jsx'
 import ProtectedRoute from '../ProtectedRoute.jsx';
-import AllTask from '../../pages/clients/task/AllTask.jsx';
+import TaskManagement from '../../pages/clients/task/TaskManagement.jsx';
+import InventoryManagement from '../../pages/clients/inventory/InventoryManagement.jsx';
 
 const ClientsRoutes = () => (
   <Routes>
@@ -29,10 +29,11 @@ const ClientsRoutes = () => (
       <Route path="dashboard" element={<ClientsDashboard />} />
       <Route path="property-management" element={<PropertyManagement />} />
       <Route path="inventory-management" element={<InventoryManagement />} />
+      <Route path="task-management" element={<TaskManagement />} />
       <Route path="team-management" element={<TeamManagement />} />
-      {/* <Route path="task-management" element={<TaskList />} /> */}
-      <Route path="task-management" element={<AllTask />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
+      {/* <Route path="all-task" element={<TaskList />} /> */}
+      {/* <Route path="task-management" element={<AllTask />} /> */}
     </Route>
   </Routes>
 );

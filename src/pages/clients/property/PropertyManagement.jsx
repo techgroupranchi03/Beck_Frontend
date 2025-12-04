@@ -31,7 +31,7 @@ const PropertyManagement = () => {
   const [totalPages, setTotalPages] = useState(1);
 
 
- // console.log("Properties List:", propertiesList);
+  // console.log("Properties List:", propertiesList);
 
   // getclient properties call api 
   const getAllProperties = async () => {
@@ -61,8 +61,7 @@ const PropertyManagement = () => {
     //console.log("Delete property:", selectedProperty);
     try {
       await deleteClientProperty(selectedProperty.id);
-      // Refresh the list after deletion
-      getAllProperties();
+      // getAllProperties();
       showSnackbar("Property deleted successfully", "success");
       setDeleteDialogOpen(false);
       setSelectedProperty(null);
@@ -75,9 +74,9 @@ const PropertyManagement = () => {
 
   return (
     <React.Fragment>
-      <Container maxWidth="mx" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="mx" sx={{ mt: 4, mb: 4 , px:0}}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-          <Typography variant="h4" component="h4" gutterBottom>
+          <Typography variant="h5" component="h5" gutterBottom>
             List of Properties
           </Typography>
           <Button
@@ -102,6 +101,7 @@ const PropertyManagement = () => {
                   boxShadow: 1,
                   overflow: "hidden",
                   position: "relative",
+
                 }}
               >
                 <CardMedia
@@ -111,7 +111,11 @@ const PropertyManagement = () => {
                   alt={property.name}
                   sx={{ objectFit: "cover" }}
                 />
-                <CardContent sx={{ pt: 0.5, }}>
+                <CardContent
+                  sx={{
+
+                  }}
+                >
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h5" >
                       {property.name}
@@ -124,7 +128,7 @@ const PropertyManagement = () => {
                       }}
                     />
                   </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary"  sx={{ pb:0  }}>
                     {property.address}
                   </Typography>
                 </CardContent>

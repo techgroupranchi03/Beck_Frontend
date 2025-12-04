@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { adminLogout } from '../service/Admin/Admin_auth';
 import { clientLogout } from '../service/Clients/Clients_auth';
+import BASE_URL from '../config';
 
 // Create the Auth Context
 const AuthContext = createContext(null);
@@ -15,10 +16,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// API base URL
-const API_BASE_URL = 'http://31.97.230.38:8080/api';
-
 // Auth Provider Component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -29,8 +26,8 @@ export const AuthProvider = ({ children }) => {
   const fetchUserDetails = async (token, role) => {
     try {
       const endpoint = role === 'admin' 
-        ? `${API_BASE_URL}/admin/auth/me` 
-        : `${API_BASE_URL}/client/auth/me`;
+        ? `${BASE_URL}/admin/auth/me` 
+        : `${BASE_URL}/client/auth/me`;
 
       const response = await axios.get(endpoint, {
         headers: {

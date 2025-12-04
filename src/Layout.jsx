@@ -26,6 +26,7 @@ const getPageTitle = (pathname) => {
     if (path.includes("property")) return "Property Management";
     if (path.includes("inventory")) return "Inventory Management";
     if (path.includes("team")) return "Team Management";
+    if(path.includes("task")) return "Task Management";
     return "Client Portal";
   }
   return "Beck Holiday Homes";
@@ -75,6 +76,7 @@ export default function Layout({ role }) {
         { to: `${basePath}/inventory-management`, icon: <Inventory />, label: "Inventory" },
         { to: `${basePath}/team-management`, icon: <People />, label: "Team" },
         { to: `${basePath}/task-management`, icon: <Assignment />, label: "Tasks" },
+        // {to: `${basePath}/all-task`, icon: <Assignment />, label: "All Tasks" },
       ];
     }
     return [];
@@ -84,14 +86,14 @@ export default function Layout({ role }) {
   const drawerWidth = useMemo(() => {
     if (isMobile) return 260;
     if (isTablet && !drawerOpen) return 80;
-    if (isTablet && drawerOpen) return 200;
+    if (isTablet && !drawerOpen) return 200;
     return drawerOpen ? 260 : 80;
   }, [isMobile, isTablet, drawerOpen]);
 
   const drawerVariant = isMobile ? "temporary" : "permanent";
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: theme.palette.background.default }}>
+    <Box sx={{ bgcolor: theme.palette.background.default }}>
       {/* ==================== SIDEBAR ==================== */}
       <Drawer
         variant={drawerVariant}
@@ -198,7 +200,16 @@ export default function Layout({ role }) {
       </Drawer>
 
       {/* ==================== MAIN CONTENT AREA ==================== */}
-      <Box flex={1} display="flex" flexDirection="column" sx={{ position: "relative" }}>
+      <Box
+        flex={1}
+        display="flex"
+        flexDirection="column"
+        sx={{
+          marginLeft: isMobile ? 0 : `${drawerWidth}px`,
+          transition: 'margin 0.3s ease',
+          width: isMobile ? '100%' : `calc(100% - ${drawerWidth}px)`,
+        }}
+      >
         {/* Top Bar (Fixed) */}
         <Box
           sx={{
@@ -212,7 +223,7 @@ export default function Layout({ role }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            px: isMobile ? 1 : 2,
+            px: isMobile ? 0 : 2,
             boxShadow: theme.palette.mode === "light"
               ? "0 1px 3px rgba(0,0,0,0.05)"
               : "0 1px 3px rgba(0,0,0,0.3)",
@@ -224,7 +235,7 @@ export default function Layout({ role }) {
           <Stack direction="row" alignItems="center" spacing={isMobile ? 1 : 2}>
             <IconButton
               onClick={() => setDrawerOpen(!drawerOpen)}
-              size={isMobile ? "small" : "medium"}
+              size={isMobile ? "medium" : "large"}
             >
               <MenuIcon sx={{ color: theme.palette.text.primary }} />
             </IconButton>
@@ -233,7 +244,7 @@ export default function Layout({ role }) {
               fontWeight={600}
               color={theme.palette.text.primary}
               sx={{
-                fontSize: isMobile ? '1rem' : isTablet ? '1.25rem' : '1.5rem',
+                fontSize: isMobile ? '1.4rem' : isTablet ? '1.25rem' : '1.5rem',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -254,7 +265,7 @@ export default function Layout({ role }) {
           sx={{
             flex: 1,
             bgcolor: theme.palette.background.default,
-            p: isMobile ? 2 : isTablet ? 2.5 : 3,
+            p: isMobile ? 1 : isTablet ? 1 : 0,
             mt: isMobile ? 7 : 8,
             ml: isMobile ? 0 : 0,
             overflowY: "auto",

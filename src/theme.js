@@ -54,6 +54,16 @@ export const lightTheme = createTheme({
       cream: palette.cream,
       lightGreen: palette.lightGreen,
     },
+    card_button: {
+      paper: "#f0f0f0",
+    },
+
+
+  },
+  customGradients: {
+    right: 'linear-gradient(to right, rgba(255,255,255,0.95), transparent)',
+    left : 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)',
+
   },
   typography,
   components: {
@@ -83,7 +93,8 @@ export const darkTheme = createTheme({
     background: {
       creme: "#fef7c5",
       default: "#1a1a1a",
-      paper: "#2d2d2d",
+      paper: "#3c3c3c",
+
     },
     text: {
       primary: "#ffffff",
@@ -93,6 +104,14 @@ export const darkTheme = createTheme({
       cream: palette.cream,
       lightGreen: palette.lightGreen,
     },
+    card_button: {
+      paper: "#3c3c3c",
+    },
+
+  },
+  customGradients: {
+    right: 'linear-gradient(to right, rgba(26,26,26,0.95), transparent)',
+    left : 'linear-gradient(to left, rgba(26,26,26,0.95), transparent)',
   },
   typography,
   components: {

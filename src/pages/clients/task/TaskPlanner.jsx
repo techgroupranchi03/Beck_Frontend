@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Container, Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox } from '@mui/material'
+import { Container, Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocomplete, TextField } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
@@ -8,8 +8,12 @@ import { getClientProperties } from '../../../service/Clients/Properties'
 import { getInventoryItems } from '../../../service/Clients/Inventory'
 import { getTeamMembers } from '../../../service/Clients/Team'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
+import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant'
+import { formatDate } from '../../../utils/dateFormat'
 
-const AllTask = () => {
+
+
+const TaskPlanner = () => {
     const theme = useTheme()
     const { palette } = theme
     const { showSnackbar } = useSnackbar();
@@ -23,11 +27,7 @@ const AllTask = () => {
     const [inventoryItems, setInventoryItems] = useState([]);
     const [teamMembers, setTeamMembers] = useState([]);
 
-
-
-
     // get all task 
-
     const allTasks = async () => {
         try {
             const res = await getClientTasks();
@@ -49,6 +49,7 @@ const AllTask = () => {
             console.error('Error fetching properties:', error);
         }
     };
+
     // fetchInventory 
     const fetchInventoryItems = async () => {
         try {
@@ -69,29 +70,13 @@ const AllTask = () => {
         }
     };
 
-
     useEffect(() => {
         fetchProperties();
         fetchInventoryItems();
         fetchTeamMembers();
     }, []);
 
-    // Task type options
-    const taskTypes = ['inspection', 'maintenance', 'delivery', 'repair', 'other', 'cleaning']
-    // schedule type 
-    const scheduleTypes = ['recurring', 'one_time']
 
-    // shcedule type 
-    const recurringTypes = ['daily', 'weekly', 'monthly', 'yearly']
-
-    // staus options
-    const statusOpts = [
-        { value: 'pending', label: 'Pending' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'cancelled', label: 'Cancelled' },
-        { value: 'overdue', label: 'Overdue' },
-    ];
 
     const columns = useMemo(
         () => [
@@ -127,7 +112,6 @@ const AllTask = () => {
                         }),
                 },
             },
-
             {
                 accessorKey: 'property_id',
                 header: 'Property',
@@ -250,62 +234,188 @@ const AllTask = () => {
                 ),
             },
             {
-                accessorKey: 'recurrence',
-                header: 'Recurrence ',
-                size: 150,
-                editVariant: 'select',
-                editSelectOptions: recurringTypes,
+                accessorKey: 'repeat_on',
+                header: 'Repeat On',
+                size: 200,
+                muiEditTextFieldProps: ({ row }) => {
+                    const scheduleType = row._valuesCache?.schedule_type;
+                    const isVisible = ['weekly', 'monthly', 'yearly'].includes(scheduleType);
+
+                    return {
+                        required: isVisible,
+                        style: { display: isVisible ? 'block' : 'none' },
+                        error: !!validationErrors?.repeat_on,
+                        helperText: validationErrors?.repeat_on || getRepeatOnHelperText(scheduleType),
+                        placeholder: getRepeatOnPlaceholder(scheduleType),
+                        onFocus: () =>
+                            setValidationErrors({
+                                ...validationErrors,
+                                repeat_on: undefined,
+                            }),
+                    };
+                },
+                Cell: ({ row }) => {
+                    const scheduleType = row.original.schedule_type;
+                    const repeatOn = row.original.repeat_on;
+
+                    if (!['weekly', 'monthly', 'yearly'].includes(scheduleType) || !repeatOn) {
+                        return '-';
+                    }
+
+                    try {
+                        const data = typeof repeatOn === 'string' ? JSON.parse(repeatOn) : repeatOn;
+
+                        if (scheduleType === 'weekly') {
+                            return data.days?.join(', ') || '-';
+                        } else if (scheduleType === 'monthly') {
+                            return data.date?.join(', ') || '-';
+                        } else if (scheduleType === 'yearly') {
+                            return `${data.date || '-'} ${data.month?.join(', ') || '-'}`;
+                        }
+                    } catch (error) {
+                        return '-';
+                    }
+
+                    return '-';
+                },
+                Edit: ({ row, cell, table }) => {
+                    const scheduleType = row._valuesCache?.schedule_type;
+                    const [repeatData, setRepeatData] = useState(() => {
+                        try {
+                            const value = cell.getValue();
+                            return value ? (typeof value === 'string' ? JSON.parse(value) : value) : {};
+                        } catch {
+                            return {};
+                        }
+                    });
+
+                    useEffect(() => {
+                        row._valuesCache[cell.column.id] = JSON.stringify(repeatData);
+                    }, [repeatData]);
+
+                    if (!['weekly', 'monthly', 'yearly'].includes(scheduleType)) {
+                        return null;
+                    }
+
+                    // Weekly: Autocomplete for multiple days selection
+                    if (scheduleType === 'weekly') {
+                        return (
+                            <Autocomplete
+                                multiple
+                                limitTags={2}
+                                options={daysOfWeek}
+                                value={repeatData.days || []}
+                                onChange={(event, newValue) => {
+                                    setRepeatData({ days: newValue });
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Select Days"
+                                        placeholder="Choose days"
+                                        error={!!validationErrors?.repeat_on}
+                                        helperText={validationErrors?.repeat_on || 'Select days of the week'}
+                                    />
+                                )}
+                                sx={{ minWidth: 250 }}
+                            />
+                        );
+                    }
+
+                    // Monthly: Autocomplete for multiple dates selection
+                    if (scheduleType === 'monthly') {
+                        return (
+                            <Autocomplete
+                                multiple
+                                options={datesOfMonth}
+                                value={repeatData.date || []}
+                                onChange={(event, newValue) => {
+                                    setRepeatData({ date: newValue.sort((a, b) => a - b) });
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Select Dates"
+                                        placeholder="Choose dates"
+                                        error={!!validationErrors?.repeat_on}
+                                        helperText={validationErrors?.repeat_on || 'Select dates of the month'}
+                                    />
+                                )}
+                                sx={{ minWidth: 300 }}
+                            />
+                        );
+                    }
+
+                    // Yearly: Date dropdown + Autocomplete for months
+                    if (scheduleType === 'yearly') {
+                        return (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <TextField
+                                    select
+                                    label="Date"
+                                    value={repeatData.date || ''}
+                                    onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
+                                    fullWidth
+                                    SelectProps={{
+                                        displayEmpty: true,
+                                    }}
+                                >
+                                    <MenuItem value="">
+                                        <em>Select Date</em>
+                                    </MenuItem>
+                                    {datesOfMonth.map((date) => (
+                                        <MenuItem key={date} value={date}>
+                                            {date}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+
+                                <Autocomplete
+                                    multiple
+                                    options={monthsOfYear}
+                                    value={repeatData.month || []}
+                                    onChange={(event, newValue) => {
+                                        setRepeatData({ ...repeatData, month: newValue });
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Months"
+                                            placeholder="Choose months"
+                                            error={!!validationErrors?.repeat_on}
+                                            helperText={validationErrors?.repeat_on || 'Select months of the year'}
+                                        />
+                                    )}
+                                />
+                            </Box>
+                        );
+                    }
+
+                    return null;
+                },
+            },
+            {
+                accessorKey: 'start_date',
+                header: 'Start Date',
+                size: 130,
                 muiEditTextFieldProps: ({ row }) => ({
-                    select: true,
-                    required: false,
-                    disabled: row._valuesCache?.schedule_type !== 'recurring',
-                    error: !!validationErrors?.recurrence,
-                    helperText: validationErrors?.recurrence,
-                    SelectProps: {
-                        displayEmpty: true,
-                        renderValue: (selected) => {
-                            if (!selected) {
-                                return <em>Select Recurrence</em>;
-                            }
-                            return selected;
-                        },
+                    type: 'date',
+                    required: true,
+                    disabled: !!row?.original?.id,
+                    error: !!validationErrors?.start_date,
+                    helperText: validationErrors?.start_date,
+                    InputLabelProps: {
+                        shrink: true,
                     },
                     onFocus: () =>
                         setValidationErrors({
                             ...validationErrors,
-                            recurrence: undefined,
+                            start_date: undefined,
                         }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Recurrence</em>
-                        </MenuItem>,
-                        ...recurringTypes.map((type) => (
-                            <MenuItem key={type} value={type}>
-                                {type}
-                            </MenuItem>
-                        ))
-                    ],
                 }),
-                Cell: ({ cell }) => {
-                    const value = cell.getValue()
-                    return (
-                        <Box
-                            sx={{
-                                display: 'inline-block',
-                                px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
-                                color: palette.text.primary,
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textTransform: 'capitalize',
-                            }}
-                        >
-                            {value || '-'}
-                        </Box>
-                    )
-                },
+                Cell: ({ cell }) => formatDate(cell.getValue()),
             },
+
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
@@ -388,23 +498,28 @@ const AllTask = () => {
                             ...validationErrors,
                             assigned_to: undefined,
                         }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Team Member</em>
-                        </MenuItem>,
-                        ...teamMembers.map((member) => (
-                            <MenuItem key={member.id} value={member.id}>
-                                {member.name}
-                            </MenuItem>
-                        ))
-                    ],
+                    // children: [
+                    //     <MenuItem key="empty-placeholder" value="">
+                    //         <em>Select Team Member</em>
+                    //     </MenuItem>,
+                    //     ...teamMembers.map((member) => (
+                    //         <MenuItem key={member.id} value={member.id}>
+                    //             {member.name}
+                    //         </MenuItem>
+                    //     ))
+                    // ],
                 },
-                Cell: ({ row }) => row.original.assigned_to_name || '-',
+                // Cell: ({ row }) => row.original.assigned_to_name || '-',
+                Cell: ({ row }) => {
+                    const member = teamMembers.find(m => m.id === row.original.assigned_to);
+                    return member ? member.name : '-';
+                }
+
             },
             {
                 accessorKey: 'is_photo_required',
-                header: 'Photo Required',
-                size: 30,
+                header: 'Photo',
+                size: 100,
                 Cell: ({ row }) => (
                     <Checkbox
                         checked={row.original.is_photo_required === 1 ? true : false}
@@ -419,8 +534,6 @@ const AllTask = () => {
                         const currentValue = cell.getValue();
                         return currentValue === 1 ? true : false;
                     });
-
-
 
                     const handleChange = (e) => {
                         const newChecked = e.target.checked;
@@ -509,13 +622,40 @@ const AllTask = () => {
         [validationErrors, properties, inventoryItems, teamMembers, taskTypes, scheduleTypes, statusOpts, palette]
     )
 
+    // Add these helper functions before the return statement
+    const getRepeatOnHelperText = (scheduleType) => {
+        switch (scheduleType) {
+            case 'weekly':
+                return 'Select days of the week';
+            case 'monthly':
+                return 'Select dates of the month';
+            case 'yearly':
+                return 'Select date and months';
+            default:
+                return '';
+        }
+    };
+
+    const getRepeatOnPlaceholder = (scheduleType) => {
+        switch (scheduleType) {
+            case 'weekly':
+                return 'Select days';
+            case 'monthly':
+                return 'Select dates';
+            case 'yearly':
+                return 'Select date and months';
+            default:
+                return '';
+        }
+    };
+
     // CREATE action
     const handleCreateTask = async ({ values, table }) => {
         try {
-            setLoading(true)
+
             const res = await createClientTask(values)
             showSnackbar(res.message || 'Task created successfully', 'success')
-            await allTasks()
+            setNewTaskData((prevData) => [res.data, ...prevData]);
             table.setCreatingRow(null)
             setValidationErrors({})
         } catch (error) {
@@ -530,18 +670,19 @@ const AllTask = () => {
             }
             showSnackbar(error.message || 'Failed to create task', 'error')
             console.error('Error creating task:', error)
-        } finally {
-            setLoading(false)
         }
     }
 
     // UPDATE action
     const handleSaveTask = async ({ values, table, row }) => {
         try {
-            setLoading(true)
             const res = await updateClientTask(row.original.id, values)
             showSnackbar(res.message || 'Task updated successfully', 'success')
-            await allTasks()
+            setNewTaskData((prevData) =>
+                prevData.map((task) =>
+                    task.id === row.original.id ? { ...task, ...values } : task
+                )
+            )
             table.setEditingRow(null)
             setValidationErrors({})
         } catch (error) {
@@ -556,8 +697,6 @@ const AllTask = () => {
             }
             showSnackbar(error.message || 'Failed to update task', 'error')
             console.error('Error updating task:', error)
-        } finally {
-            setLoading(false)
         }
     }
 
@@ -570,15 +709,12 @@ const AllTask = () => {
     const handleDelete = async () => {
         if (taskToDelete != null) {
             try {
-                setLoading(true)
                 const res = await deleteClientTask(taskToDelete)
                 showSnackbar(res.message || 'Task deleted successfully', 'success')
-                await allTasks()
+                setNewTaskData((prevData) => prevData.filter((task) => task.id !== taskToDelete));
             } catch (error) {
                 showSnackbar(error.message || 'Failed to delete task', 'error')
                 console.error('Error deleting task:', error)
-            } finally {
-                setLoading(false)
             }
         }
         setOpenConfirm(false);
@@ -589,9 +725,21 @@ const AllTask = () => {
         setOpenConfirm(false);
         setTaskToDelete(null);
     };
+
+
+
+
     return (
         <React.Fragment>
-            <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+            <Container
+                maxWidth={false}
+                sx={{
+                    mt: 2,
+                    mb: 2,
+                    px: { xs: 1, sm: 2, md: 3 },
+
+                }}
+            >
                 <MaterialReactTable
                     columns={columns}
                     data={newTaskData}
@@ -603,12 +751,19 @@ const AllTask = () => {
                     enableRowActions
                     positionActionsColumn="last"
                     createDisplayMode="row"
+
+                    displayColumnDefOptions={{
+                        'mrt-row-actions': {
+                            header: 'Actions',
+                            size: 110,
+                        },
+                    }}
                     onCreatingRowSave={handleCreateTask}
                     onCreatingRowCancel={() => setValidationErrors({})}
                     onEditingRowSave={handleSaveTask}
                     onEditingRowCancel={() => setValidationErrors({})}
                     renderRowActions={({ row, table }) => (
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', marginRight: 2, }}>
                             <Tooltip title="Edit">
                                 <IconButton
                                     onClick={() => table.setEditingRow(row)}
@@ -627,6 +782,7 @@ const AllTask = () => {
                                     <DeleteIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
+
                         </Box>
                     )}
                     renderTopToolbarCustomActions={({ table }) => (
@@ -639,38 +795,18 @@ const AllTask = () => {
                             sx={{
                                 bgcolor: palette.primary.main,
                                 "&:hover": { bgcolor: palette.secondary.main },
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                px: { xs: 2, sm: 3 }
                             }}
                         >
                             Create New Task
                         </Button>
                     )}
-                    enableColumnFilters={true}
-                    enableSorting
+                    enableColumnFilters={false}
+                    enableSorting={false}
+                    enableDensityToggle={false}
+                    enableHiding={false}
                     enablePagination
-                    muiTablePaperProps={{
-                        elevation: 2,
-                        sx: {
-                            borderRadius: 2,
-                            boxShadow: '0px 2px 6px rgba(0,0,0,0.05)',
-                        },
-                    }}
-                    muiTableHeadCellProps={{
-                        sx: {
-                            bgcolor: palette.primary.main,
-                            color: '#fff',
-                            fontWeight: 600,
-                        },
-                    }}
-                    muiTableBodyRowProps={{
-                        hover: true,
-                        sx: {
-                            '&:hover': {
-                                bgcolor: theme.palette.mode === 'light'
-                                    ? '#f5f5f5'
-                                    : palette.background.paper
-                            }
-                        },
-                    }}
                 />
 
                 <ConfirmationDialog
@@ -685,4 +821,4 @@ const AllTask = () => {
     )
 }
 
-export default AllTask
+export default TaskPlanner

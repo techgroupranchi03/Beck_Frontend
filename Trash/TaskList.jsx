@@ -16,12 +16,12 @@ import {
     Tooltip,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import { tasks } from "../data/tasks.js";
+import { tasks } from "../src/pages/clients/data/tasks.js";
 import { Alarm, CalendarMonth, Person } from "@mui/icons-material";
-import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
-import ImageViewer from "../../../resuable_components/ImageViewer.jsx";
+import ViewMoreText from "../src/resuable_components/ViewMore.jsx";
+import ImageViewer from "../src/resuable_components/ImageViewer.jsx";
 
-export const TaskList = () => {
+const TaskList = () => {
     const [openImage, setOpenImage] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
 
@@ -205,6 +205,7 @@ export const TaskList = () => {
     );
 };
 
+export default TaskList;
 
 
 // import React, { useEffect, useMemo, useState } from 'react'

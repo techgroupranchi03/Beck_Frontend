@@ -18,6 +18,7 @@ export const getUnitsAndQuantities = async () => {
                 },
             }
         );
+        
         return response.data;
     } catch (error) {
         console.error("Units and quantities fetching error:", error);
@@ -47,6 +48,7 @@ export const getInventoryItems = async () => {
 
 // create inventory item
 export const createInventoryItem = async (data) => {
+    console.log("Creating inventory item with data:", data);
     const token = getClientToken();
     try {
         const response = await axios.post(

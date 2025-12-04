@@ -9,6 +9,9 @@ import {
     Typography,
     IconButton,
     useTheme,
+    Stack,
+    ListItemIcon,
+    ListItemText,
 } from "@mui/material";
 import { Logout } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
@@ -61,7 +64,7 @@ export default function ProfileMenu() {
     };
 
     return (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 0 }}>
             {/* Theme Toggle Button */}
             <ThemeToggleButton />
 
@@ -71,8 +74,8 @@ export default function ProfileMenu() {
                     alt="Admin User"
                     src="/user-avatar.jpg"
                     sx={{
-                        width: 50,
-                        height: 50,
+                        width: 40,
+                        height: 40,
                         bgcolor: theme.palette.primary.main,
                         color: theme.palette.custom.cream,
                     }}
@@ -87,11 +90,10 @@ export default function ProfileMenu() {
                 open={open}
                 onClose={handleMenuClose}
                 PaperProps={{
-                    elevation: 4,
+                    elevation: 2,
                     sx: {
-                        width: 300,
+                        width: 250,
                         borderRadius: 2,
-                        p: 1,
                         overflow: "visible",
                         mt: 1.5,
                         "&::before": {
@@ -99,102 +101,92 @@ export default function ProfileMenu() {
                             display: "block",
                             position: "absolute",
                             top: 0,
-                            right: 20,
+                            right: 11,
                             width: 12,
                             height: 12,
                             bgcolor: theme.palette.background.paper,
                             transform: "translateY(-50%) rotate(45deg)",
                             zIndex: 0,
-                            boxShadow: theme.palette.mode === "light"
-                                ? "0px -1px 1px rgba(0,0,0,0.1)"
-                                : "0px -1px 1px rgba(255,255,255,0.1)",
+                            boxShadow:
+                                theme.palette.mode === "light"
+                                    ? "0px -1px 1px rgba(0,0,0,0.1)"
+                                    : "0px -1px 1px rgba(255,255,255,0.1)",
                         },
                     },
                 }}
                 transformOrigin={{ horizontal: "right", vertical: "top" }}
                 anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
             >
-                {/* Header Section */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        p: 1.5,
-                        bgcolor: theme.palette.background.paper,
-                        borderRadius: 2,
-                    }}
-                >
-                    <Avatar
-                        src="/user-avatar.jpg"
-                        alt="Admin User"
-                        sx={{
-                            width: 56,
-                            height: 56,
-                            mr: 2,
-                            bgcolor: theme.palette.secondary.main,
-                            color: theme.palette.custom.cream,
-                        }}
-                    >
-                        {getInitials()}
-                    </Avatar>
-                    <Box>
-                        <Typography
-                            variant="h5"
-                            fontWeight={600}
-                            sx={{ color: theme.palette.text.primary }}
-                        >
-                            {user ? getDisplayName() : 'Super Admin'}
-                        </Typography>
-                        <Typography
-                            variant="body2"
+                {/* Profile Header as MenuItem */}
+                <MenuItem>
+                    <ListItemIcon>
+                        <Avatar
+                            src="/user-avatar.jpg"
+                            alt="Admin User"
                             sx={{
-                                color: theme.palette.primary.light,
-                                fontWeight: 500
+                                mr: 1,
+                                width: 40,
+                                height: 40,
+                                bgcolor: theme.palette.secondary.main,
+                                color: theme.palette.custom.cream,
                             }}
                         >
-                            {user?.role || 'super_admin'}
-                        </Typography>
-                    </Box>
-                </Box>
+                            {getInitials()}
+                        </Avatar>
+                    </ListItemIcon>
 
-                <Divider sx={{ my: 1, borderColor: theme.palette.divider }} />
-
-                {/* Email */}
-                <MenuItem disabled>
-                    <Typography
-                        variant="body1"
-                        sx={{
-                            color: theme.palette.text.p,
-                            wordBreak: "break-word"
-                        }}
-                    >
-                        {user?.email}
-                    </Typography>
+                    <ListItemText
+                        primary={
+                            <Typography variant="h6" sx={{ fontSize: 16 }}>
+                                {user ? getDisplayName() : "Super Admin"}
+                            </Typography>
+                        }
+                        secondary={
+                            <Typography
+                                variant="body2"
+                                sx={{ fontSize: 13, color: theme.palette.primary.light }}
+                            >
+                                {user?.role || "super_admin"}
+                            </Typography>
+                        }
+                    />
                 </MenuItem>
 
+                <Divider sx={{ my: 1 }} />
+
                 {/* Logout */}
-                <Box sx={{ pt: 2 }}>
-                    <Button
-                        disableElevation
-                        fullWidth
-                        variant="contained"
-                        startIcon={<Logout />}
-                        onClick={handleLogout}
+                <MenuItem
+                    onClick={handleLogout}
+                    sx={{
+                        mt: 1,
+                        textTransform: "none",
+                        fontWeight: 600,
+                        bgcolor: theme.palette.primary.main,
+                        color: theme.palette.custom.cream,
+                        borderRadius: 2,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        "&:hover": { bgcolor: theme.palette.secondary.main },
+                    }}
+                >
+                    <ListItemIcon
                         sx={{
-                            textTransform: "none",
-                            fontWeight: 600,
-                            bgcolor: theme.palette.primary.main,
                             color: theme.palette.custom.cream,
-                            borderRadius: 2,
-                            "&:hover": {
-                                bgcolor: theme.palette.secondary.main,
-                            },
                         }}
                     >
-                        Logout
-                    </Button>
-                </Box>
+                        <Logout fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary="Logout"
+                        primaryTypographyProps={{
+                            fontWeight: 600,
+                            color: theme.palette.custom.cream,
+                        }}
+                    />
+                </MenuItem>
             </Menu>
+
         </Box>
     );
 }

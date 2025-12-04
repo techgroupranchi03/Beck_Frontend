@@ -36,6 +36,29 @@ const ActionMenu = ({ onEdit, onDelete }) => {
                 anchorEl={anchorEl}
                 open={open}
                 onClose={() => setAnchorEl(null)}
+                PaperProps={{
+                    elevation: 2,
+                    sx: {
+                        width: 120,
+                        borderRadius: 2,
+                        p: 0,
+                        overflow: "visible",
+                        mt: 1.5,
+                        "&:before": {
+                            content: '""',
+                            display: "block",
+                            position: "absolute",
+                            top: 0,
+                            right: 10,
+                            width: 10,
+                            height: 10,
+                            bgcolor: "background.paper",
+                            transform: "translateY(-50%) rotate(45deg)",
+                            zIndex: 0,
+                            boxShadow: "0px -1px 1px rgba(0,0,0,0.1)",
+                        },
+                    },
+                }}
                 anchorOrigin={{
                     vertical: "bottom",
                     horizontal: "right",
@@ -51,6 +74,7 @@ const ActionMenu = ({ onEdit, onDelete }) => {
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
+
                 <MenuItem onClick={handleDelete}>
                     <ListItemIcon>
                         <DeleteIcon fontSize="small" />
@@ -58,6 +82,7 @@ const ActionMenu = ({ onEdit, onDelete }) => {
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>
             </Menu>
+
         </>
     );
 };
