@@ -27,18 +27,29 @@ export const getUnitsAndQuantities = async () => {
 };
 
 // get inventory items
-export const getInventoryItems = async () => {
+export const getInventoryItems = async (filters = {}, searchText = "") => {
     const token = getClientToken();
     try {
+        // Build query parameters from filters
+        const params = {};
+        if (filters.category) params.category = filters.category;
+        if (filters.property_id) params.property_id = filters.property_id;
+        if (filters.unit) params.unit = filters.unit;
+        if (filters.quantity) params.quantity = filters.quantity;
+        if (filters.lower_limit) params.lower_limit = filters.lower_limit;
+        if (filters.located_at) params.located_at = filters.located_at;
+        if (searchText) params.search = searchText;
+
         const response = await axios.get(
             `${BASE_URL}/client/inventory`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params: params,
             }
         );
-        // console.log("Inventory items response:", response.data);
+        console.log("Inventory items response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Inventory items fetching error:", error);

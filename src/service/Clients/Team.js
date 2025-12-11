@@ -7,7 +7,7 @@ const getClientToken = () => {
 };
 
 // get team members 
-export const getTeamMembers = async () => {
+export const getTeamMembers = async (searchText) => {
     const token = getClientToken();
     try {
         const response = await axios.get(
@@ -16,9 +16,12 @@ export const getTeamMembers = async () => {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params: {
+                    search: searchText
+                }
             }
         );
-       // console.log("Team members response:", response.data);
+        // console.log("Team members response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Team members fetching error:", error);
@@ -50,7 +53,7 @@ export const createTeamMember = async (teamMemberData) => {
 
 // update team member
 export const updateTeamMember = async (teamMemberId, teamMemberData) => {
-   // console.log("Updating team member ID:", teamMemberId, "with data:", teamMemberData);
+    // console.log("Updating team member ID:", teamMemberId, "with data:", teamMemberData);
     const token = getClientToken();
     try {
         const response = await axios.put(
@@ -103,7 +106,7 @@ export const getRoles = async () => {
                 },
             }
         );
-       // console.log("Roles response:", response.data);
+        // console.log("Roles response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Roles fetching error:", error);

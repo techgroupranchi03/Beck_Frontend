@@ -17,6 +17,7 @@ import {
   Chip,
   Button,
   TextField,
+  Snackbar,
 } from "@mui/material";
 import {
   MoreVert, Edit, Delete, Phone, CheckCircle,
@@ -28,6 +29,7 @@ import { useTeamContext } from './TeamManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import TileView_addEdit_team from "./TileView_addEdit_team";
+import NavigateToTask from "./NavigateToTask";
 
 const Tile_View_Team = () => {
   const theme = useTheme();
@@ -44,7 +46,8 @@ const Tile_View_Team = () => {
   const {
     teamData,
     loading,
-    deleteTeam
+    deleteTeam,
+    fetchTeamMembers,
   } = useTeamContext();
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -55,9 +58,12 @@ const Tile_View_Team = () => {
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
 
+  const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
+  const [deleteResponse, setDeleteResponse] = useState(null);
+
   console.log('selectedMember:', selectedMember);
 
-  
+
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -83,12 +89,27 @@ const Tile_View_Team = () => {
         const res = await deleteTeam(memberToDelete.id);
         showSnackbar(res.message || 'Team member deleted successfully', 'success');
       } catch (error) {
-        showSnackbar(error.message || 'Failed to delete team member', 'error');
-        console.error('Error deleting team member:', error);
+        if (error.actionRequired === 'reassign_tasks') {
+          setDeleteResponse(error);
+          setOpenNavigateDialog(true);
+        } else {
+          showSnackbar(error.message || 'Failed to delete team member', 'error');
+          console.error('Error deleting team member:', error);
+        }
       }
     }
     setOpenConfirm(false);
     setMemberToDelete(null);
+  };
+
+  // handle search
+  const handleSearch = async (text) => {
+    setSearchText(text);
+    try {
+      await fetchTeamMembers(text);
+    } catch (error) {
+      console.error('Error searching team members:', error);
+    }
   };
 
   const handleCancelDelete = () => {
@@ -99,6 +120,11 @@ const Tile_View_Team = () => {
   const handleCloseDialog = () => {
     setOpenAddEditDialog(false);
     setSelectedMember(null);
+  };
+
+  const handleCloseNavigateDialog = () => {
+    setOpenNavigateDialog(false);
+    setDeleteResponse(null);
   };
 
   return (
@@ -141,10 +167,10 @@ const Tile_View_Team = () => {
           size="small"
           focused
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          onChange={(e) => handleSearch(e.target.value)}
           InputProps={{
             endAdornment: (
-              <IconButton onClick={() => setSearchText("")}>
+              <IconButton onClick={() => handleSearch("")}>
                 <Clear />
               </IconButton>
             ),
@@ -152,6 +178,15 @@ const Tile_View_Team = () => {
           }}
           sx={{ mb: 2 }}
         />
+      )}
+
+
+      {teamData.length === 0 && !loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Typography variant="body2" color="text.secondary">
+            No team members found.
+          </Typography>
+        </Box>
       )}
       <Grid container spacing={2}>
         {loading ? (
@@ -201,7 +236,7 @@ const Tile_View_Team = () => {
                     /> */}
                       <IconButton
                         aria-label="settings"
-                        onClick={(e) =>{
+                        onClick={(e) => {
                           setSelectedMember(member);
                           setAnchorEl(e.currentTarget);
                         }}
@@ -328,6 +363,14 @@ const Tile_View_Team = () => {
         open={openAddEditDialog}
         onClose={handleCloseDialog}
         teamMember={selectedMember}
+      />
+
+
+      {/* add snackbar to navigate to task module when we try to delete the task first say you need to reassign the task */}
+      <NavigateToTask
+        open={openNavigateDialog}
+        onClose={handleCloseNavigateDialog}
+        deleteResponse={deleteResponse}
       />
     </Container>
   );

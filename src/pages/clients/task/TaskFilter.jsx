@@ -12,24 +12,33 @@ import {
     useTheme,
 } from "@mui/material";
 
-const assignees = ["John", "Jane", "Doe", "Smith", "Emily", "Michael", "Sarah", "David"];
-const statuses = ["Pending", "Active"];
-const taskTypes = ["Cleaning", "Inspection"];
+import { taskTypes, scheduleTypes, statusOpts, } from "../../../constant";
+import { useTaskContext } from "./TaskManagement";
 
-const TaskFilter = ({ open, onClose, onApplyFilters }) => {
+
+
+
+const TaskFilter = ({ open, onClose, onApplyFilters, viewMode }) => {
     const [AssignTo, setAssignTo] = useState(null);
     const [Status, setStatus] = useState("");
     const [TaskType, setTaskType] = useState("");
+    const [ScheduleType, setScheduleType] = useState("");
     const [isFilter, setIsFilter] = useState(false);
-
     const theme = useTheme();
     const { palette } = theme;
 
+    // get data form context
+    const {
+        teamMembers,
+    } = useTaskContext();
+
+
     const handleFilterApply = () => {
         const filters = {
-            AssignTo,
-            Status,
-            TaskType,
+            assigned_to: AssignTo,
+            status: Status,
+            task_type: TaskType,
+            schedule_type: ScheduleType,
         };
         setIsFilter(true);
         onApplyFilters(filters);
@@ -40,8 +49,9 @@ const TaskFilter = ({ open, onClose, onApplyFilters }) => {
         setAssignTo(null);
         setStatus("");
         setTaskType("");
+        setScheduleType("");
         setIsFilter(false);
-        onApplyFilters({ AssignTo: null, Status: "", TaskType: "" });
+        onApplyFilters({ AssignTo: null, Status: "", TaskType: "", ScheduleType: "" });
     };
 
     return (
@@ -73,34 +83,38 @@ const TaskFilter = ({ open, onClose, onApplyFilters }) => {
                 {/* Assignee Filter */}
                 <Autocomplete
                     size="small"
-                    value={AssignTo}
+                    value={teamMembers.find((member) => member.id === AssignTo) || null}
                     onChange={(event, newValue) => {
-                        setAssignTo(newValue);
+                        // set id of selected team member
+                        setAssignTo(newValue ? newValue.id : null);
                     }}
-                    options={assignees}
+                    options={teamMembers}
+                    getOptionLabel={(option) => option.name || ""}
                     renderInput={(params) => (
                         <TextField {...params} label="Assign To" />
                     )}
                     sx={{ mb: 3 }}
                 />
 
-                {/* Status Filter */}
-                <FormControl fullWidth>
-                    <TextField
-                        select
-                        label="Status"
-                        size="small"
-                        sx={{ mb: 3 }}
-                        value={Status}
-                        onChange={(event) => setStatus(event.target.value)}
-                    >
-                        {statuses.map((status) => (
-                            <MenuItem key={status} value={status}>
-                                {status}
-                            </MenuItem>
-                        ))}
-                    </TextField>
-                </FormControl>
+                {/* Status Filter only show when the view mode is Active Tasks */}
+                {viewMode === 'activeTasks' &&
+                    <FormControl fullWidth>
+                        <TextField
+                            select
+                            label="Status"
+                            size="small"
+                            sx={{ mb: 3 }}
+                            value={Status}
+                            onChange={(event) => setStatus(event.target.value)}
+                        >
+                            {statusOpts.map((status) => (
+                                <MenuItem key={status.value} value={status.value} dense>
+                                    {status.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </FormControl>
+                }
 
                 {/* Task Type Filter */}
                 <FormControl fullWidth>
@@ -113,12 +127,31 @@ const TaskFilter = ({ open, onClose, onApplyFilters }) => {
                         onChange={(event) => setTaskType(event.target.value)}
                     >
                         {taskTypes.map((type) => (
-                            <MenuItem key={type} value={type}>
+                            <MenuItem key={type} value={type} dense>
                                 {type}
                             </MenuItem>
                         ))}
                     </TextField>
                 </FormControl>
+                {/* Schedule Type Filter when the view mode is Task Planner */}
+                {viewMode === 'taskPlanner' &&
+                    <FormControl fullWidth>
+                        <TextField
+                            select
+                            label="Schedule Type"
+                            size="small"
+                            sx={{ mb: 3 }}
+                            value={ScheduleType}
+                            onChange={(event) => setScheduleType(event.target.value)}
+                        >
+                            {scheduleTypes.map((type) => (
+                                <MenuItem key={type} value={type} dense>
+                                    {type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </FormControl>
+                }
 
                 <Button
                     variant="contained"

@@ -25,9 +25,9 @@ export const useInventoryData = () => {
     const [error, setError] = useState(null);
 
     // Fetch inventory items
-    const fetchInventoryItems = useCallback(async () => {
+    const fetchInventoryItems = useCallback(async (filters = {}, searchText = "") => {
         try {
-            const res = await getInventoryItems();
+            const res = await getInventoryItems(filters, searchText);
             setInventoryData(res.data || []);
             return res.data;
         } catch (err) {

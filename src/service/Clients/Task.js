@@ -6,15 +6,24 @@ const getClientToken = () => {
 };
 
 // get all task method "GET" API
-export const getClientTasks = async () => {
+export const getClientTasks = async (filters = {}, searchText = "") => {
     const token = getClientToken();
     try {
+        // Build query parameters from filters
+        const params = {};
+        if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.status) params.status = filters.status;
+        if (filters.task_type) params.task_type = filters.task_type;
+        if (filters.schedule_type) params.schedule_type = filters.schedule_type;
+        if (searchText) params.search = searchText;
+
         const response = await axios.get(
             `${BASE_URL}/client/tasks-planner`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params: params,
             }
         );
         console.log('Client tasks response:', response.data);
@@ -109,15 +118,24 @@ export const deleteClientTask = async (taskId) => {
 
 
 // get active tasks method "GET" API
-export const getClientActiveTasks = async () => {
+export const getClientActiveTasks = async (filters = {}, searchText = "") => {
     const token = getClientToken();
     try {
+        // Build query parameters from filters
+        const params = {};
+        if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.status) params.status = filters.status;
+        if (filters.task_type) params.task_type = filters.task_type;
+        if (filters.schedule_type) params.schedule_type = filters.schedule_type;
+        if (searchText) params.search = searchText;
+
         const response = await axios.get(
             `${BASE_URL}/client/tasks-instances`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params: params,
             }
         );
         console.log('Client active tasks response:', response.data);

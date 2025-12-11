@@ -32,8 +32,8 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, viewMode, inventory
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
-    console.log("task in dialog:", task);
-    console.log("inventoryId in dialog:", inventoryId);
+    // console.log("task in dialog:", task);
+    // console.log("inventoryId in dialog:", inventoryId);
 
     // Get data from inventory context
     const {

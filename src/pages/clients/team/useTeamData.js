@@ -14,9 +14,9 @@ export const useTeamData = () => {
     const [error, setError] = useState(null);
 
     // Fetch team members
-    const fetchTeamMembers = useCallback(async () => {
+    const fetchTeamMembers = useCallback(async (searchText) => {
         try {
-            const res = await getTeamMembers();
+            const res = await getTeamMembers(searchText);
             setTeamData(res.data || []);
             return res.data;
         } catch (err) {
@@ -125,6 +125,9 @@ export const useTeamData = () => {
         updateTeam,
         deleteTeam,
         refreshTeamData,
+
+        // fetch team
+        fetchTeamMembers,
 
         // General Operations
         refetchAll: fetchAllData,

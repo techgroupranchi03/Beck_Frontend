@@ -61,6 +61,8 @@ export const Tile_View_task = () => {
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [filters, setFilters] = useState({});
 
+    console.log("filters:", filters);
+
     console.log("selectedTask:", selectedTask);
 
     const theme = useTheme();
@@ -76,7 +78,9 @@ export const Tile_View_task = () => {
         deleteTask,
         properties,
         inventoryItems,
-        teamMembers
+        teamMembers,
+        fetchTaskPlannerData,
+        fetchActiveTasksData,
     } = useTaskContext();
 
     // display tasks based on view mode
@@ -96,11 +100,34 @@ export const Tile_View_task = () => {
         setIsFilterVisible((prev) => !prev);
     };
 
-    const handleApplyFilters = (appliedFilters) => {
+    const handleApplyFilters = async (appliedFilters) => {
         setFilters(appliedFilters);
+        try {
+            if (viewMode === "taskPlanner") {
+                await fetchTaskPlannerData(appliedFilters, searchText);
+            } else {
+                await fetchActiveTasksData(appliedFilters, searchText);
+            }
+            showSnackbar("Filters applied successfully", "success");
+        } catch (error) {
+            console.error("Error applying filters:", error);
+            showSnackbar("Failed to apply filters", "error");
+        }
+    };
+    const handleSearch = async (text) => {
+        setSearchText(text);
+        try {
+            if (viewMode === "taskPlanner") {
+                await fetchTaskPlannerData(filters, text);
+            } else {
+                await fetchActiveTasksData(filters, text);
+            }
+        } catch (error) {
+            console.error("Error searching tasks:", error);
+        }
     };
 
-    const handleCloseDialog = () => {
+       const handleCloseDialog = () => {
         setOpenAddEditDialog(false);
         setSelectedTask(null);
     };
@@ -183,10 +210,10 @@ export const Tile_View_task = () => {
                     size="small"
                     focused
                     value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
+                    onChange={(e) => handleSearch(e.target.value)}
                     InputProps={{
                         endAdornment: (
-                            <IconButton onClick={() => setSearchText("")}>
+                            <IconButton onClick={() => handleSearch("")}>
                                 <Clear />
                             </IconButton>
                         ),
@@ -201,6 +228,7 @@ export const Tile_View_task = () => {
                 open={isFilterVisible}
                 onClose={handleFilterToggle}
                 onApplyFilters={handleApplyFilters}
+                viewMode={viewMode}
             />
 
 
@@ -231,6 +259,13 @@ export const Tile_View_task = () => {
 
 
             {/* ---------- Task Grid ---------- */}
+            {tasks.length === 0 && !loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        No tasks found.
+                    </Typography>
+                </Box>
+            )}
             <Grid container spacing={2}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>

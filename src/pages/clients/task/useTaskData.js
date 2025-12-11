@@ -22,9 +22,9 @@ export const useTaskData = () => {
     const [error, setError] = useState(null);
 
     // Fetch Task Planner tasks
-    const fetchTaskPlannerData = useCallback(async () => {
+    const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "") => {
         try {
-            const res = await getClientTasks();
+            const res = await getClientTasks(filters, searchText);
             setTaskPlannerData(res.data || []);
             return res.data;
         } catch (err) {
@@ -35,9 +35,9 @@ export const useTaskData = () => {
     }, []);
 
     // Fetch Active Tasks
-    const fetchActiveTasksData = useCallback(async () => {
+    const fetchActiveTasksData = useCallback(async (filters = {}, searchText = "") => {
         try {
-            const res = await getClientActiveTasks();
+            const res = await getClientActiveTasks(filters, searchText);
             setActiveTasksData(res.data || []);
             return res.data;
         } catch (err) {
@@ -247,6 +247,11 @@ export const useTaskData = () => {
         // Active Tasks Operations
         updateActiveTaskData,
         refreshActiveTasks,
+        updateActiveTaskStatus,
+
+        // Fetch with filters
+        fetchTaskPlannerData,
+        fetchActiveTasksData,
 
         // General Operations
         refetchAll: fetchAllData,

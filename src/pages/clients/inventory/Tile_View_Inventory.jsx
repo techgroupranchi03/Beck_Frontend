@@ -93,6 +93,7 @@ const Tile_View_Inventory = () => {
         containerOptions,
         loading,
         deleteInventory,
+        fetchInventoryItems,
     } = useInventoryContext();
 
     const handleViewModeChange = (event) => {
@@ -140,9 +141,13 @@ const Tile_View_Inventory = () => {
         setAnchorEl(null);
     };
 
-    const handleApplyFilters = (appliedFilters) => {
+    const handleApplyFilters = async (appliedFilters) => {
         setFilters(appliedFilters);
-        //console.log("Applied Filters:", appliedFilters);
+        try {
+            await fetchInventoryItems(appliedFilters, searchText);
+        } catch (error) {
+            console.error("Error applying filters:", error);
+        }
     };
 
     const handleCollapseToggle = (cardId) => {
@@ -152,7 +157,15 @@ const Tile_View_Inventory = () => {
         }));
     };
 
-
+    const handleSearch = async (text) => {
+        setSearchText(text);
+        
+        try {
+            await fetchInventoryItems(filters, text);
+        } catch (error) {
+            console.error("Error searching inventory:", error);
+        }
+    };
 
     return (
         <Container maxWidth="mx" sx={{ mt: 2, px: 0 }}>
@@ -203,19 +216,26 @@ const Tile_View_Inventory = () => {
                     size="small"
                     focused
                     value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
+                    onChange={(e) => handleSearch(e.target.value)}
                     InputProps={{
                         endAdornment: (
-                            <IconButton onClick={() => setSearchText("")}>
+                            <IconButton onClick={() => handleSearch("")}>
                                 <Clear />
                             </IconButton>
                         ),
                         sx: { paddingRight: 0 },
                     }}
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 2 }} 
                 />
             )}
 
+            {inventoryData.length === 0 && !loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        No inventory items found.
+                    </Typography>
+                </Box>
+            )}
             <Grid container spacing={2}>
                 {loading ? (
                     <Box width="100%" textAlign="center" py={4}>
