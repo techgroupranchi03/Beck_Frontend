@@ -57,12 +57,35 @@ export const lightTheme = createTheme({
     card_button: {
       paper: "#f0f0f0",
     },
+    // Task type colors
+    taskType: {
+      inspection: '#0288D1',
+      maintenance: '#6D4C41',
+      delivery: '#00796B',
+      repair: '#546E7A',
+      cleaning: '#7E57C2',
+      other: '#9E9E9E',
+    },
+    taskStatus: {
+      pending: '#607D8B',
+      in_progress: '#2196F3',
+      cancelled: '#9E9E9E',
+      completed: '#4CAF50',
+      overdue: '#F44336',
+    },
 
-
+    tagTask: {
+      categatory: '#449e7d28',
+      location: '#e2ece26c',
+      quantity: '#9cdae252',
+      location: '#64b5f628',
+      lower_limit: '#f4433628',
+      color: '#000000ff',
+    },
   },
   customGradients: {
     right: 'linear-gradient(to right, rgba(255,255,255,0.95), transparent)',
-    left : 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)',
+    left: 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)',
 
   },
   typography,
@@ -107,11 +130,35 @@ export const darkTheme = createTheme({
     card_button: {
       paper: "#3c3c3c",
     },
-
+    // Task type colors
+    taskType: {
+      inspection: "#42a5f5",
+      maintenance: "#6D4C41",
+      delivery: "#66bb6a",
+      repair: "#546E7A",
+      cleaning: "#7E57C2",
+      other: "#bdbdbd",
+    },
+    // Status colors
+    taskStatus: {
+      pending: "#607D8B",
+      in_progress: "#42a5f5",
+      cancelled: "#e66c6aff",
+      completed: "#66bb6a",
+      overdue: "#e53935",
+    },
+    tagTask: {
+      categatory: '#81c78428',
+      location: '#64b5f628',
+      quantity: '#9cdae252',
+      location: '#64b5f628',
+      lower_limit: '#f4433628',
+      color: '#ffffffff',
+    },
   },
   customGradients: {
     right: 'linear-gradient(to right, rgba(26,26,26,0.95), transparent)',
-    left : 'linear-gradient(to left, rgba(26,26,26,0.95), transparent)',
+    left: 'linear-gradient(to left, rgba(26,26,26,0.95), transparent)',
   },
   typography,
   components: {

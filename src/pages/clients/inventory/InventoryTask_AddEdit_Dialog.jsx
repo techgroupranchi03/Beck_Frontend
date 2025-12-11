@@ -18,38 +18,40 @@ import {
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close';
 import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
-import { useTaskContext } from './TaskManagement';
+import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
-    const isEdit = !!task;
+const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, viewMode, inventoryId }) => {
+    const isEdit = Boolean(task);
     const isActiveTask = viewMode === 'activeTasks';
     const isTaskPlanner = viewMode === 'taskPlanner';
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
+    console.log("task in dialog:", task);
+    console.log("inventoryId in dialog:", inventoryId);
 
-    console.log('TileView_AddEdit_Dialog viewMode:', viewMode);
-
-    // Get data from context
+    // Get data from inventory context
     const {
-        inventoryItems,
+        inventoryData,
         teamMembers,
         createTask,
         updateTaskPlannerData,
         updateActiveTaskData
-    } = useTaskContext();
+    } = useInventoryContext();
+
+    const [loading, setLoading] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
 
     // Form state
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        property_id: '',
-        inventory_id: '',
+        inventory_id: inventoryId || '',
         schedule_type: '',
         repeat_on: '{}',
         start_date: '',
@@ -60,11 +62,9 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
         status: ''
     });
 
-    const [validationErrors, setValidationErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-
     // Separate state for repeat_on data structure
     const [repeatData, setRepeatData] = useState({});
+
 
     // Initialize form data when task changes
     useEffect(() => {
@@ -72,8 +72,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
-                // property_id: task.property_id || '',
-                inventory_id: task.inventory_id || '',
+                inventory_id: task.inventory_id ||'',
                 schedule_type: task.schedule_type || '',
                 repeat_on: task.repeat_on || '{}',
                 start_date: task.start_date || '',
@@ -101,8 +100,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             setFormData({
                 title: '',
                 description: '',
-                // property_id: '',
-                inventory_id: '',
+                inventory_id: inventoryId || '',
                 schedule_type: '',
                 repeat_on: '{}',
                 start_date: '',
@@ -114,7 +112,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             setRepeatData({});
         }
         setValidationErrors({});
-    }, [task, isEdit, open]);
+    }, [task, isEdit, open, inventoryId]);
 
     // Sync repeatData to formData.repeat_on
     useEffect(() => {
@@ -248,56 +246,31 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         />
                     </Grid>
 
-                    {/* Property */}
-                    {/* <Grid size={{ xs: 12, sm: 6 }}>
-                        <Autocomplete
-                            size="small"
-                            options={properties}
-                            getOptionLabel={(option) => option.name || ""}
-                            value={properties.find((prop) => prop.id === formData.property_id) || null}
-                            onChange={(e, newValue) => {
-                                handleChange("property_id")({
-                                    target: { value: newValue ? newValue.id : "" }
-                                });
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Property"
-                                    required
-                                    error={!!validationErrors.property_id}
-                                    helperText={validationErrors.property_id}
-                                />
-                            )}
-                            isOptionEqualToValue={(option, value) => option.id === value.id}
-                        />
-                    </Grid> */}
-
-                    {/* Inventory */}
+                    {/* Inventory - Read only when editing or creating from specific inventory */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
-                            options={inventoryItems}
+                            options={inventoryData}
                             getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                            value={inventoryItems.find((item) => item.id === formData.inventory_id) || null}
+                            value={inventoryData.find((item) => item.id === formData.inventory_id) || null}
                             onChange={(e, newValue) => {
                                 handleChange("inventory_id")({
                                     target: { value: newValue ? newValue.id : "" }
                                 });
                             }}
+                            disabled={isEdit || !!inventoryId}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
                                     label="Select Inventory"
                                     required
                                     error={!!validationErrors.inventory_id}
-                                    helperText={validationErrors.inventory_id}
+                                    helperText={validationErrors.inventory_id || (isEdit ? 'Cannot change inventory' : inventoryId ? 'Inventory auto-selected' : '')}
                                 />
                             )}
                             isOptionEqualToValue={(option, value) => option.id === value.id}
                         />
                     </Grid>
-
 
                     {/* Start Date - Show when creating OR editing Task Planner */}
                     {(!isEdit || (isEdit && isTaskPlanner)) && (
@@ -368,8 +341,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                             />
                         </Grid>
                     )}
-
-
 
                     {/* Repeat On - Show when creating new task OR editing Task Planner */}
                     {(!isEdit || (isEdit && isTaskPlanner)) && formData.schedule_type === 'weekly' && (
@@ -557,7 +528,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 <Button
                     variant='text'
                     size='medium'
-                    sx={{ textTransform: 'none' , mr: 2 }}
+                    sx={{ textTransform: 'none', mr: 2 }}
                     onClick={onClose}
                     disabled={loading}
                 >
@@ -581,4 +552,5 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
         </Dialog>
     );
 };
-export default TileView_AddEdit_Dialog
+
+export default InventoryTask_AddEdit_Dialog;

@@ -62,7 +62,7 @@ export const createInventoryItem = async (data) => {
             }
         );
         //console.log("Create inventory response:", response.data);
-        return response.data;
+        return response;
     } catch (error) {
         console.error("Create inventory error:", error);
         return Promise.reject(error.response?.data || { message: "Creating inventory item failed" });

@@ -13,26 +13,35 @@ import {
 import { MaterialReactTable } from 'material-react-table';
 import { Edit as EditIcon, Delete as DeleteIcon, Inventory2Rounded, Close as CloseIcon, Assignment, Business, Save as SaveIcon } from '@mui/icons-material';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
-import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem, getUnitsAndQuantities } from '../../../service/Clients/Inventory';
-import { getClientProperties } from '../../../service/Clients/Properties';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import Task_Accordian from './Task_Accordian';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
 import { categories } from '../../../constant';
+import { useInventoryContext } from './InventoryManagement';
 
 const All_Inventory = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
-  const [inventoryData, setInventoryData] = useState([]);
-  const [properties, setProperties] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  // Get data from context
+  const {
+    inventoryData,
+    properties,
+    units,
+    containerOptions,
+    loading,
+    createInventory,
+    updateInventory,
+    deleteInventory,
+  } = useInventoryContext();
+
+
+  console.log("inventoryData:", inventoryData);
+
   const [openConfirm, setOpenConfirm] = useState(false);
   const [inventoryToDelete, setInventoryToDelete] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
-  const [units, setUnits] = useState([]);
-  const [containerOptions, setContainerOptions] = useState([]);
   const [selectedUnit, setSelectedUnit] = useState({});
   const [create_tasks, setCreate_tasks] = useState(false);
   const [task, setTask] = useState(null);
@@ -44,55 +53,6 @@ const All_Inventory = () => {
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   console.log("task:", task);
-
-  // console.log("containerOptions:", containerOptions);
-
-  // console.log("inventoryData:", inventoryData);
-
-  // get units and quantity
-  const fetchUnitsAndQuantities = async () => {
-    try {
-      const res = await getUnitsAndQuantities();
-      setUnits(res.data.units || []);
-      setContainerOptions([...res.data.quantity?.containerOptions || []].reverse());
-      // console.log("Units and quantities fetched:", res);
-    } catch (error) {
-      console.error("Error fetching units and quantities:", error);
-    }
-  };
-  useEffect(() => {
-    fetchUnitsAndQuantities();
-  }, []);
-
-
-  // Fetch properties
-  const fetchProperties = async () => {
-    try {
-      const res = await getClientProperties(1);
-      setProperties(res.data || []);
-    } catch (error) {
-      console.error("Error fetching properties:", error);
-    }
-  };
-
-
-  // Fetch inventory items
-  const fetchInventoryItems = async () => {
-    setLoading(true);
-    try {
-      const res = await getInventoryItems();
-      setInventoryData(res.data || []);
-    } catch (error) {
-      console.error('Error fetching inventory items:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProperties();
-    fetchInventoryItems();
-  }, []);
 
   // handleImageChange
   const handleImageChange = (event) => {
@@ -118,7 +78,47 @@ const All_Inventory = () => {
   // CREATE
   const handleCreateInventory = async ({ values, table }) => {
     try {
-      setLoading(true);
+      // Validate task fields if create_tasks is true
+      if (create_tasks && task) {
+        const taskErrors = {};
+
+        if (!task.title) taskErrors.task_title = "Task title is required";
+        if (!task.description) taskErrors.task_description = "Task description is required";
+        if (!task.assigned_to) taskErrors.task_assigned_to = "Assigned to is required";
+        if (!task.schedule_type) taskErrors.task_schedule_type = "Schedule type is required";
+        if (!task.task_type) taskErrors.task_task_type = "Task type is required";
+        if (!task.start_date) taskErrors.task_start_date = "Start date is required";
+        if (!task.status) taskErrors.task_status = "Status is required";
+
+        // Validate repeat_on based on schedule_type
+        if (['weekly', 'monthly', 'yearly'].includes(task.schedule_type)) {
+          let repeatData = {};
+          try {
+            repeatData = task.repeat_on ?
+              (typeof task.repeat_on === 'string' ? JSON.parse(task.repeat_on) : task.repeat_on) : {};
+          } catch (error) {
+            taskErrors.repeat_on = "Invalid repeat data format";
+          }
+
+          if (task.schedule_type === 'weekly') {
+            if (!repeatData.days || repeatData.days.length === 0) {
+              taskErrors.repeat_on = "Please select at least one day for weekly schedule";
+            }
+          } else if (task.schedule_type === 'monthly') {
+            if (!repeatData.date || repeatData.date.length === 0) {
+              taskErrors.repeat_on = "Please select at least one date for monthly schedule";
+            }
+          } else if (task.schedule_type === 'yearly') {
+            if (!repeatData.date) {
+              taskErrors.repeat_on = "Please select a date for yearly schedule";
+            }
+            if (!repeatData.month || repeatData.month.length === 0) {
+              taskErrors.repeat_on = "Please select at least one month for yearly schedule";
+            }
+          }
+        }
+      }
+
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('name', values.name);
@@ -127,61 +127,73 @@ const All_Inventory = () => {
       formData.append('quantity', values.quantity);
       formData.append('unit', values.unit);
       formData.append('create_tasks', create_tasks);
+      formData.append('locaed_at', values.locaed_at);
+      formData.append('lower_limit', values.lower_limit);
 
       if (create_tasks && task) {
         formData.append('task_title', task.title);
         formData.append('task_description', task.description);
         formData.append('task_assigned_to', task.assigned_to);
         formData.append('task_schedule_type', task.schedule_type);
-        formData.append('task_recurrence', task.recurrence);
         formData.append('task_is_photo_required', task.is_photo_required);
         formData.append('task_task_status', task.status);
-        formData.append('task_type', task.task_type);
+        formData.append('task_task_type', task.task_type);
+        formData.append('task_start_date', task.start_date);
+
+        // Parse repeat_on and send appropriate fields based on schedule_type
+        if (['weekly', 'monthly', 'yearly'].includes(task.schedule_type) && task.repeat_on) {
+          try {
+            const repeatData = typeof task.repeat_on === 'string' ?
+              JSON.parse(task.repeat_on) : task.repeat_on;
+
+            if (task.schedule_type === 'weekly') {
+              // For weekly: send repeat_days as array of days
+              formData.append('repeat_days', JSON.stringify(repeatData.days || []));
+            } else if (task.schedule_type === 'monthly') {
+              // For monthly: send repeat_date as array of dates
+              formData.append('repeat_date', JSON.stringify(repeatData.date || []));
+            } else if (task.schedule_type === 'yearly') {
+              // For yearly: send repeat_month as array and repeat_date as single value
+              formData.append('repeat_month', JSON.stringify(repeatData.month || []));
+              formData.append('repeat_date', repeatData.date || '');
+            }
+          } catch (error) {
+            console.error("Error parsing repeat_on:", error);
+            showSnackbar("Invalid repeat schedule format", "error");
+            return;
+          }
+        }
       }
 
       if (imageFile) {
         formData.append('inventory_image', imageFile);
       }
 
-      const res = await createInventoryItem(formData);
+      const res = await createInventory(formData);
       showSnackbar(res.message || "Inventory item created successfully", "success");
-      await fetchInventoryItems();
       table.setCreatingRow(null);
       clearImageState();
       setTask(null);
       setCreate_tasks(false);
+      setValidationErrors({});
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
-        const apiErrors = {
-          name: "",
-          category: "",
-          property_id: "",
-          quantity: "",
-          unit: "",
-          image: "",
-        };
-
+        const apiErrors = {};
         error.errors.forEach((err) => {
-          if (err.name) apiErrors.name = err.name;
-          if (err.category) apiErrors.category = err.category;
-          if (err.property_id) apiErrors.property_id = err.property_id;
-          if (err.quantity) apiErrors.quantity = err.quantity;
-          if (err.unit) apiErrors.unit = err.unit;
-          if (err.image) apiErrors.image = err.image;
+          Object.keys(err).forEach((key) => {
+            apiErrors[key] = err[key];
+          });
         });
-
         setValidationErrors(apiErrors);
       }
+      showSnackbar(error.message || "Failed to create inventory item", "error");
       console.error("Error creating inventory item:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
   // UPDATE
   const handleSaveInventory = async ({ values, table, row }) => {
     try {
-      setLoading(true);
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('name', values.name);
@@ -189,40 +201,29 @@ const All_Inventory = () => {
       formData.append('property_id', values.property_id);
       formData.append('quantity', values.quantity);
       formData.append('unit', values.unit);
+      formData.append('located_at', values.located_at);
+      formData.append('lower_limit', values.lower_limit);
 
       if (imageFile) {
         formData.append('inventory_image', imageFile);
       }
-      const res = await updateInventoryItem(row.original.id, formData);
+      const res = await updateInventory(row.original.id, formData);
       showSnackbar(res.message || "Inventory item updated successfully", "success");
-      await fetchInventoryItems();
       table.setEditingRow(null);
       clearImageState();
+      setValidationErrors({});
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
-        const apiErrors = {
-          name: "",
-          category: "",
-          property_id: "",
-          quantity: "",
-          unit: "",
-          image: "",
-        };
-
+        const apiErrors = {};
         error.errors.forEach((err) => {
-          if (err.name) apiErrors.name = err.name;
-          if (err.category) apiErrors.category = err.category;
-          if (err.property_id) apiErrors.property_id = err.property_id;
-          if (err.quantity) apiErrors.quantity = err.quantity;
-          if (err.unit) apiErrors.unit = err.unit;
-          if (err.image) apiErrors.image = err.image;
+          Object.keys(err).forEach((key) => {
+            apiErrors[key] = err[key];
+          });
         });
-
         setValidationErrors(apiErrors);
       }
+      showSnackbar(error.message || "Failed to update inventory item", "error");
       console.error("Error updating inventory item:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -240,15 +241,11 @@ const All_Inventory = () => {
   const handleConfirmDelete = async () => {
     if (inventoryToDelete != null) {
       try {
-        setLoading(true);
-        const res = await deleteInventoryItem(inventoryToDelete);
+        const res = await deleteInventory(inventoryToDelete);
         showSnackbar(res.message || "Inventory item deleted successfully", "success");
-        await fetchInventoryItems();
       } catch (error) {
+        showSnackbar(error.message || "Failed to delete inventory item", "error");
         console.error("Error deleting inventory item:", error);
-        showSnackbar("Failed to delete inventory item. Please try again.", "error");
-      } finally {
-        setLoading(false);
       }
     }
     setOpenConfirm(false);
@@ -373,8 +370,6 @@ const All_Inventory = () => {
             }),
         },
       },
-
-
       {
         accessorKey: 'category',
         header: 'Category',
@@ -458,6 +453,37 @@ const All_Inventory = () => {
         },
         Cell: ({ row }) => row.original.property_name || '-',
       },
+      {
+        accessorKey: 'located_at',
+        header: 'Located At',
+        size: 200,
+        muiEditTextFieldProps: {
+          error: !!validationErrors?.located_at,
+          helperText: validationErrors?.located_at,
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              located_at: undefined,
+            }),
+        },
+      },
+      {
+        accessorKey: 'lower_limit',
+        header: 'Lower Limit',
+        size: 120,
+        muiEditTextFieldProps: {
+          type: 'number',
+          inputProps: { min: 0, max: 9999, step: 0.01 },
+          error: !!validationErrors?.lower_limit,
+          helperText: validationErrors?.lower_limit,
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              lower_limit: undefined,
+            }),
+        },
+      },
+
       {
         accessorKey: 'unit',
         header: 'Unit',
@@ -665,10 +691,11 @@ const All_Inventory = () => {
                               onClick={() => {
                                 if (hasNameAndCategory) {
                                   row.toggleExpanded();
-                                  setCreate_tasks(true);
+                                  setCreate_tasks(prev => !prev);
                                 }
                               }}
-                              disabled={!hasNameAndCategory}
+                              // also disable when editing the row
+                              disabled={!hasNameAndCategory || isEditing }
                               size="small"
                               sx={{
                                 color: hasNameAndCategory ? palette.primary.main : palette.grey[400],
@@ -712,6 +739,7 @@ const All_Inventory = () => {
           renderRowActions={({ row, table }) => {
             const isEditing = table.getState().editingRow?.id === row.id;
             const isCreating = table.getState().creatingRow?.id === row.id;
+            const hasAnyEditingRow = table.getState().editingRow !== null || table.getState().creatingRow !== null;
 
             if (isEditing || isCreating) {
               // Actions are handled by displayColumnDefOptions above
@@ -738,14 +766,21 @@ const All_Inventory = () => {
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Add Task" placement='top' arrow>
-                  <IconButton
-                    onClick={() => row.toggleExpanded()}
-                    size="small"
-                    sx={{ color: palette.primary.main }}
-                  >
-                    <Assignment fontSize="small" />
-                  </IconButton>
+                <Tooltip title={hasAnyEditingRow ? "Finish editing first" : "Add Task"} placement='top' arrow>
+                  <span>
+                    <IconButton
+                      onClick={() => row.toggleExpanded()}
+                      // disable when any row is being edited or created
+                      disabled={hasAnyEditingRow}
+                      size="small"
+                      sx={{
+                        color: hasAnyEditingRow ? palette.grey[400] : palette.primary.main,
+                        cursor: hasAnyEditingRow ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <Assignment fontSize="small" />
+                    </IconButton>
+                  </span>
                 </Tooltip>
               </Box>
             );
@@ -790,7 +825,7 @@ const All_Inventory = () => {
           muiTablePaperProps={{
             elevation: 4,
             sx: {
-              borderRadius: 2,
+              border: `1px solid ${palette.divider}`,
               boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.13)',
             },
           }}

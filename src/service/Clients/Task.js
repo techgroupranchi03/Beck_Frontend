@@ -47,12 +47,32 @@ export const createClientTask = async (taskData) => {
 };
 
 // update task method "PUT" API
-export const updateClientTask = async (taskId, taskData) => {
+export const updateTaskPlanner = async (taskId, taskData) => {
     console.log('Updating task with ID:', taskId, 'Data:', taskData);
     const token = getClientToken();
     try {
         const response = await axios.put(
             `${BASE_URL}/client/tasks-planner/${taskId}`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Task update failed' });
+    }
+};
+
+// update active task method "PUT" API
+export const updateActiveTask = async (taskId, taskData) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/tasks-instances/${taskId}`,
             taskData,
             {
                 headers: {

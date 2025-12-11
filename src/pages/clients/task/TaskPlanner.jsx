@@ -1,15 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Container, Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocomplete, TextField } from '@mui/material'
+import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocomplete, TextField, Typography } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material'
-import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
-import { getClientTasks, createClientTask, updateClientTask, deleteClientTask } from '../../../service/Clients/Task'
-import { getClientProperties } from '../../../service/Clients/Properties'
-import { getInventoryItems } from '../../../service/Clients/Inventory'
-import { getTeamMembers } from '../../../service/Clients/Team'
+import { Edit as EditIcon} from '@mui/icons-material'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant'
 import { formatDate } from '../../../utils/dateFormat'
+import { useTaskContext } from './TaskManagement'
 
 
 
@@ -18,63 +14,18 @@ const TaskPlanner = () => {
     const { palette } = theme
     const { showSnackbar } = useSnackbar();
 
+    // Get shared data from context
+    const {
+        properties,
+        inventoryItems,
+        teamMembers,
+        loading,
+        createTask,
+        taskPlannerData,
+        updateTaskPlannerData
+    } = useTaskContext();
+
     const [validationErrors, setValidationErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-    const [openConfirm, setOpenConfirm] = useState(false);
-    const [taskToDelete, setTaskToDelete] = useState(null);
-    const [newTaskData, setNewTaskData] = useState([]);
-    const [properties, setProperties] = useState([]);
-    const [inventoryItems, setInventoryItems] = useState([]);
-    const [teamMembers, setTeamMembers] = useState([]);
-
-    // get all task 
-    const allTasks = async () => {
-        try {
-            const res = await getClientTasks();
-            setNewTaskData(res.data);
-        } catch (error) {
-            console.error('Error fetching tasks:', error);
-        }
-    };
-    useEffect(() => {
-        allTasks();
-    }, []);
-
-    // Fetch properties
-    const fetchProperties = async () => {
-        try {
-            const res = await getClientProperties();
-            setProperties(res.data || []);
-        } catch (error) {
-            console.error('Error fetching properties:', error);
-        }
-    };
-
-    // fetchInventory 
-    const fetchInventoryItems = async () => {
-        try {
-            const res = await getInventoryItems();
-            setInventoryItems(res.data || []);
-        } catch (error) {
-            console.error('Error fetching inventory items:', error);
-        }
-    };
-
-    // fetch team members
-    const fetchTeamMembers = async () => {
-        try {
-            const res = await getTeamMembers();
-            setTeamMembers(res.data || []);
-        } catch (error) {
-            console.error('Error fetching team members:', error);
-        }
-    };
-
-    useEffect(() => {
-        fetchProperties();
-        fetchInventoryItems();
-        fetchTeamMembers();
-    }, []);
 
 
 
@@ -111,45 +62,6 @@ const TaskPlanner = () => {
                             description: undefined,
                         }),
                 },
-            },
-            {
-                accessorKey: 'property_id',
-                header: 'Property',
-                size: 180,
-                editVariant: 'select',
-                editSelectOptions: properties.map(prop => ({ value: prop.id, label: prop.name })),
-                muiEditTextFieldProps: {
-                    select: true,
-                    required: true,
-                    error: !!validationErrors?.property_id,
-                    helperText: validationErrors?.property_id,
-                    SelectProps: {
-                        displayEmpty: true,
-                        renderValue: (selected) => {
-                            if (!selected) {
-                                return <em>Select Property</em>;
-                            }
-                            const property = properties.find(p => p.id === selected);
-                            return property ? property.name : selected;
-                        },
-                    },
-                    onFocus: () =>
-                        setValidationErrors({
-                            ...validationErrors,
-                            property_id: undefined,
-                        }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Property</em>
-                        </MenuItem>,
-                        ...properties.map((prop) => (
-                            <MenuItem key={prop.id} value={prop.id}>
-                                {prop.name}
-                            </MenuItem>
-                        ))
-                    ],
-                },
-                Cell: ({ row }) => row.original.property_name || '-',
             },
             {
                 accessorKey: 'inventory_id',
@@ -356,9 +268,7 @@ const TaskPlanner = () => {
                                     value={repeatData.date || ''}
                                     onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
                                     fullWidth
-                                    SelectProps={{
-                                        displayEmpty: true,
-                                    }}
+
                                 >
                                     <MenuItem value="">
                                         <em>Select Date</em>
@@ -444,14 +354,8 @@ const TaskPlanner = () => {
                 },
                 Cell: ({ cell }) => {
                     const value = cell.getValue()
-                    const colors = {
-                        inspection: palette.info?.main || '#2196f3',
-                        maintenance: palette.warning?.main || '#ff9800',
-                        delivery: palette.success?.main || '#4caf50',
-                        repair: palette.error?.main || '#f44336',
-                        cleaning: palette.primary?.main || '#1976d2',
-                        other: palette.grey[500]
-                    }
+
+                    console.log('Task Type Value:', value);  // Debug log
                     return (
                         <Box
                             sx={{
@@ -459,7 +363,7 @@ const TaskPlanner = () => {
                                 px: 1.5,
                                 py: 0.5,
                                 borderRadius: 1,
-                                bgcolor: colors[value] || palette.grey[500],
+                                bgcolor: palette.taskType?.[value] || palette.grey[500],
                                 color: 'white',
                                 fontSize: '0.75rem',
                                 fontWeight: 600,
@@ -497,19 +401,8 @@ const TaskPlanner = () => {
                         setValidationErrors({
                             ...validationErrors,
                             assigned_to: undefined,
-                        }),
-                    // children: [
-                    //     <MenuItem key="empty-placeholder" value="">
-                    //         <em>Select Team Member</em>
-                    //     </MenuItem>,
-                    //     ...teamMembers.map((member) => (
-                    //         <MenuItem key={member.id} value={member.id}>
-                    //             {member.name}
-                    //         </MenuItem>
-                    //     ))
-                    // ],
+                        })
                 },
-                // Cell: ({ row }) => row.original.assigned_to_name || '-',
                 Cell: ({ row }) => {
                     const member = teamMembers.find(m => m.id === row.original.assigned_to);
                     return member ? member.name : '-';
@@ -552,72 +445,6 @@ const TaskPlanner = () => {
                     );
                 },
             },
-            {
-                accessorKey: 'status',
-                header: 'Status',
-                size: 130,
-                editVariant: 'select',
-                editSelectOptions: statusOpts.map(opt => opt.value),
-                muiEditTextFieldProps: {
-                    select: true,
-                    required: true,
-                    error: !!validationErrors?.status,
-                    helperText: validationErrors?.status,
-                    SelectProps: {
-                        displayEmpty: true,
-                        renderValue: (selected) => {
-                            if (!selected) {
-                                return <em>Select Status</em>;
-                            }
-                            const status = statusOpts.find(s => s.value === selected);
-                            return status ? status.label : selected;
-                        },
-                    },
-                    onFocus: () =>
-                        setValidationErrors({
-                            ...validationErrors,
-                            status: undefined,
-                        }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Status</em>
-                        </MenuItem>,
-                        ...statusOpts.map((status) => (
-                            <MenuItem key={status.value} value={status.value}>
-                                {status.label}
-                            </MenuItem>
-                        ))
-                    ],
-                },
-                Cell: ({ cell }) => {
-                    const value = cell.getValue()
-                    const colors = {
-                        pending: palette.error?.main || '#f44336',
-                        in_progress: palette.info?.main || '#2196f3',
-                        completed: palette.success?.main || '#4caf50',
-                        cancelled: palette.grey[500],
-                        overdue: palette.warning?.main || '#ff9800'
-                    }
-                    return (
-                        <Box
-                            sx={{
-                                display: 'inline-block',
-                                px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
-                                bgcolor: colors[value] || palette.grey[500],
-                                color: 'white',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textAlign: 'center',
-                                textTransform: 'capitalize',
-                            }}
-                        >
-                            {statusOpts.find(s => s.value === value)?.label || value}
-                        </Box>
-                    )
-                },
-            },
         ],
         [validationErrors, properties, inventoryItems, teamMembers, taskTypes, scheduleTypes, statusOpts, palette]
     )
@@ -652,10 +479,8 @@ const TaskPlanner = () => {
     // CREATE action
     const handleCreateTask = async ({ values, table }) => {
         try {
-
-            const res = await createClientTask(values)
+            const res = await createTask(values)
             showSnackbar(res.message || 'Task created successfully', 'success')
-            setNewTaskData((prevData) => [res.data, ...prevData]);
             table.setCreatingRow(null)
             setValidationErrors({})
         } catch (error) {
@@ -676,13 +501,8 @@ const TaskPlanner = () => {
     // UPDATE action
     const handleSaveTask = async ({ values, table, row }) => {
         try {
-            const res = await updateClientTask(row.original.id, values)
+            const res = await updateTaskPlannerData(row.original.id, values)
             showSnackbar(res.message || 'Task updated successfully', 'success')
-            setNewTaskData((prevData) =>
-                prevData.map((task) =>
-                    task.id === row.original.id ? { ...task, ...values } : task
-                )
-            )
             table.setEditingRow(null)
             setValidationErrors({})
         } catch (error) {
@@ -700,49 +520,12 @@ const TaskPlanner = () => {
         }
     }
 
-    // DELETE action
-    const openDeleteDialog = (row) => {
-        setTaskToDelete(row.original.id);
-        setOpenConfirm(true);
-    };
-
-    const handleDelete = async () => {
-        if (taskToDelete != null) {
-            try {
-                const res = await deleteClientTask(taskToDelete)
-                showSnackbar(res.message || 'Task deleted successfully', 'success')
-                setNewTaskData((prevData) => prevData.filter((task) => task.id !== taskToDelete));
-            } catch (error) {
-                showSnackbar(error.message || 'Failed to delete task', 'error')
-                console.error('Error deleting task:', error)
-            }
-        }
-        setOpenConfirm(false);
-        setTaskToDelete(null);
-    };
-
-    const handleCancel = () => {
-        setOpenConfirm(false);
-        setTaskToDelete(null);
-    };
-
-
-
-
     return (
         <React.Fragment>
-            <Container
-                maxWidth={false}
-                sx={{
-                    mt: 2,
-                    mb: 2,
-                    px: { xs: 1, sm: 2, md: 3 },
-
-                }}
-            >
+            <Box>
                 <MaterialReactTable
                     columns={columns}
-                    data={newTaskData}
+                    data={taskPlannerData}
                     state={{
                         isLoading: loading,
                     }}
@@ -773,16 +556,6 @@ const TaskPlanner = () => {
                                     <EditIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
-                            <Tooltip title="Delete">
-                                <IconButton
-                                    onClick={() => openDeleteDialog(row)}
-                                    size="small"
-                                    sx={{ color: palette.secondary.main }}
-                                >
-                                    <DeleteIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-
                         </Box>
                     )}
                     renderTopToolbarCustomActions={({ table }) => (
@@ -807,16 +580,23 @@ const TaskPlanner = () => {
                     enableDensityToggle={false}
                     enableHiding={false}
                     enablePagination
-                />
+                    muiTablePaperProps={{
+                        elevation: 0,
+                        sx: {
+                            border: `1px solid ${palette.divider}`,
+                            boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.13)',
+                        },
+                    }}
+                    muiTableHeadCellProps={{
+                        sx: {
+                            bgcolor: palette.primary.main,
+                            color: '#fff',
+                            fontWeight: 600,
+                        },
+                    }}
 
-                <ConfirmationDialog
-                    open={openConfirm}
-                    onCancel={handleCancel}
-                    onDelete={handleDelete}
-                    title="Delete Task"
-                    message="Are you sure you want to delete this task? This action cannot be undone."
                 />
-            </Container>
+            </Box>
         </React.Fragment>
     )
 }

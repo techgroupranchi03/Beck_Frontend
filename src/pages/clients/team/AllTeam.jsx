@@ -1,62 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { Box, Button, IconButton, Container, useTheme, Typography, Tooltip, Select } from '@mui/material'
+import React, { useMemo, useState } from 'react'
+import { Box, Button, IconButton, useTheme, Typography, Tooltip, Container } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
 import { Edit as EditIcon, Delete as DeleteIcon, Person2Rounded } from '@mui/icons-material'
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
-import { getRoles, getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember } from '../../../service/Clients/Team';
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { TeamStatus } from '../../../constant';
+import { useTeamContext } from './TeamManagement';
 
-const TeamManagement = () => {
+const AllTeam = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
-  const [roles, setRoles] = useState([]);
-  const [teamData, setTeamData] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [teamMemberToDelete, setTeamMemberToDelete] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
 
+  // Get data from context
+  const {
+    teamData,
+    roles,
+    loading,
+    createTeam,
+    updateTeam,
+    deleteTeam
+  } = useTeamContext();
 
-  // Fetch roles
-  const fetchRoles = async () => {
-    try {
-      const res = await getRoles();
-      setRoles(res.data || []);
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-    }
-  };
-
-  // Fetch team members
-  const fetchTeamMembers = async () => {
-    setLoading(true);
-    try {
-      const res = await getTeamMembers();
-      setTeamData(res.data || []);
-    } catch (error) {
-      console.error("Error fetching team members:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRoles();
-    fetchTeamMembers();
-  }, []);
 
   // CREATE 
   const handleCreateTeamMember = async ({ values, table }) => {
     try {
-      const res = await createTeamMember(values);
+      const res = await createTeam(values);
       showSnackbar(res.message || "Team member created successfully", "success");
-      // Add the new team member to the existing data
-      if (res.data) {
-        setTeamData(prev => [res.data, ...prev]);
-      }
       table.setCreatingRow(null);
+      setValidationErrors({});
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
         const apiErrors = {
@@ -92,15 +68,10 @@ const TeamManagement = () => {
   // UPDATE 
   const handleSaveTeamMember = async ({ values, table, row }) => {
     try {
-      const res = await updateTeamMember(row.original.id, values);
+      const res = await updateTeam(row.original.id, values);
       showSnackbar(res.message || "Team member updated successfully", "success");
-      // Update only the specific team member in the data
-      if (res.data) {
-        setTeamData(prev => prev.map(member => 
-          member.id === row.original.id ? res.data : member
-        ));
-      }
       table.setEditingRow(null);
+      setValidationErrors({});
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
         const apiErrors = {
@@ -142,12 +113,11 @@ const TeamManagement = () => {
   const handleDelete = async () => {
     if (teamMemberToDelete != null) {
       try {
-        const res = await deleteTeamMember(teamMemberToDelete);
+        const res = await deleteTeam(teamMemberToDelete);
         showSnackbar(res.message || "Team member deleted successfully", "success");
-        setTeamData(prev => prev.filter(member => member.id !== teamMemberToDelete));
       } catch (error) {
+        showSnackbar(error.message || "Failed to delete team member", "error");
         console.error("Error deleting team member:", error);
-        alert("Failed to delete team member. Please try again.");
       }
     }
     setOpenConfirm(false);
@@ -286,10 +256,10 @@ const TeamManagement = () => {
 
           if (status === 'active') {
             bgcolor = palette.success?.main;
-            color = palette.text.primary;
+            color = "#ffffff";
           } else if (status === 'on_leave') {
             bgcolor = palette.error?.light;
-            color = palette.text.primary;
+            color = "#ffffff";
           } else {
             bgcolor = palette.background.paper;
             color = palette.text.primary;
@@ -320,14 +290,7 @@ const TeamManagement = () => {
 
   return (
     <React.Fragment>
-      <Container
-        maxWidth={false}
-        sx={{
-          mt: 2,
-          mb: 2,
-          px: { xs: 1, sm: 2, md: 3 },
-
-        }}>
+      <Container maxWidth={false}>
         <MaterialReactTable
           columns={columns}
           data={teamData}
@@ -424,7 +387,7 @@ const TeamManagement = () => {
         />
       </Container>
     </React.Fragment>
-  );
-};
+  )
+}
 
-export default TeamManagement;
+export default AllTeam

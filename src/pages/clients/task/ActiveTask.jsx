@@ -1,98 +1,149 @@
-import React, { useEffect, useState } from 'react'
-import { Box, Checkbox, Chip, Container, MenuItem, useTheme } from '@mui/material'
+import React, { useState, useMemo } from 'react'
+import { Box, Chip, MenuItem, useTheme, Checkbox, Tooltip, IconButton, Button } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
-import { getClientActiveTasks, updateClientActiveTaskStatus } from '../../../service/Clients/Task';
+import { Edit as EditIcon } from '@mui/icons-material'
 import { formatDate } from '../../../utils/dateFormat';
-import { statusOpts } from '../../../constant';
+import { statusOpts, taskTypes } from '../../../constant';
+import { useTaskContext } from './TaskManagement';
+import { useSnackbar } from '../../../resuable_components/Snackbar';
 
 const ActiveTask = () => {
   const theme = useTheme();
   const { palette } = theme;
-  const [TasksData, setTasksData] = useState([]);
+  const { showSnackbar } = useSnackbar();
 
+  // Get data from context
+  const {
+    activeTasksData,
+    loading,
+    inventoryItems,
+    teamMembers,
+    createTask,
+    updateActiveTaskData
+  } = useTaskContext();
 
-  const fetchActiveTasks = async () => {
-    try {
-      // Replace with your API call to fetch active tasks
-      const res = await getClientActiveTasks();
-      setTasksData(res.data);
-    } catch (error) {
-      console.error('Error fetching active tasks:', error);
-    }
-  };
+  const [validationErrors, setValidationErrors] = useState({});
 
-  useEffect(() => {
-    fetchActiveTasks();
-  }, []);
-
-  // Handle status update
-  const handleSaveStatus = async ({ row, table }) => {
-    try {
-      const taskInstanceId = row.original.id;
-      const newStatus = row._valuesCache.status;
-
-      await updateClientActiveTaskStatus(taskInstanceId, newStatus);
-
-      // Update local state
-      setTasksData((prevData) =>
-        prevData.map((task) =>
-          task.id === taskInstanceId ? { ...task, status: newStatus } : task
-        )
-      );
-
-      table.setEditingCell(null); // Exit editing mode
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      // Optionally show error message to user
-    }
-  };
-
-  const columns = [
+  const columns = useMemo(() => [
     {
       accessorKey: 'title',
       header: 'Title',
-      enableEditing: false,
+      size: 150,
+      muiEditTextFieldProps: {
+        required: true,
+        error: !!validationErrors?.title,
+        helperText: validationErrors?.title,
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            title: undefined,
+          }),
+      },
     },
     {
       accessorKey: 'description',
       header: 'Description',
-      enableEditing: false,
+      size: 200,
+      muiEditTextFieldProps: {
+        required: true,
+        multiline: true,
+        rows: 2,
+        error: !!validationErrors?.description,
+        helperText: validationErrors?.description,
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            description: undefined,
+          }),
+      },
     },
     {
-      accessorKey: 'property_name',
-      header: 'Priority',
-      enableEditing: false,
-    },
-    {
-      accessorKey: 'inventory_name',
+      accessorKey: 'inventory_id',
       header: 'Inventory',
-      enableEditing: false,
+      size: 180,
+      editVariant: 'select',
+      editSelectOptions: inventoryItems.map(item => ({ value: item.id, label: item.name })),
+      muiEditTextFieldProps: {
+        select: true,
+        required: true,
+        error: !!validationErrors?.inventory_id,
+        helperText: validationErrors?.inventory_id,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Inventory</em>;
+            }
+            const inventory = inventoryItems.find(i => i.id === selected);
+            return inventory ? inventory.name : selected;
+          },
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            inventory_id: undefined,
+          }),
+        children: [
+          <MenuItem key="empty-placeholder" value="">
+            <em>Select Inventory</em>
+          </MenuItem>,
+          ...inventoryItems.map((item) => (
+            <MenuItem key={item.id} value={item.id}>
+              {item.name}
+            </MenuItem>
+          ))
+        ],
+      },
+      Cell: ({ row }) => row.original.inventory_name || '-',
     },
     {
       accessorKey: 'scheduled_date',
       header: 'Schedule Date',
-      enableEditing: false,
+      size: 130,
+      muiEditTextFieldProps: ({ row }) => ({
+        type: 'date',
+        required: true,
+        error: !!validationErrors?.scheduled_date,
+        helperText: validationErrors?.scheduled_date,
+        InputLabelProps: {
+          shrink: true,
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            scheduled_date: undefined,
+          }),
+      }),
       Cell: ({ cell }) => formatDate(cell.getValue()),
-    },
-    {
-      accessorKey: 'scheduled_day',
-      header: 'Schedule Day',
-      enableEditing: false,
     },
     {
       accessorKey: 'task_type',
       header: 'Task Type',
-      enableEditing: false,
+      size: 130,
+      editVariant: 'select',
+      editSelectOptions: taskTypes,
+      muiEditTextFieldProps: {
+        select: true,
+        required: true,
+        error: !!validationErrors?.task_type,
+        helperText: validationErrors?.task_type,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Task Type</em>;
+            }
+            return selected;
+          },
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            task_type: undefined,
+          }),
+      },
       Cell: ({ cell }) => {
         const value = cell.getValue()
-        const colors = {
-          inspection: palette.info?.main || '#2196f3',
-          maintenance: palette.warning?.main || '#ff9800',
-          delivery: palette.success?.main || '#4caf50',
-          repair: palette.error?.main || '#f44336',
-          cleaning: palette.primary?.main || '#1976d2',
-          other: palette.grey[500]
-        }
         return (
           <Box
             sx={{
@@ -100,7 +151,7 @@ const ActiveTask = () => {
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              bgcolor: colors[value] || palette.grey[500],
+              bgcolor: palette.taskType?.[value] || palette.grey[500],
               color: 'white',
               fontSize: '0.75rem',
               fontWeight: 600,
@@ -114,53 +165,112 @@ const ActiveTask = () => {
       },
     },
     {
-      accessorKey: 'assigned_to_name',
+      accessorKey: 'assigned_to',
       header: 'Assigned To',
-      enableEditing: false,
+      size: 150,
+      editVariant: 'select',
+      editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
+      muiEditTextFieldProps: {
+        select: true,
+        required: true,
+        error: !!validationErrors?.assigned_to,
+        helperText: validationErrors?.assigned_to,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Team Member</em>;
+            }
+            const member = teamMembers.find(m => m.id === selected);
+            return member ? member.name : selected;
+          },
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            assigned_to: undefined,
+          }),
+      },
+      Cell: ({ row }) => {
+        const member = teamMembers.find(m => m.id === row.original.assigned_to);
+        return member ? member.name : '-';
+      }
     },
     {
       accessorKey: 'is_photo_required',
       header: 'Photo',
-      enableEditing: false,
-      // need checkbox
+      size: 100,
       Cell: ({ row }) => (
-        <Chip
-          label={row.original.is_photo_required ? 'Yes' : 'No'}
-          color={row.original.is_photo_required ? 'success' : 'default'}
-          size="small"
-          sx={{width: '60px' , fontSize: '0.75rem' }}
+        <Checkbox
+          checked={row.original.is_photo_required === 1 ? true : false}
+          disabled
+          slotProps={{
+            input: { 'aria-label': 'photo required' },
+          }}
         />
-      )
+      ),
+      Edit: ({ row, cell, table }) => {
+        const [checked, setChecked] = useState(() => {
+          const currentValue = cell.getValue();
+          return currentValue === 1 ? true : false;
+        });
 
+        const handleChange = (e) => {
+          const newChecked = e.target.checked;
+          setChecked(newChecked);
+          row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+        };
 
+        return (
+          <Checkbox
+            checked={checked}
+            onChange={handleChange}
+            slotProps={{
+              input: { 'aria-label': 'photo required' },
+            }}
+          />
+        );
+      },
     },
     {
       accessorKey: 'status',
       header: 'Status',
-      enableEditing: true,
+      size: 130,
       editVariant: 'select',
       editSelectOptions: statusOpts.map(opt => opt.value),
-      muiTableBodyCellEditTextFieldProps: ({ cell }) => ({
+      muiEditTextFieldProps: {
         select: true,
-        children: statusOpts.map((option) => (
-          <MenuItem key={option.value} value={option.value}>
-            {option.label}
-          </MenuItem>
-        )),
-        onChange: (event) => {
-          const newStatus = event.target.value;
-          cell.row._valuesCache.status = newStatus;
+        required: true,
+        error: !!validationErrors?.status,
+        helperText: validationErrors?.status,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Status</em>;
+            }
+            const status = statusOpts.find(s => s.value === selected);
+            return status ? status.label : selected;
+          },
         },
-      }),
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            status: undefined,
+          }),
+        children: [
+          <MenuItem key="empty-placeholder" value="">
+            <em>Select Status</em>
+          </MenuItem>,
+          ...statusOpts.map((status) => (
+            <MenuItem key={status.value} value={status.value}>
+              {status.label}
+            </MenuItem>
+          ))
+        ],
+      },
       Cell: ({ cell }) => {
         const value = cell.getValue()
-        const colors = {
-          pending: palette.warning?.main || '#ff9800',
-          in_progress: palette.info?.main || '#2196f3',
-          cancelled: palette.error?.main || '#f44336',
-          completed: palette.success?.main || '#4caf50',
-          overdue: palette.error?.dark || '#d32f2f',
-        }
         return (
           <Box
             sx={{
@@ -168,7 +278,7 @@ const ActiveTask = () => {
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              bgcolor: colors[value] || palette.grey[500],
+              bgcolor: palette.taskStatus?.[value] || palette.grey[500],
               color: 'white',
               fontSize: '0.75rem',
               fontWeight: 600,
@@ -176,38 +286,126 @@ const ActiveTask = () => {
               textTransform: 'capitalize',
             }}
           >
-            {value.replace('_', ' ')}
+            {statusOpts.find(s => s.value === value)?.label || value}
           </Box>
         )
       },
     },
-  ];
+  ], [validationErrors, inventoryItems, teamMembers, taskTypes, statusOpts, palette]);
+
+  // CREATE action
+  const handleCreateTask = async ({ values, table }) => {
+    try {
+      const res = await createTask(null, values)
+      showSnackbar(res.message || 'Task created successfully', 'success')
+      table.setCreatingRow(false)
+      setValidationErrors({})
+    } catch (error) {
+      if (error.errors && Array.isArray(error.errors)) {
+        const apiErrors = {}
+        error.errors.forEach((err) => {
+          Object.keys(err).forEach((key) => {
+            apiErrors[key] = err[key]
+          })
+        })
+        setValidationErrors(apiErrors)
+      }
+      showSnackbar(error.message || 'Failed to create task', 'error')
+      console.error('Error creating task:', error)
+    }
+  }
+  // UPDATE action
+  const handleSaveTask = async ({ values, table, row }) => {
+    try {
+      const res = await updateActiveTaskData(row.original.id, values)
+      showSnackbar(res.message || 'Task updated successfully', 'success')
+      table.setEditingRow(null)
+      setValidationErrors({})
+    } catch (error) {
+      if (error.errors && Array.isArray(error.errors)) {
+        const apiErrors = {}
+        error.errors.forEach((err) => {
+          Object.keys(err).forEach((key) => {
+            apiErrors[key] = err[key]
+          })
+        })
+        setValidationErrors(apiErrors)
+      }
+      showSnackbar(error.message || 'Failed to update task', 'error')
+      console.error('Error updating task:', error)
+    }
+  }
   return (
     <React.Fragment>
-      <Container
-        maxWidth={false}
-        sx={{
-          mt: 2,
-          mb: 2,
-          px: { xs: 1, sm: 2, md: 3 },
-        }}
-      >
+      <Box>
         <MaterialReactTable
           columns={columns}
-          data={TasksData} // Use fetched data here
+          data={activeTasksData}
+          state={{
+            isLoading: loading,
+          }}
+          editDisplayMode="row"
+          createDisplayMode="row"
+          enableEditing={true}
+          enableRowActions
+          positionActionsColumn="last"
+          displayColumnDefOptions={{
+            'mrt-row-actions': {
+              header: 'Actions',
+              size: 110,
+            },
+          }}
+          onCreatingRowSave={handleCreateTask}
+          onEditingRowSave={handleSaveTask}
+          onEditingRowCancel={() => setValidationErrors({})}
+          renderRowActions={({ row, table }) => (
+            <Box sx={{ display: 'flex', marginRight: 2, }}>
+              <Tooltip title="Edit">
+                <IconButton
+                  onClick={() => table.setEditingRow(row)}
+                  size="small"
+                  sx={{ color: palette.primary.main }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )}
+          // renderTopToolbarCustomActions={({ table }) => (
+          //   <Button
+          //     variant='contained'
+          //     disableElevation
+          //     onClick={() => table.setCreatingRow(true)}
+          //     sx={{
+          //       bgcolor: palette.primary.main,
+          //       "&:hover": { bgcolor: palette.secondary.main },
+          //       fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          //       px: { xs: 2, sm: 3 }
+          //     }}
+          //   >
+          //     Create New Task
+          //   </Button>
+          // )}
           enableColumnFilters={false}
           enableSorting={false}
           enableDensityToggle={false}
           enableHiding={false}
-          enableEditing={true}
-          editDisplayMode="cell"
-          muiEditTextFieldProps={({ cell }) => ({
-            onBlur: (event) => {
-              handleSaveStatus({ row: cell.row, column: cell.column, table: cell.getContext().table });
+          muiTablePaperProps={{
+            elevation: 4,
+            sx: {
+              border: `1px solid ${palette.divider}`,
+              boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.13)',
             },
-          })}
+          }}
+          muiTableHeadCellProps={{
+            sx: {
+              bgcolor: palette.primary.main,
+              color: '#fff',
+              fontWeight: 600,
+            },
+          }}
         />
-      </Container>
+      </Box>
     </React.Fragment>
   )
 }

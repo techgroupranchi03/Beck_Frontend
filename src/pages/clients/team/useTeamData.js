@@ -1,0 +1,132 @@
+import { useState, useEffect, useCallback } from 'react';
+import {
+    getTeamMembers,
+    createTeamMember,
+    updateTeamMember,
+    deleteTeamMember,
+    getRoles
+} from '../../../service/Clients/Team';
+
+export const useTeamData = () => {
+    const [teamData, setTeamData] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Fetch team members
+    const fetchTeamMembers = useCallback(async () => {
+        try {
+            const res = await getTeamMembers();
+            setTeamData(res.data || []);
+            return res.data;
+        } catch (err) {
+            console.error('Error fetching team members:', err);
+            setError(err);
+            throw err;
+        }
+    }, []);
+
+    // Fetch roles
+    const fetchRoles = useCallback(async () => {
+        try {
+            const res = await getRoles();
+            setRoles(res.data || []);
+            return res.data;
+        } catch (err) {
+            console.error('Error fetching roles:', err);
+            setError(err);
+            throw err;
+        }
+    }, []);
+
+    // Fetch all data in parallel
+    const fetchAllData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            await Promise.all([
+                fetchTeamMembers(),
+                fetchRoles()
+            ]);
+        } catch (err) {
+            console.error('Error fetching all data:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchTeamMembers, fetchRoles]);
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
+    // ==================== TEAM OPERATIONS ====================
+
+    // Create new team member
+    const createTeam = async (values) => {
+        try {
+            const res = await createTeamMember(values);
+            if (res.data) {
+                setTeamData((prev) => [res.data, ...prev]);
+            }
+            return res;
+        } catch (err) {
+            console.error('Error creating team member:', err);
+            throw err;
+        }
+    };
+
+    // Update existing team member
+    const updateTeam = async (id, values) => {
+        try {
+            const res = await updateTeamMember(id, values);
+            if (res.data) {
+                setTeamData((prev) =>
+                    prev.map((member) => (member.id === id ? res.data : member))
+                );
+            }
+            return res;
+        } catch (err) {
+            console.error('Error updating team member:', err);
+            throw err;
+        }
+    };
+
+    // Delete team member
+    const deleteTeam = async (id) => {
+        try {
+            const res = await deleteTeamMember(id);
+            setTeamData((prev) => prev.filter((member) => member.id !== id));
+            return res;
+        } catch (err) {
+            console.error('Error deleting team member:', err);
+            throw err;
+        }
+    };
+
+    // Refresh team data
+    const refreshTeamData = async () => {
+        try {
+            await fetchTeamMembers();
+        } catch (err) {
+            console.error('Error refreshing team data:', err);
+        }
+    };
+
+    return {
+        // Data States
+        teamData,
+        roles,
+        loading,
+        error,
+
+        // Team Operations
+        createTeam,
+        updateTeam,
+        deleteTeam,
+        refreshTeamData,
+
+        // General Operations
+        refetchAll: fetchAllData,
+    };
+};

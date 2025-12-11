@@ -24,59 +24,81 @@ import {
   SearchOff,
   Clear
 } from "@mui/icons-material";
-
-const teamMembers = [
-  {
-    id: 1,
-    name: "Nitish Kumar",
-    role: "Electrician",
-    phone: "9798649094",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Alice Johnson",
-    role: "Plumber",
-    phone: "9876543210",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Bob Smith",
-    role: "Carpenter",
-    phone: "9123456780",
-    status: "Inactive",
-  },
-
-  // Add more members as needed
-];
+import { useTeamContext } from './TeamManagement';
+import { useSnackbar } from '../../../resuable_components/Snackbar';
+import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
+import TileView_addEdit_team from "./TileView_addEdit_team";
 
 const Tile_View_Team = () => {
   const theme = useTheme();
   const { palette } = theme;
+  const { showSnackbar } = useSnackbar();
+
+  const statusColors = {
+    active: "#4CAF50",
+    inactive: "#d8cecdd1",
+    pending: "#FF9800",
+  };
+
+  // Get data from context
+  const {
+    teamData,
+    loading,
+    deleteTeam
+  } = useTeamContext();
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
 
-  const handleMenuClick = (event, member) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedMember(member);
-  };
+  console.log('selectedMember:', selectedMember);
+
+  
 
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedMember(null);
   };
 
-  const handleEdit = () => {
-    console.log("Edit member:", selectedMember);
-    handleMenuClose();
+  const handleEdit = (member) => {
+    console.log("Editing member:", member);
+    setSelectedMember(member);
+    setOpenAddEditDialog(true);
+    setAnchorEl(null);
   };
 
-  const handleDelete = () => {
-    console.log("Delete member:", selectedMember);
-    handleMenuClose();
+  const openDeleteDialog = (member) => {
+    setMemberToDelete(member);
+    setOpenConfirm(true);
+    setAnchorEl(null);
+  };
+
+  const handleDeleteMember = async () => {
+    if (memberToDelete) {
+      try {
+        const res = await deleteTeam(memberToDelete.id);
+        showSnackbar(res.message || 'Team member deleted successfully', 'success');
+      } catch (error) {
+        showSnackbar(error.message || 'Failed to delete team member', 'error');
+        console.error('Error deleting team member:', error);
+      }
+    }
+    setOpenConfirm(false);
+    setMemberToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setOpenConfirm(false);
+    setMemberToDelete(null);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenAddEditDialog(false);
+    setSelectedMember(null);
   };
 
   return (
@@ -87,6 +109,10 @@ const Tile_View_Team = () => {
           variant="contained"
           disableElevation
           size="medium"
+          onClick={() => {
+            setSelectedMember(null);
+            setOpenAddEditDialog(true);
+          }}
           sx={{
             bgcolor: palette.primary.main,
             "&:hover": { bgcolor: palette.secondary.main },
@@ -128,42 +154,43 @@ const Tile_View_Team = () => {
         />
       )}
       <Grid container spacing={2}>
-        {teamMembers.map((member) => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={member.id}>
-            <Card
-              sx={{
-                mb: 0,
-                borderRadius: 3,
-                boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                bgcolor: palette.background.paper,
-                transition: "transform 0.2s",
-                "&:hover": {
-                  transform: "scale(1.02)",
-                },
-              }}>
-              <CardContent sx={{ pb: "16px !important" }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar
-                      sx={{
-                        height: 56,
-                        width: 56,
-                        bgcolor: palette.primary.main
-                      }}
-                    >
-                      {member.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6" >
-                        {member.name}
-                      </Typography>
-                      <Typography variant="body2" >
-                        {member.role}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {/* <Chip
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, width: '100%' }}>
+            <Typography>Loading team members...</Typography>
+          </Box>
+        ) : (
+          teamData.map((member) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={member.id}>
+              <Card
+                sx={{
+                  mb: 2,
+                  borderRadius: 3,
+                  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                  bgcolor: palette.background.paper,
+                }}>
+                <CardContent sx={{ pb: "16px !important" }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Avatar
+                        sx={{
+                          height: 56,
+                          width: 56,
+                          bgcolor: palette.primary.main
+                        }}
+                      >
+                        {member.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6" >
+                          {member.name}
+                        </Typography>
+                        <Typography variant="body2" >
+                          {member.role}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {/* <Chip
                       label={member.status}
                       size="small"
                       sx={{
@@ -172,64 +199,69 @@ const Tile_View_Team = () => {
                         color: palette.text.primary,
                       }}
                     /> */}
-                    <IconButton
-                      onClick={(event) => handleMenuClick(event, member)}
-                      sx={{ color: palette.text.primary }}
-                    >
-                      <MoreVert />
-                    </IconButton>
-                  </Stack>
+                      <IconButton
+                        aria-label="settings"
+                        onClick={(e) =>{
+                          setSelectedMember(member);
+                          setAnchorEl(e.currentTarget);
+                        }}
+                        sx={{ color: palette.text.primary }}
+                      >
+                        <MoreVert />
+                      </IconButton>
+                    </Stack>
 
-                </Stack>
-                <Stack direction="row" spacing={1} mt={2} justifyContent="space-evenly">
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    justifyContent="center"
-                    sx={{
-                      width: "200px",
-                      // bgcolor: palette.background.creme,
-                      bgcolor: palette.card_button.paper,
-                      p: 1,
-                      borderRadius: 2
-                    }}>
-                    <Phone
-                      size="small"
+                  </Stack>
+                  <Stack direction="row" spacing={1} mt={2} justifyContent="space-evenly">
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent="center"
                       sx={{
-                        color: "#ffffff",
-                        backgroundColor: palette.secondary.main,
-                        borderRadius: "50%",
-                        padding: "2px",
-                        width: "20px",
-                        height: "20px",
+                        width: "200px",
+                        // bgcolor: palette.background.creme,
+                        bgcolor: palette.card_button.paper,
+                        p: 1,
+                        borderRadius: 2
+                      }}>
+                      <Phone
+                        size="small"
+                        sx={{
+                          color: "#ffffff",
+                          backgroundColor: palette.secondary.main,
+                          borderRadius: "50%",
+                          padding: "2px",
+                          width: "20px",
+                          height: "20px",
 
-                      }} />
-                    <Typography variant="body2" color="#E91E63">
-                      {member.phone}
-                    </Typography>
+                        }} />
+                      <Typography variant="body2" color="#E91E63">
+                        {member.phone}
+                      </Typography>
+                    </Stack>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent="center"
+                      sx={{
+                        width: "200px",
+                        bgcolor: palette.card_button.paper,
+                        p: 1,
+                        borderRadius: 2
+                      }}>
+                      <CheckCircle sx={{ color: statusColors[member.status.toLowerCase()] }} />
+                      <Typography variant="body1" color={statusColors[member.status.toLowerCase()]}>
+                        {member.status}
+                      </Typography>
+                    </Stack>
                   </Stack>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    justifyContent="center"
-                    sx={{
-                      width: "200px",
-                      bgcolor: palette.card_button.paper,
-                      p: 1,
-                      borderRadius: 2
-                    }}>
-                    <CheckCircle sx={{ color: "#4CAF50" }} />
-                    <Typography variant="body2" color="#4CAF50">
-                      {member.status}
-                    </Typography>
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       {/* Menu for Edit and Delete */}
@@ -270,19 +302,33 @@ const Tile_View_Team = () => {
           horizontal: 'right',
         }}
       >
-        <MenuItem onClick={handleEdit}>
+        <MenuItem onClick={() => handleEdit(selectedMember)} dense>
           <ListItemIcon>
-            <Edit sx={{ color: "#4CAF50" }} />
+            <Edit fontSize="small" sx={{ color: palette.primary.main }} />
           </ListItemIcon>
           <ListItemText>Edit</ListItemText>
         </MenuItem>
-        <MenuItem onClick={handleDelete}>
+        <MenuItem onClick={() => openDeleteDialog(selectedMember)} dense>
           <ListItemIcon>
-            <Delete sx={{ color: "#F44336" }} />
+            <Delete fontSize="small" sx={{ color: palette.error.main }} />
           </ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>
       </Menu>
+
+      <ConfirmationDialog
+        open={openConfirm}
+        onCancel={handleCancelDelete}
+        onDelete={handleDeleteMember}
+        title="Delete Team Member"
+        message="Are you sure you want to delete this team member? This action cannot be undone."
+      />
+
+      <TileView_addEdit_team
+        open={openAddEditDialog}
+        onClose={handleCloseDialog}
+        teamMember={selectedMember}
+      />
     </Container>
   );
 };

@@ -62,7 +62,7 @@ export default function ClientsDashboard() {
                   color: "#aaa",
                 }}
               >
-                [Chart placeholder]
+                [Chart placeholdesdr]
               </Box>
             </Card>
           </Grid>

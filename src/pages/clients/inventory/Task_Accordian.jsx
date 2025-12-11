@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Select, Autocomplete, TextField, Chip } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
-import { Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material'
-import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
+import { Edit as EditIcon, Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material'
 import { getInventoryById } from '../../../service/Clients/Inventory'
 import { getTeamMembers } from '../../../service/Clients/Team'
-import { createClientTask, updateClientTask, deleteClientTask } from '../../../service/Clients/Task'
+import { createClientTask, updateTaskPlanner, updateActiveTask } from '../../../service/Clients/Task'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { formatDate } from '../../../utils/dateFormat'
@@ -16,9 +15,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     const { showSnackbar } = useSnackbar();
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
-    const [openConfirm, setOpenConfirm] = useState(false);
-    const [taskToDelete, setTaskToDelete] = useState(null);
-    const [newtaskData, setNewTaskData] = useState([]);
     const [taskPlanner, setTaskPlanner] = useState([]);
     const [activeTasks, setActiveTasks] = useState([]);
     const [teamMembers, setTeamMembers] = useState([]);
@@ -30,7 +26,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         setViewMode(event.target.value);
     };
 
-    // console.log("create_tasks", create_tasks);
+    console.log("create_tasks", create_tasks);
     // console.log("newtaskData", newtaskData);
     // console.log("taskPlanner", taskPlanner);
     // console.log("activeTasks", activeTasks);
@@ -54,7 +50,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
             console.log("Fetched inventory data:", res.data);
             setActiveTasks(res.data.task_instances || []);
             setTaskPlanner(res.data.tasks_planner || []);
-            setNewTaskData(res.data.tasks || []);
             setProperties_id(res.data.property_id);
             setInventory_id(res.data.id);
         } catch (error) {
@@ -78,6 +73,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         fetchInventoryById(inventoryId);
         fetchTeamMembers();
     }, [inventoryId]);
+
     const TaskPlannercolumns = useMemo(
         () => [
             {
@@ -329,9 +325,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                     value={repeatData.date || ''}
                                     onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
                                     fullWidth
-                                    SelectProps={{
-                                        displayEmpty: true,
-                                    }}
                                 >
                                     <MenuItem value="">
                                         <em>Select Date</em>
@@ -400,76 +393,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 }),
                 Cell: ({ cell }) => formatDate(cell.getValue()),
             },
-            // {
-            //     accessorKey: 'recurrence',
-            //     header: 'Recurrence',
-            //     size: 150,
-            //     editVariant: 'select',
-            //     editSelectOptions: recurringTypes,
-            //     muiEditTextFieldProps: ({ row }) => ({
-            //         select: true,
-            //         required: false,
-            //         disabled: row._valuesCache?.schedule_type !== 'recurring',
-            //         error: !!validationErrors?.recurrence,
-            //         helperText: validationErrors?.recurrence,
-            //         onChange: (e) => {
-            //             row._valuesCache.recurrence = e.target.value;
-
-            //             if (create_tasks && onTaskCreate) {
-            //                 const taskData = {
-            //                     ...row._valuesCache,
-            //                     property_id: properties_id,
-            //                     inventory_id: inventory_id
-            //                 };
-            //                 console.log("Auto-sending task data to parent:", taskData);
-            //                 onTaskCreate(taskData);
-            //             }
-            //         },
-            //         SelectProps: {
-            //             displayEmpty: true,
-            //             renderValue: (selected) => {
-            //                 if (!selected) {
-            //                     return <em>Select</em>;
-            //                 }
-            //                 return selected;
-            //             },
-            //         },
-            //         onFocus: () =>
-            //             setValidationErrors({
-            //                 ...validationErrors,
-            //                 recurrence: undefined,
-            //             }),
-            //         children: [
-            //             <MenuItem key="empty-placeholder" value="">
-            //                 <em>Select</em>
-            //             </MenuItem>,
-            //             ...recurringTypes.map((type) => (
-            //                 <MenuItem key={type} value={type}>
-            //                     {type}
-            //                 </MenuItem>
-            //             ))
-            //         ],
-            //     }),
-            //     Cell: ({ cell }) => {
-            //         const value = cell.getValue()
-            //         return (
-            //             <Box
-            //                 sx={{
-            //                     display: 'inline-block',
-            //                     px: 1.5,
-            //                     py: 0.5,
-            //                     borderRadius: 1,
-            //                     color: palette.text.primary,
-            //                     fontSize: '0.75rem',
-            //                     fontWeight: 600,
-            //                     textTransform: 'capitalize',
-            //                 }}
-            //             >
-            //                 {value || '-'}
-            //             </Box>
-            //         )
-            //     },
-            // },
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
@@ -508,16 +431,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             ...validationErrors,
                             task_type: undefined,
                         }),
-                    // children: [
-                    //     <MenuItem key="empty-placeholder" value="">
-                    //         <em>Select Task Type</em>
-                    //     </MenuItem>,
-                    //     ...taskTypes.map((type) => (
-                    //         <MenuItem key={type} value={type}>
-                    //             {type}
-                    //         </MenuItem>
-                    //     ))
-                    // ],
                 }),
                 Cell: ({ cell }) => {
                     const value = cell.getValue()
@@ -640,64 +553,146 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     );
                 },
             },
+            // {
+            //     accessorKey: 'status',
+            //     header: 'Status',
+            //     size: 120,
+            //     editVariant: 'select',
+            //     editSelectOptions: statusOpts.map(opt => opt.value),
+            //     muiEditTextFieldProps: ({ row, table }) => ({
+            //         select: true,
+            //         required: true,
+            //         error: !!validationErrors?.status,
+            //         helperText: validationErrors?.status,
+            //         onChange: (e) => {
+            //             row._valuesCache.status = e.target.value;
+
+            //             if (create_tasks && onTaskCreate) {
+            //                 const taskData = {
+            //                     ...row._valuesCache,
+            //                     property_id: properties_id,
+            //                     inventory_id: inventory_id
+            //                 };
+            //                 console.log("Auto-sending task data to parent:", taskData);
+            //                 onTaskCreate(taskData);
+            //             }
+            //         },
+            //         SelectProps: {
+            //             displayEmpty: true,
+            //             renderValue: (selected) => {
+            //                 if (!selected) {
+            //                     return <em>Select</em>;
+            //                 }
+            //                 const status = statusOpts.find(s => s.value === selected);
+            //                 return status ? status.label : selected;
+            //             },
+            //         },
+            //         onFocus: () =>
+            //             setValidationErrors({
+            //                 ...validationErrors,
+            //                 status: undefined,
+            //             }),
+            //         children: [
+            //             <MenuItem key="empty-placeholder" value="">
+            //                 <em>Select</em>
+            //             </MenuItem>,
+            //             ...statusOpts.map((status) => (
+            //                 <MenuItem key={status.value} value={status.value}>
+            //                     {status.label}
+            //                 </MenuItem>
+            //             ))
+            //         ],
+            //     }),
+            //     Cell: ({ cell }) => {
+            //         const value = cell.getValue()
+            //         const colors = {
+            //             pending: palette.error?.main || '#f44336',
+            //             in_progress: palette.info?.main || '#2196f3',
+            //             completed: palette.success?.main || '#4caf50',
+            //             cancelled: palette.grey[500],
+            //             overdue: palette.warning?.main || '#ff9800'
+            //         }
+            //         return (
+            //             <Box
+            //                 sx={{
+            //                     display: 'inline-block',
+            //                     px: 1.5,
+            //                     py: 0.5,
+            //                     borderRadius: 1,
+            //                     bgcolor: colors[value] || palette.grey[500],
+            //                     color: 'white',
+            //                     fontSize: '0.75rem',
+            //                     fontWeight: 600,
+            //                     textAlign: 'center',
+            //                     textTransform: 'capitalize',
+            //                 }}
+            //             >
+            //                 {statusOpts.find(s => s.value === value)?.label || value}
+            //             </Box>
+            //         )
+            //     },
+            // },
+        ],
+        [validationErrors, teamMembers, taskTypes, scheduleTypes, recurringTypes, statusOpts, palette, create_tasks, onTaskCreate, properties_id, inventory_id]
+    )
+
+    const ActiveTaskcolumns = useMemo(
+        () => [
             {
-                accessorKey: 'status',
-                header: 'Status',
-                size: 120,
+                accessorKey: 'title',
+                header: 'Title',
+                muiEditTextFieldProps: {
+                    required: true,
+                    error: !!validationErrors?.title,
+                    helperText: validationErrors?.title,
+                },
+            },
+            {
+                accessorKey: 'description',
+                header: 'Description',
+                muiEditTextFieldProps: {
+                    required: true,
+                    multiline: true,
+                    rows: 2,
+                    error: !!validationErrors?.description,
+                    helperText: validationErrors?.description,
+                },
+            },
+            {
+                accessorKey: 'scheduled_date',
+                header: 'Scheduled Date',
+                muiEditTextFieldProps: {
+                    type: 'date',
+                    required: true,
+                    error: !!validationErrors?.scheduled_date,
+                    helperText: validationErrors?.scheduled_date,
+                    InputLabelProps: {
+                        shrink: true,
+                    },
+                },
+                Cell: ({ cell }) => formatDate(cell.getValue()),
+            },
+
+            {
+                accessorKey: 'task_type',
+                header: 'Task Type',
                 editVariant: 'select',
-                editSelectOptions: statusOpts.map(opt => opt.value),
-                muiEditTextFieldProps: ({ row, table }) => ({
+                editSelectOptions: taskTypes,
+                muiEditTextFieldProps: {
                     select: true,
                     required: true,
-                    error: !!validationErrors?.status,
-                    helperText: validationErrors?.status,
-                    onChange: (e) => {
-                        row._valuesCache.status = e.target.value;
-
-                        if (create_tasks && onTaskCreate) {
-                            const taskData = {
-                                ...row._valuesCache,
-                                property_id: properties_id,
-                                inventory_id: inventory_id
-                            };
-                            console.log("Auto-sending task data to parent:", taskData);
-                            onTaskCreate(taskData);
-                        }
-                    },
-                    SelectProps: {
-                        displayEmpty: true,
-                        renderValue: (selected) => {
-                            if (!selected) {
-                                return <em>Select</em>;
-                            }
-                            const status = statusOpts.find(s => s.value === selected);
-                            return status ? status.label : selected;
-                        },
-                    },
-                    onFocus: () =>
-                        setValidationErrors({
-                            ...validationErrors,
-                            status: undefined,
-                        }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select</em>
-                        </MenuItem>,
-                        ...statusOpts.map((status) => (
-                            <MenuItem key={status.value} value={status.value}>
-                                {status.label}
-                            </MenuItem>
-                        ))
-                    ],
-                }),
+                    error: !!validationErrors?.task_type,
+                    helperText: validationErrors?.task_type,
+                },
                 Cell: ({ cell }) => {
                     const value = cell.getValue()
                     const colors = {
-                        pending: palette.error?.main || '#f44336',
-                        in_progress: palette.info?.main || '#2196f3',
-                        completed: palette.success?.main || '#4caf50',
-                        cancelled: palette.grey[500],
-                        overdue: palette.warning?.main || '#ff9800'
+                        inspection: palette.info?.main || '#2196f3',
+                        maintenance: palette.warning?.main || '#ff9800',
+                        delivery: palette.success?.main || '#4caf50',
+                        repair: palette.error?.main || '#f44336',
+                        cleaning: palette.primary?.main || '#1976d2',
+                        other: palette.grey[500]
                     }
                     return (
                         <Box
@@ -714,146 +709,110 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 textTransform: 'capitalize',
                             }}
                         >
-                            {statusOpts.find(s => s.value === value)?.label || value}
+                            {taskTypes.find(t => t.value === value)?.label || value}
+                        </Box>
+                    )
+                },
+            },
+            {
+                accessorKey: 'assigned_to',
+                header: 'Assigned To',
+                editVariant: 'select',
+                editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
+                muiEditTextFieldProps: {
+                    select: true,
+                    required: true,
+                    error: !!validationErrors?.assigned_to,
+                    helperText: validationErrors?.assigned_to,
+                },
+                Cell: ({ row }) => {
+                    const member = teamMembers.find(m => m.id === row.original.assigned_to);
+                    return member ? member.name : (row.original.assigned_to_name || '-');
+                },
+            },
+            {
+                accessorKey: 'is_photo_required',
+                header: 'Photo',
+                Cell: ({ row }) => (
+                    <Checkbox
+                        checked={row.original.is_photo_required === 1 ? true : false}
+                        disabled
+                        slotProps={{
+                            input: { 'aria-label': 'photo required' },
+                        }}
+                    />
+                ),
+                Edit: ({ row, cell, table }) => {
+                    const [checked, setChecked] = React.useState(() => {
+                        const currentValue = cell.getValue();
+                        return currentValue === 1 ? true : false;
+                    });
+
+                    const handleChange = (e) => {
+                        const newChecked = e.target.checked;
+                        setChecked(newChecked);
+                        row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+                    };
+
+                    return (
+                        <Checkbox
+                            checked={checked}
+                            onChange={handleChange}
+                            slotProps={{
+                                input: { 'aria-label': 'photo required' },
+                            }}
+                        />
+                    );
+                },
+            },
+            {
+                accessorKey: 'status',
+                header: 'Status',
+                editVariant: 'select',
+                editSelectOptions: statusOpts.map(opt => opt.value),
+                muiEditTextFieldProps: {
+                    select: true,
+                    required: true,
+                    error: !!validationErrors?.status,
+                    helperText: validationErrors?.status,
+                    children: statusOpts.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                        </MenuItem>
+                    )),
+                },
+                Cell: ({ cell }) => {
+                    const value = cell.getValue()
+                    const colors = {
+                        pending: palette.warning?.main || '#ff9800',
+                        in_progress: palette.info?.main || '#2196f3',
+                        cancelled: palette.error?.main || '#f44336',
+                        completed: palette.success?.main || '#4caf50',
+                        overdue: palette.error?.dark || '#d32f2f',
+                    }
+                    return (
+                        <Box
+                            sx={{
+                                display: 'inline-block',
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: 1,
+                                bgcolor: colors[value] || palette.grey[500],
+                                color: 'white',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                textAlign: 'center',
+                                textTransform: 'capitalize',
+                            }}
+                        >
+                            {value.replace('_', ' ')}
                         </Box>
                     )
                 },
             },
         ],
-        [validationErrors, teamMembers, taskTypes, scheduleTypes, recurringTypes, statusOpts, palette, create_tasks, onTaskCreate, properties_id, inventory_id]
+        [validationErrors, teamMembers, taskTypes, statusOpts, palette]
     )
-
-    const ActiveTaskcolumns = [
-        {
-            accessorKey: 'title',
-            header: 'Title',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'description',
-            header: 'Description',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'property_name',
-            header: 'Property',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'inventory_name',
-            header: 'Inventory',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'scheduled_date',
-            header: 'Scheduled Date',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'scheduled_day',
-            header: 'Scheduled Day',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'task_type',
-            header: 'Task Type',
-            enableEditing: false,
-            Cell: ({ cell }) => {
-                const value = cell.getValue()
-                const colors = {
-                    inspection: palette.info?.main || '#2196f3',
-                    maintenance: palette.warning?.main || '#ff9800',
-                    delivery: palette.success?.main || '#4caf50',
-                    repair: palette.error?.main || '#f44336',
-                    cleaning: palette.primary?.main || '#1976d2',
-                    other: palette.grey[500]
-                }
-                return (
-                    <Box
-                        sx={{
-                            display: 'inline-block',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            bgcolor: colors[value] || palette.grey[500],
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            textTransform: 'capitalize',
-                        }}
-                    >
-                        {taskTypes.find(t => t.value === value)?.label || value}
-                    </Box>
-                )
-            },
-        },
-        {
-            accessorKey: 'assigned_to_name',
-            header: 'Assigned To',
-            enableEditing: false,
-        },
-        {
-            accessorKey: 'is_photo_required',
-            header: 'Photo',
-            enableEditing: false,
-            Cell: ({ row }) => (
-                <Chip
-                    label={row.original.is_photo_required === 1 ? 'Yes' : 'No'}
-                    color={row.original.is_photo_required === 1 ? 'success' : 'default'}
-                    size='small'
-                    sx={{ minWidth: 40 }}
-                />
-            )
-        },
-        {
-            accessorKey: 'status',
-            header: 'Status',
-            enableEditing: true,
-            editVariant: 'select',
-            editSelectOptions: statusOpts.map(opt => opt.value),
-            muiTableBodyCellEditTextFieldProps: ({ cell }) => ({
-                select: true,
-                children: statusOpts.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                    </MenuItem>
-                )),
-                onChange: (event) => {
-                    const newStatus = event.target.value;
-                    cell.row._valuesCache.status = newStatus;
-                },
-            }),
-            Cell: ({ cell }) => {
-                const value = cell.getValue()
-                const colors = {
-                    pending: palette.warning?.main || '#ff9800',
-                    in_progress: palette.info?.main || '#2196f3',
-                    cancelled: palette.error?.main || '#f44336',
-                    completed: palette.success?.main || '#4caf50',
-                    overdue: palette.error?.dark || '#d32f2f',
-                }
-                return (
-                    <Box
-                        sx={{
-                            display: 'inline-block',
-                            px: 1.5,
-                            py: 0.5,
-                            borderRadius: 1,
-                            bgcolor: colors[value] || palette.grey[500],
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            textTransform: 'capitalize',
-                        }}
-                    >
-                        {value.replace('_', ' ')}
-                    </Box>
-                )
-            },
-        },
-    ]
 
     // Add these helper functions
     const getRepeatOnHelperText = (scheduleType) => {
@@ -915,7 +874,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     }
 
     // UPDATE action
-    const handleSaveTask = async ({ values, table, row }) => {
+    const handleSaveTaskPlanner = async ({ values, table, row }) => {
         try {
             setLoading(true)
             // Add property_id and inventory_id to the task data
@@ -924,7 +883,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 property_id: properties_id,
                 inventory_id: inventory_id
             }
-            const res = await updateClientTask(row.original.id, taskData)
+            const res = await updateTaskPlanner(row.original.id, taskData)
             showSnackbar(res.message || 'Task updated successfully', 'success')
             await fetchInventoryById(inventoryId)
             table.setEditingRow(null)
@@ -946,33 +905,36 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     }
 
-    // DELETE action
-    const openDeleteDialog = (row) => {
-        setTaskToDelete(row.original.id)
-        setOpenConfirm(true)
-    }
-
-    const handleDelete = async () => {
-        if (taskToDelete != null) {
-            try {
-                setLoading(true)
-                const res = await deleteClientTask(taskToDelete)
-                showSnackbar(res.message || 'Task deleted successfully', 'success')
-                await fetchInventoryById(inventoryId)
-            } catch (error) {
-                showSnackbar(error.message || 'Failed to delete task', 'error')
-                console.error('Error deleting task:', error)
-            } finally {
-                setLoading(false)
+    // UPDATE action for Active Tasks
+    const handleSaveActiveTask = async ({ values, table, row }) => {
+        try {
+            setLoading(true)
+            // Add property_id and inventory_id to the task data
+            const taskData = {
+                ...values,
+                property_id: properties_id,
+                inventory_id: inventory_id
             }
+            const res = await updateActiveTask(row.original.id, taskData)
+            showSnackbar(res.message || 'Active task updated successfully', 'success')
+            await fetchInventoryById(inventoryId)
+            table.setEditingRow(null)
+            setValidationErrors({})
+        } catch (error) {
+            if (error.errors && Array.isArray(error.errors)) {
+                const apiErrors = {}
+                error.errors.forEach((err) => {
+                    Object.keys(err).forEach((key) => {
+                        apiErrors[key] = err[key]
+                    })
+                })
+                setValidationErrors(apiErrors)
+            }
+            showSnackbar(error.message || 'Failed to update active task', 'error')
+            console.error('Error updating active task:', error)
+        } finally {
+            setLoading(false)
         }
-        setOpenConfirm(false)
-        setTaskToDelete(null)
-    }
-
-    const handleCancel = () => {
-        setOpenConfirm(false)
-        setTaskToDelete(null)
     }
 
     return (
@@ -986,8 +948,8 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         isLoading: loading,
                     }}
                     editDisplayMode="row"
-                    enableEditing={viewMode === 'taskPlanner'}
-                    enableRowActions={viewMode === 'taskPlanner'}
+                    enableEditing
+                    enableRowActions
                     positionActionsColumn="last"
                     createDisplayMode="row"
                     displayColumnDefOptions={{
@@ -1022,7 +984,11 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                                                 if (isCreating) {
                                                                     handleCreateTask({ values: row._valuesCache, table });
                                                                 } else {
-                                                                    handleSaveTask({ values: row._valuesCache, table, row });
+                                                                    if (viewMode === 'taskPlanner') {
+                                                                        handleSaveTaskPlanner({ values: row._valuesCache, table, row });
+                                                                    } else {
+                                                                        handleSaveActiveTask({ values: row._valuesCache, table, row });
+                                                                    }
                                                                 }
                                                             }}
                                                             size="small"
@@ -1046,9 +1012,8 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     }}
                     onCreatingRowSave={handleCreateTask}
                     onCreatingRowCancel={() => setValidationErrors({})}
-                    onEditingRowSave={handleSaveTask}
+                    onEditingRowSave={viewMode === 'taskPlanner' ? handleSaveTaskPlanner : handleSaveActiveTask}
                     onEditingRowCancel={() => setValidationErrors({})}
-                    // it should not we show row Action when active task view
 
                     renderRowActions={({ row, table }) => {
                         const isEditing = table.getState().editingRow?.id === row.id;
@@ -1070,15 +1035,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                         <EditIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Delete">
-                                    <IconButton
-                                        onClick={() => openDeleteDialog(row)}
-                                        size="small"
-                                        sx={{ color: palette.secondary.main }}
-                                    >
-                                        <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
                             </Box>
                         );
                     }}
@@ -1088,6 +1044,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: viewMode === 'taskPlanner' ? 'space-between' : 'flex-end',
+                                gap: 2,
                                 width: '100%',
                             }}>
                             {viewMode === 'taskPlanner' && (
@@ -1135,7 +1092,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         elevation: 2,
                         sx: {
                             borderRadius: 2,
-                            boxShadow: '0px 2px 6px rgba(28, 227, 38, 0.99)',
+                            boxShadow: '0px 2px 6px rgba(207, 223, 134, 0.99)',
                         },
                     }}
                     muiTableHeadCellProps={{
@@ -1152,14 +1109,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         },
                     }}
 
-                />
-
-                <ConfirmationDialog
-                    open={openConfirm}
-                    onCancel={handleCancel}
-                    onDelete={handleDelete}
-                    title="Delete Task"
-                    message="Are you sure you want to delete this task? This action cannot be undone."
                 />
             </Box>
         </React.Fragment>

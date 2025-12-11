@@ -69,20 +69,22 @@ export default function ProfileMenu() {
             <ThemeToggleButton />
 
             {/* Avatar button to open menu */}
-            <IconButton onClick={handleMenuOpen} size="small">
-                <Avatar
-                    alt="Admin User"
-                    src="/user-avatar.jpg"
-                    sx={{
-                        width: 40,
-                        height: 40,
-                        bgcolor: theme.palette.primary.main,
-                        color: theme.palette.custom.cream,
-                    }}
-                >
-                    {getInitials()}
-                </Avatar>
-            </IconButton>
+            <Avatar
+                alt="Admin User"
+                src="/user-avatar.jpg"
+                onClick={handleMenuOpen}
+                sx={{
+                    bgcolor: theme.palette.primary.main,
+                    color: theme.palette.custom.cream,
+                    cursor: "pointer",
+                    fontSize: 16,
+                }}
+            >
+                {getInitials()}
+              
+            </Avatar>
+           
+
 
             {/* Profile dropdown menu */}
             <Menu
@@ -125,8 +127,8 @@ export default function ProfileMenu() {
                             alt="Admin User"
                             sx={{
                                 mr: 1,
-                                width: 40,
-                                height: 40,
+                                width: 35,
+                                height: 35,
                                 bgcolor: theme.palette.secondary.main,
                                 color: theme.palette.custom.cream,
                             }}
