@@ -26,6 +26,8 @@ export const useTaskData = () => {
         try {
             const res = await getClientTasks(filters, searchText);
             setTaskPlannerData(res.data || []);
+
+            console.log("Fetched Task Planner Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching task planner data:', err);

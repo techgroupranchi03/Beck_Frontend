@@ -34,8 +34,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
       // Navigate to tasks with the filter applied
       navigate(navigation.to, {
         state: {
-          filter: navigation.filter,
-          highlightMember: details?.memberId,
+          assignedTo: details.memberId
         }
       });
       onClose();
@@ -61,7 +60,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
           <Stack direction="row" alignItems="center" spacing={1}>
             <Warning sx={{ color: '#FF9800', fontSize: 28 }} />
             <Typography variant="h6" fontWeight={600} color={palette.error.main}>
-                Cannot Delete Team Member
+              Cannot Delete Team Member
             </Typography>
           </Stack>
           <IconButton
@@ -69,7 +68,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
             size="small"
             sx={{
               color: palette.text.secondary,
-              '&:hover': { 
+              '&:hover': {
                 bgcolor: palette.mode === 'light' ? '#f0f0f0' : '#4a4a4a'
               }
             }}
@@ -98,7 +97,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
                 <Typography variant="body2" fontWeight={600}>
                   Team Member: {details.memberName}
                 </Typography>
-                
+
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   <Chip
                     icon={<AssignmentTurnedIn sx={{ color: palette.primary.main }} />}
@@ -114,7 +113,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
                     <Chip
                       label={`${details.regularTasks} Regular`}
                       size="small"
-                      sx={{ 
+                      sx={{
                         bgcolor: palette.taskStatus.in_progress,
                         color: '#ffffff',
                       }}
@@ -124,7 +123,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
                     <Chip
                       label={`${details.recurringTasks} Recurring`}
                       size="small"
-                      sx={{ 
+                      sx={{
                         bgcolor: palette.taskStatus.completed,
                         color: '#ffffff',
                       }}

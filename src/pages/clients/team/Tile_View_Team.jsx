@@ -61,7 +61,7 @@ const Tile_View_Team = () => {
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
 
-  console.log('selectedMember:', selectedMember);
+  console.log('deleteResponse', deleteResponse);
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Drawer,
     Box,
@@ -18,7 +18,7 @@ import { useTaskContext } from "./TaskManagement";
 
 
 
-const TaskFilter = ({ open, onClose, onApplyFilters, viewMode }) => {
+const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = {} }) => {
     const [AssignTo, setAssignTo] = useState(null);
     const [Status, setStatus] = useState("");
     const [TaskType, setTaskType] = useState("");
@@ -32,6 +32,40 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode }) => {
         teamMembers,
     } = useTaskContext();
 
+    // // Apply initial filters on mount
+    // useEffect(() => {
+    //     if (initialFilters) {
+    //         setAssignTo(initialFilters.assigned_to || null);
+    //         setStatus(initialFilters.status || "");
+    //         setTaskType(initialFilters.task_type || "");
+    //         setScheduleType(initialFilters.schedule_type || "");
+    //         setIsFilter(
+    //             initialFilters.assigned_to ||
+    //             initialFilters.status ||
+    //             initialFilters.task_type ||
+    //             initialFilters.schedule_type
+    //         );
+    //     }
+    // }, [initialFilters]);
+     // Update filter states when initialFilters change
+    useEffect(() => {
+        if (initialFilters.assigned_to) {
+            setAssignTo(initialFilters.assigned_to);
+            setIsFilter(true);
+        }
+        if (initialFilters.status) {
+            setStatus(initialFilters.status);
+            setIsFilter(true);
+        }
+        if (initialFilters.task_type) {
+            setTaskType(initialFilters.task_type);
+            setIsFilter(true);
+        }
+        if (initialFilters.schedule_type) {
+            setScheduleType(initialFilters.schedule_type);
+            setIsFilter(true);
+        }
+    }, [initialFilters]);
 
     const handleFilterApply = () => {
         const filters = {
@@ -51,7 +85,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode }) => {
         setTaskType("");
         setScheduleType("");
         setIsFilter(false);
-        onApplyFilters({ AssignTo: null, Status: "", TaskType: "", ScheduleType: "" });
+        onApplyFilters({ assigned_to: null, status: "", task_type: "", schedule_type: "" });
     };
 
     return (

@@ -1,4 +1,4 @@
-import React, { use, useMemo, useState } from "react";
+import React, { use, useEffect, useMemo, useState } from "react";
 import {
     Box,
     Container,
@@ -45,8 +45,10 @@ import TileView_AddEdit_Dialog from "./TileView_AddEdit_Dialog.jsx";
 import { useTaskContext } from "./TaskManagement.jsx";
 import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { formatDate } from "../../../utils/dateFormat.js";
+import { useLocation } from "react-router-dom";
 
 export const Tile_View_task = () => {
+    const location = useLocation();
     const [viewMode, setViewMode] = useState(() => {
         const savedViewMode = localStorage.getItem('taskViewMode');
         return savedViewMode ? savedViewMode : "taskPlanner";
@@ -83,12 +85,43 @@ export const Tile_View_task = () => {
         fetchActiveTasksData,
     } = useTaskContext();
 
+    // handle navigation state and apply filters 
+    useEffect(() => {
+        if (location.state?.assignedTo) {
+            const assignedToId = location.state.assignedTo;
+
+            const newFilters = {
+                assigned_to: assignedToId,
+            };
+            setFilters(newFilters);
+
+
+            const applyNavigationFilter = async () => {
+                try {
+                    if (viewMode === "taskPlanner") {
+                        await fetchTaskPlannerData(newFilters, searchText);
+                    } else {
+                        await fetchActiveTasksData(newFilters, searchText);
+                    }
+                    showSnackbar("Filter applied from navigation", "success");
+                } catch (error) {
+                    console.error("Error applying navigation filter:", error);
+                    showSnackbar("Failed to apply filter from navigation", "error");
+                }
+            };
+            applyNavigationFilter();
+
+            // Clear the navigation state to prevent reapplying the filter
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state, teamMembers, viewMode]);
+
     // display tasks based on view mode
     const tasks = useMemo(() => {
         return viewMode === "taskPlanner" ? taskPlannerData : activeTasksData;
     }, [viewMode, taskPlannerData, activeTasksData]);
 
-    console.log("Tasks in Tile View:", tasks);
+
 
     const handleEdit = (task) => {
         setSelectedTask(task);
@@ -127,7 +160,7 @@ export const Tile_View_task = () => {
         }
     };
 
-       const handleCloseDialog = () => {
+    const handleCloseDialog = () => {
         setOpenAddEditDialog(false);
         setSelectedTask(null);
     };
@@ -229,6 +262,7 @@ export const Tile_View_task = () => {
                 onClose={handleFilterToggle}
                 onApplyFilters={handleApplyFilters}
                 viewMode={viewMode}
+                initialFilters={filters}
             />
 
 
