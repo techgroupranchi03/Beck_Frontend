@@ -45,7 +45,7 @@ const CardSkeleton = () => {
         <Chip
           label={<Skeleton width={60} />}
           color="primary"
-          sx={{ bgcolor: 'primary.light', color: 'transparent' }}
+         
         />
       </Stack>
 

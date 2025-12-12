@@ -12,17 +12,35 @@ export const useTeamData = () => {
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [teamPagination, setTeamPagination] = useState({});
 
     // Fetch team members
-    const fetchTeamMembers = useCallback(async (searchText) => {
+    const fetchTeamMembers = useCallback(async (searchText = "", page = 1, append = false) => {
         try {
-            const res = await getTeamMembers(searchText);
-            setTeamData(res.data || []);
+            if (!append) {
+                setLoading(true);
+            }
+            const res = await getTeamMembers(searchText , page);
+            if (append) {
+                setTeamData((prev) => [...prev, ...(res.data || [])]);
+            } else {
+                setTeamData(res.data || []);
+            }
+            setTeamPagination({
+                hasNextPage: res.hasNextPage || false,
+                hasPreviousPage: res.hasPreviousPage || false,
+                page: res.page || 1,
+                total: res.total || 0,
+                totalPages: res.totalPages || 1,
+            })
+
             return res.data;
         } catch (err) {
             console.error('Error fetching team members:', err);
             setError(err);
             throw err;
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -119,6 +137,9 @@ export const useTeamData = () => {
         roles,
         loading,
         error,
+
+        // Pagination Data
+        teamPagination,
 
         // Team Operations
         createTeam,

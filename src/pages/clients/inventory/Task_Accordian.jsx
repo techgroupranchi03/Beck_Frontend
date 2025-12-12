@@ -26,7 +26,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         setViewMode(event.target.value);
     };
 
-    console.log("create_tasks", create_tasks);
+   // console.log("create_tasks", create_tasks);
     // console.log("newtaskData", newtaskData);
     // console.log("taskPlanner", taskPlanner);
     // console.log("activeTasks", activeTasks);
@@ -47,7 +47,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     const fetchInventoryById = async (id) => {
         try {
             const res = await getInventoryById(id);
-            console.log("Fetched inventory data:", res.data);
+            //console.log("Fetched inventory data:", res.data);
             setActiveTasks(res.data.task_instances || []);
             setTaskPlanner(res.data.tasks_planner || []);
             setProperties_id(res.data.property_id);
@@ -95,7 +95,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -125,7 +125,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -156,7 +156,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -381,7 +381,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -413,7 +413,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -482,7 +482,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     },
@@ -537,7 +537,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            console.log("Auto-sending task data to parent:", taskData);
+                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     };

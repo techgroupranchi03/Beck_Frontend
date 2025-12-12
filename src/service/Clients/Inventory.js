@@ -27,11 +27,11 @@ export const getUnitsAndQuantities = async () => {
 };
 
 // get inventory items
-export const getInventoryItems = async (filters = {}, searchText = "") => {
+export const getInventoryItems = async (filters = {}, searchText = "" , page = 1) => {
     const token = getClientToken();
     try {
         // Build query parameters from filters
-        const params = {};
+        const params = { page };
         if (filters.category) params.category = filters.category;
         if (filters.property_id) params.property_id = filters.property_id;
         if (filters.unit) params.unit = filters.unit;
@@ -49,7 +49,7 @@ export const getInventoryItems = async (filters = {}, searchText = "") => {
                 params: params,
             }
         );
-        console.log("Inventory items response:", response.data);
+        //console.log("Inventory items response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Inventory items fetching error:", error);
@@ -59,7 +59,7 @@ export const getInventoryItems = async (filters = {}, searchText = "") => {
 
 // create inventory item
 export const createInventoryItem = async (data) => {
-    console.log("Creating inventory item with data:", data);
+   // console.log("Creating inventory item with data:", data);
     const token = getClientToken();
     try {
         const response = await axios.post(
@@ -104,7 +104,7 @@ export const updateInventoryItem = async (id, data) => {
 
 // get inventory by id 
 export const getInventoryById = async (id) => {
-    console.log("Fetching inventory item with ID:", id);
+    //console.log("Fetching inventory item with ID:", id);
     const token = getClientToken();
     try {
         const response = await axios.get(

@@ -23,17 +23,34 @@ export const useInventoryData = () => {
     const [teamMembers, setTeamMembers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [inventoryPagination, setInventoryPagination] = useState({});
 
     // Fetch inventory items
-    const fetchInventoryItems = useCallback(async (filters = {}, searchText = "") => {
+    const fetchInventoryItems = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
-            const res = await getInventoryItems(filters, searchText);
-            setInventoryData(res.data || []);
+            if (!append) {
+                setLoading(true);
+            }
+            const res = await getInventoryItems(filters, searchText, page);
+            if (append) {
+                setInventoryData((prev) => [...prev, ...(res.data || [])]);
+            } else {
+                setInventoryData(res.data || []);
+            }
+            setInventoryPagination({
+                hasNextPage: res.hasNextPage || false,
+                hasPreviousPage: res.hasPreviousPage || false,
+                page: res.page || 1,
+                total: res.total || 0,
+                totalPages: res.totalPages || 1,
+            })
             return res.data;
         } catch (err) {
             console.error('Error fetching inventory items:', err);
             setError(err);
             throw err;
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -106,7 +123,7 @@ export const useInventoryData = () => {
     const createInventory = async (formData) => {
         try {
             const res = await createInventoryItem(formData);
-            console.log('Create response:', res);
+           // console.log('Create response:', res);
 
             // Handle different response structures
             const newItem = res.data?.data || res.data;
@@ -129,7 +146,7 @@ export const useInventoryData = () => {
     const updateInventory = async (id, formData) => {
         try {
             const res = await updateInventoryItem(id, formData);
-            console.log('Update response:', res);
+            //console.log('Update response:', res);
 
             // Handle different response structures
             const updatedItem = res.data?.data || res.data;
@@ -174,16 +191,16 @@ export const useInventoryData = () => {
     };
 
     // -------------------------------- task OPERATIONS --------------------------------
-    
+
     // Create new task
     const createTask = async (values) => {
         try {
             const res = await createClientTask(values);
-            console.log("Created Task Response:", res);
-            
+           // console.log("Created Task Response:", res);
+
             // After creating task, refresh inventory to get updated task lists
             await fetchInventoryItems();
-            
+
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
@@ -195,10 +212,10 @@ export const useInventoryData = () => {
     const updateTaskPlannerData = async (id, values) => {
         try {
             const res = await updateTaskPlanner(id, values);
-            
+
             // Refresh inventory to get updated task data
             await fetchInventoryItems();
-            
+
             return res;
         } catch (err) {
             console.error('Error updating task planner:', err);
@@ -210,10 +227,10 @@ export const useInventoryData = () => {
     const updateActiveTaskData = async (id, values) => {
         try {
             const res = await updateActiveTask(id, values);
-            
+
             // Refresh inventory to get updated task data
             await fetchInventoryItems();
-            
+
             return res;
         } catch (err) {
             console.error('Error updating active task:', err);
@@ -230,6 +247,9 @@ export const useInventoryData = () => {
         teamMembers,
         loading,
         error,
+
+        // pagination state
+        inventoryPagination,
 
         // Fetch operations
         fetchInventoryItems,

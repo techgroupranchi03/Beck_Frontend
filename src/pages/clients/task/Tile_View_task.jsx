@@ -1,4 +1,4 @@
-import React, { use, useEffect, useMemo, useState } from "react";
+import React, { use, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
     Box,
     Container,
@@ -20,7 +20,8 @@ import {
     ListItemIcon,
     ListItemText,
     TextField,
-    Select
+    Select,
+    CircularProgress
 } from "@mui/material";
 import {
     Alarm,
@@ -46,6 +47,7 @@ import { useTaskContext } from "./TaskManagement.jsx";
 import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { formatDate } from "../../../utils/dateFormat.js";
 import { useLocation } from "react-router-dom";
+import CardSkeleton from "../../../resuable_components/CardSkeleton.jsx";
 
 export const Tile_View_task = () => {
     const location = useLocation();
@@ -62,6 +64,10 @@ export const Tile_View_task = () => {
     const [searchText, setSearchText] = useState("");
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [filters, setFilters] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    const observerTarget = useRef(null);
 
     console.log("filters:", filters);
 
@@ -83,8 +89,20 @@ export const Tile_View_task = () => {
         teamMembers,
         fetchTaskPlannerData,
         fetchActiveTasksData,
+        taskPlannerPagination,
+        activeTasksPagination,
     } = useTaskContext();
 
+
+    //get current pagination based on view mode 
+    const pagination = useMemo(() => {
+        return viewMode === "taskPlanner" ? taskPlannerPagination : activeTasksPagination;
+    }, [viewMode, taskPlannerPagination, activeTasksPagination]);
+
+    // display tasks based on view mode
+    const tasks = useMemo(() => {
+        return viewMode === "taskPlanner" ? taskPlannerData : activeTasksData;
+    }, [viewMode, taskPlannerData, activeTasksData]);
     // handle navigation state and apply filters 
     useEffect(() => {
         if (location.state?.assignedTo) {
@@ -116,10 +134,58 @@ export const Tile_View_task = () => {
         }
     }, [location.state, teamMembers, viewMode]);
 
-    // display tasks based on view mode
-    const tasks = useMemo(() => {
-        return viewMode === "taskPlanner" ? taskPlannerData : activeTasksData;
-    }, [viewMode, taskPlannerData, activeTasksData]);
+    // reset page when view mode , filters or search text changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [viewMode, filters, searchText]);
+
+
+    // infinite scroll observer
+
+    // Infinite scroll observer
+    const loadMoreTasks = useCallback(async () => {
+        if (!pagination?.hasNextPage || isLoadingMore || loading) return;
+
+        setIsLoadingMore(true);
+        const nextPage = currentPage + 1;
+
+        try {
+            if (viewMode === "taskPlanner") {
+                await fetchTaskPlannerData(filters, searchText, nextPage, true);
+            } else {
+                await fetchActiveTasksData(filters, searchText, nextPage, true);
+            }
+            setCurrentPage(nextPage);
+        } catch (error) {
+            console.error("Error loading more tasks:", error);
+            showSnackbar("Failed to load more tasks", "error");
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [pagination, isLoadingMore, loading, currentPage, viewMode, filters, searchText, fetchTaskPlannerData, fetchActiveTasksData, showSnackbar]);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && pagination?.hasNextPage && !isLoadingMore) {
+                    loadMoreTasks();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentTarget = observerTarget.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
+    }, [loadMoreTasks, pagination, isLoadingMore]);
+
 
 
 
@@ -135,6 +201,7 @@ export const Tile_View_task = () => {
 
     const handleApplyFilters = async (appliedFilters) => {
         setFilters(appliedFilters);
+        setCurrentPage(1);
         try {
             if (viewMode === "taskPlanner") {
                 await fetchTaskPlannerData(appliedFilters, searchText);
@@ -149,6 +216,7 @@ export const Tile_View_task = () => {
     };
     const handleSearch = async (text) => {
         setSearchText(text);
+        setCurrentPage(1);
         try {
             if (viewMode === "taskPlanner") {
                 await fetchTaskPlannerData(filters, text);
@@ -167,6 +235,7 @@ export const Tile_View_task = () => {
 
     const handleChange = (event) => {
         setViewMode(event.target.value);
+        setCurrentPage(1);
         localStorage.setItem('taskViewMode', event.target.value);
     };
 
@@ -486,6 +555,25 @@ export const Tile_View_task = () => {
                     ))
                 )}
             </Grid>
+
+                   {/* Loading indicator for infinite scroll */}
+            {isLoadingMore && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CardSkeleton />
+                </Box>
+            )}
+
+            {/* Observer target for infinite scroll */}
+            <div ref={observerTarget} style={{ height: '20px' }} />
+
+            {/* Pagination info */}
+            {pagination && tasks.length > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        Page {pagination.page} of {pagination.totalPages} • Total: {pagination.total}
+                    </Typography>
+                </Box>
+            )}
 
             {/* EDIT AND DELETE ICON BUTTON  */}
             <Menu

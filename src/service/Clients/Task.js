@@ -6,11 +6,11 @@ const getClientToken = () => {
 };
 
 // get all task method "GET" API
-export const getClientTasks = async (filters = {}, searchText = "") => {
+export const getClientTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getClientToken();
     try {
         // Build query parameters from filters
-        const params = {};
+        const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
         if (filters.task_type) params.task_type = filters.task_type;
@@ -26,7 +26,7 @@ export const getClientTasks = async (filters = {}, searchText = "") => {
                 params: params,
             }
         );
-        console.log('Client tasks response:', response.data);
+       // console.log('Client tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client tasks fetching error:', error);
@@ -37,7 +37,7 @@ export const getClientTasks = async (filters = {}, searchText = "") => {
 // create task method "POST" API
 export const createClientTask = async (taskData) => {
     const token = getClientToken();
-    console.log('Creating task with data:', taskData);
+    //console.log('Creating task with data:', taskData);
     try {
         const response = await axios.post(
             `${BASE_URL}/client/tasks-planner`,
@@ -57,7 +57,7 @@ export const createClientTask = async (taskData) => {
 
 // update task method "PUT" API
 export const updateTaskPlanner = async (taskId, taskData) => {
-    console.log('Updating task with ID:', taskId, 'Data:', taskData);
+   // console.log('Updating task with ID:', taskId, 'Data:', taskData);
     const token = getClientToken();
     try {
         const response = await axios.put(
@@ -118,11 +118,11 @@ export const deleteClientTask = async (taskId) => {
 
 
 // get active tasks method "GET" API
-export const getClientActiveTasks = async (filters = {}, searchText = "") => {
+export const getClientActiveTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getClientToken();
     try {
         // Build query parameters from filters
-        const params = {};
+        const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
         if (filters.task_type) params.task_type = filters.task_type;
@@ -138,7 +138,7 @@ export const getClientActiveTasks = async (filters = {}, searchText = "") => {
                 params: params,
             }
         );
-        console.log('Client active tasks response:', response.data);
+       // console.log('Client active tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client active tasks fetching error:', error);

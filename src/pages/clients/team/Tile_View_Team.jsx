@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   useTheme,
   Box,
@@ -30,6 +30,7 @@ import { useSnackbar } from '../../../resuable_components/Snackbar';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import TileView_addEdit_team from "./TileView_addEdit_team";
 import NavigateToTask from "./NavigateToTask";
+import CardSkeleton from "../../../resuable_components/CardSkeleton";
 
 const Tile_View_Team = () => {
   const theme = useTheme();
@@ -48,6 +49,7 @@ const Tile_View_Team = () => {
     loading,
     deleteTeam,
     fetchTeamMembers,
+    teamPagination,
   } = useTeamContext();
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -57,11 +59,15 @@ const Tile_View_Team = () => {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
 
-  console.log('deleteResponse', deleteResponse);
+  const observerTarget = useRef(null);
+
+  //console.log('deleteResponse', deleteResponse);
 
 
 
@@ -71,7 +77,7 @@ const Tile_View_Team = () => {
   };
 
   const handleEdit = (member) => {
-    console.log("Editing member:", member);
+    //console.log("Editing member:", member);
     setSelectedMember(member);
     setOpenAddEditDialog(true);
     setAnchorEl(null);
@@ -102,6 +108,11 @@ const Tile_View_Team = () => {
     setMemberToDelete(null);
   };
 
+  // reset page when search text changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText]);
+
   // handle search
   const handleSearch = async (text) => {
     setSearchText(text);
@@ -111,6 +122,48 @@ const Tile_View_Team = () => {
       console.error('Error searching team members:', error);
     }
   };
+
+  // Infinite scroll - load more team members
+  const loadMoreTeamMembers = useCallback(async () => {
+    if (isLoadingMore || loading || !teamPagination.hasNextPage) {
+      return;
+    }
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+      await fetchTeamMembers(searchText, nextPage, true);
+      setCurrentPage(nextPage);
+    } catch (error) {
+      showSnackbar('Failed to load more team members', 'error');
+      console.error('Error loading more team members:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [teamPagination, isLoadingMore, loading, currentPage, searchText, fetchTeamMembers, showSnackbar]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && teamPagination.hasNextPage && !isLoadingMore && !loading) {
+          loadMoreTeamMembers();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [loadMoreTeamMembers, teamPagination, isLoadingMore, loading]);
 
   const handleCancelDelete = () => {
     setOpenConfirm(false);
@@ -298,6 +351,23 @@ const Tile_View_Team = () => {
           ))
         )}
       </Grid>
+
+      {/* Loading indicator for infinite scroll */}
+      {isLoadingMore && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3,}}>
+          <CardSkeleton />
+        </Box>
+      )}
+
+      {/* Intersection observer target */}
+      <div ref={observerTarget} style={{ height: '20px' }} />
+
+      {/* pagination info */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Page {teamPagination.page} of {teamPagination.totalPages} • Total: {teamPagination.total} members
+        </Typography>
+      </Box>
 
       {/* Menu for Edit and Delete */}
       <Menu

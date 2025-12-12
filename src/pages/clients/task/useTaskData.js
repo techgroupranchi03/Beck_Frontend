@@ -20,32 +20,67 @@ export const useTaskData = () => {
     const [teamMembers, setTeamMembers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [taskPlannerPagination, setTaskPlannerPagination] = useState({});
+    const [activeTasksPagination, setActiveTasksPagination] = useState({});
 
     // Fetch Task Planner tasks
-    const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "") => {
+    const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
-            const res = await getClientTasks(filters, searchText);
-            setTaskPlannerData(res.data || []);
 
+            if (!append) {
+                setLoading(true);
+            }
+            const res = await getClientTasks(filters, searchText, page);
+            if (append) {
+                setTaskPlannerData((prev) => [...prev, ...(res.data || [])]);
+            } else {
+                setTaskPlannerData(res.data || []);
+            }
+            setTaskPlannerPagination({
+                hasNextPage: res.hasNextPage || false,
+                hasPreviousPage: res.hasPreviousPage || false,
+                page: res.page || 1,
+                total: res.total || 0,
+                totalPages: res.totalPages || 1,
+            })
             console.log("Fetched Task Planner Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching task planner data:', err);
             setError(err);
             throw err;
+        } finally {
+            setLoading(false);
         }
     }, []);
 
     // Fetch Active Tasks
-    const fetchActiveTasksData = useCallback(async (filters = {}, searchText = "") => {
+    const fetchActiveTasksData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
-            const res = await getClientActiveTasks(filters, searchText);
-            setActiveTasksData(res.data || []);
+            if (!append) {
+                setLoading(true);
+            }
+            const res = await getClientActiveTasks(filters, searchText, page);
+            if (append) {
+                setActiveTasksData((prev) => [...prev, ...(res.data || [])]);
+            } else {
+                setActiveTasksData(res.data || []);
+            }
+            setActiveTasksPagination({
+                hasNextPage: res.hasNextPage || false,
+                hasPreviousPage: res.hasPreviousPage || false,
+                page: res.page || 1,
+                total: res.total || 0,
+                totalPages: res.totalPages || 1,
+            })
+            console.log("Fetched Active Tasks Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching active tasks:', err);
             setError(err);
             throw err;
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -119,12 +154,12 @@ export const useTaskData = () => {
         try {
             const res = await createClientTask(values);
             console.log("Created Task Response:", res);
-            
+
             // Determine if task should go to Task Planner or Active Tasks
             // Task Planner: recurring tasks (weekly, monthly, yearly)
             // Active Tasks: one_time tasks (these create task instances immediately)
-            const isRecurringTask = ['daily','weekly', 'monthly', 'yearly'].includes(values.schedule_type);
-            
+            const isRecurringTask = ['daily', 'weekly', 'monthly', 'yearly'].includes(values.schedule_type);
+
             if (isRecurringTask) {
                 // Add to Task Planner for recurring tasks
                 setTaskPlannerData((prev) => [res.data, ...prev]);
@@ -136,7 +171,7 @@ export const useTaskData = () => {
                     fetchActiveTasksData()
                 ]);
             }
-            
+
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
@@ -148,12 +183,12 @@ export const useTaskData = () => {
     const updateTaskPlannerData = async (id, values) => {
         try {
             const res = await updateTaskPlanner(id, values);
-            
+
             // Update in taskPlannerData if it exists there
             setTaskPlannerData((prev) =>
                 prev.map((task) => (task.id === id ? { ...task, ...values } : task))
             );
-            
+
             return res;
         } catch (err) {
             console.error('Error updating task planner:', err);
@@ -165,12 +200,12 @@ export const useTaskData = () => {
     const updateActiveTaskData = async (id, values) => {
         try {
             const res = await updateActiveTask(id, values);
-            
+
             // Update in activeTasksData
             setActiveTasksData((prev) =>
                 prev.map((task) => (task.id === id ? { ...task, ...values } : task))
             );
-            
+
             return res;
         } catch (err) {
             console.error('Error updating active task:', err);
@@ -182,11 +217,11 @@ export const useTaskData = () => {
     const deleteTask = async (id) => {
         try {
             const res = await deleteClientTask(id);
-            
+
             // Remove from both Task Planner and Active Tasks
             setTaskPlannerData((prev) => prev.filter((task) => task.id !== id));
             setActiveTasksData((prev) => prev.filter((task) => task.id !== id));
-            
+
             return res;
         } catch (err) {
             console.error('Error deleting task:', err);
@@ -239,6 +274,10 @@ export const useTaskData = () => {
         teamMembers,
         loading,
         error,
+
+        // pagination data 
+        taskPlannerPagination,
+        activeTasksPagination,
 
         // Task Planner Operations
         createTask,

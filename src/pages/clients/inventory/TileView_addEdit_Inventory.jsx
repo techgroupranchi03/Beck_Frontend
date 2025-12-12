@@ -245,7 +245,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             } else {
                 // Create new inventory
                 res = await createInventory(formDataToSend);
-                console.log('Create Inventory Response:', res);
+                //console.log('Create Inventory Response:', res);
                 showSnackbar(res.message , 'success');
             }
             onClose();

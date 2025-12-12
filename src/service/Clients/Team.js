@@ -7,7 +7,7 @@ const getClientToken = () => {
 };
 
 // get team members 
-export const getTeamMembers = async (searchText) => {
+export const getTeamMembers = async (searchText = "", page = 1) => {
     const token = getClientToken();
     try {
         const response = await axios.get(
@@ -17,7 +17,8 @@ export const getTeamMembers = async (searchText) => {
                     Authorization: `Bearer ${token}`,
                 },
                 params: {
-                    search: searchText
+                    search: searchText,
+                    page: page
                 }
             }
         );

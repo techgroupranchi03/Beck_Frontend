@@ -37,7 +37,7 @@ const All_Inventory = () => {
   } = useInventoryContext();
 
 
-  console.log("inventoryData:", inventoryData);
+  //console.log("inventoryData:", inventoryData);
 
   const [openConfirm, setOpenConfirm] = useState(false);
   const [inventoryToDelete, setInventoryToDelete] = useState(null);
@@ -52,7 +52,7 @@ const All_Inventory = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  console.log("task:", task);
+  //console.log("task:", task);
 
   // handleImageChange
   const handleImageChange = (event) => {

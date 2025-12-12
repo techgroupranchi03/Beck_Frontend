@@ -46,7 +46,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
     }
   };
 
-  console.log("PropertyDisplay property:", property);
+  //console.log("PropertyDisplay property:", property);
   // Handle array of properties
   if (Array.isArray(property)) {
     return (

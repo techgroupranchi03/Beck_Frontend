@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     Card,
     Container,
@@ -63,10 +63,13 @@ import TileView_addEdit_Inventory from './TileView_addEdit_Inventory';
 import InventoryTask_AddEdit_Dialog from './InventoryTask_AddEdit_Dialog';
 import { formatDate } from '../../../utils/dateFormat';
 import ViewMoreText from '../../../resuable_components/ViewMore';
+import CardSkeleton from '../../../resuable_components/CardSkeleton';
+import { useSnackbar } from '../../../resuable_components/Snackbar';
 
 const Tile_View_Inventory = () => {
     const theme = useTheme();
     const { palette } = theme;
+    const { showSnackbar } = useSnackbar();
     const [filters, setFilters] = useState({});
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -78,10 +81,14 @@ const Tile_View_Inventory = () => {
     const [openTaskDialog, setOpenTaskDialog] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [selectedInventoryId, setSelectedInventoryId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [viewMode, setViewMode] = useState(() => {
         const savedMode = localStorage.getItem('inventoryViewMode');
         return savedMode ? savedMode : 'taskPlanner';
     });
+    
+    const observerTarget = useRef(null);
     
 
 
@@ -94,6 +101,7 @@ const Tile_View_Inventory = () => {
         loading,
         deleteInventory,
         fetchInventoryItems,
+        inventoryPagination,
     } = useInventoryContext();
 
     const handleViewModeChange = (event) => {
@@ -166,6 +174,53 @@ const Tile_View_Inventory = () => {
             console.error("Error searching inventory:", error);
         }
     };
+
+    // reset page when filters or search text changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filters, searchText]);
+
+    // Infinite scroll - load more inventory items
+    const loadMoreInventoryItems = useCallback(async () => {
+        if (isLoadingMore || loading || !inventoryPagination.hasNextPage) {
+            return;
+        }
+
+        try {
+            setIsLoadingMore(true);
+            const nextPage = currentPage + 1;
+            await fetchInventoryItems(filters, searchText, nextPage, true);
+            setCurrentPage(nextPage);
+        } catch (error) {
+            showSnackbar('Failed to load more inventory items', 'error');
+            console.error('Error loading more inventory items:', error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [inventoryPagination, isLoadingMore, loading, currentPage, filters, searchText, fetchInventoryItems, showSnackbar]);
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && inventoryPagination.hasNextPage && !isLoadingMore && !loading) {
+                    loadMoreInventoryItems();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentTarget = observerTarget.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
+    }, [loadMoreInventoryItems, inventoryPagination, isLoadingMore, loading]);
 
     return (
         <Container maxWidth="mx" sx={{ mt: 2, px: 0 }}>
@@ -647,6 +702,23 @@ const Tile_View_Inventory = () => {
                     </Grid>
                 )))}
             </Grid>
+
+            {/* Loading indicator for infinite scroll */}
+            {isLoadingMore && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CardSkeleton />
+                </Box>
+            )}
+
+            {/* Intersection observer target */}
+            <div ref={observerTarget} style={{ height: '20px' }} />
+
+            {/* pagination info */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                    Page {inventoryPagination.page} of {inventoryPagination.totalPages} • Total: {inventoryPagination.total} items
+                </Typography>
+            </Box>
 
             <Menu
                 anchorEl={anchorEl}

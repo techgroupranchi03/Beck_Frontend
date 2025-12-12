@@ -11,7 +11,7 @@ export const clientSendOtp = async (credentials) => {
             `${BASE_URL}/client/auth/login`,
             credentials
         );
-        console.log('send OTP response:', response.data);
+        //console.log('send OTP response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client OTP sending error:', error);
@@ -26,7 +26,7 @@ export const verfiyOtp = async (credentials) => {
             `${BASE_URL}/client/auth/verify-otp`,
             credentials
         );
-        console.log('Client OTP verification response:', response.data);
+        //console.log('Client OTP verification response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client OTP verification error:', error);
