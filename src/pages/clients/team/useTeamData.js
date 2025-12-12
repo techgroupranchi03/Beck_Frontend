@@ -34,6 +34,8 @@ export const useTeamData = () => {
                 totalPages: res.totalPages || 1,
             })
 
+            console.log("Fetched Team Members:", res);
+
             return res.data;
         } catch (err) {
             console.error('Error fetching team members:', err);

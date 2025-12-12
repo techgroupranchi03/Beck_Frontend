@@ -6,7 +6,8 @@ import {
     updateTaskPlanner,
     updateActiveTask,
     deleteClientTask,
-    updateClientActiveTaskStatus
+    updateClientActiveTaskStatus,
+    getTaskTeamMembers
 } from '../../../service/Clients/Task';
 import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
@@ -43,7 +44,7 @@ export const useTaskData = () => {
                 total: res.total || 0,
                 totalPages: res.totalPages || 1,
             })
-            console.log("Fetched Task Planner Data:", res);
+           // console.log("Fetched Task Planner Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching task planner data:', err);
@@ -73,7 +74,7 @@ export const useTaskData = () => {
                 total: res.total || 0,
                 totalPages: res.totalPages || 1,
             })
-            console.log("Fetched Active Tasks Data:", res);
+            //console.log("Fetched Active Tasks Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching active tasks:', err);
@@ -113,7 +114,8 @@ export const useTaskData = () => {
     // Fetch Team Members
     const fetchTeamMembers = useCallback(async () => {
         try {
-            const res = await getTeamMembers();
+            const res = await getTaskTeamMembers();
+           // console.log("Fetched Team Members Response:", res);
             setTeamMembers(res.data || []);
             return res.data;
         } catch (err) {

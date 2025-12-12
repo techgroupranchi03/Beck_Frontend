@@ -166,3 +166,22 @@ export const updateClientActiveTaskStatus = async (taskInstanceId, status) => {
         return Promise.reject(error.response?.data || { message: 'Active task status update failed' });
     }
 }
+
+// get teammber in task methods "GET" API
+export const getTaskTeamMembers = async () => {
+    const token = getClientToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/client/team`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Task team members fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching task team members failed' });
+    }
+};
