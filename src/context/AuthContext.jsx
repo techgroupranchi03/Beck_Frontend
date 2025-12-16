@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { adminLogout } from '../service/Admin/Admin_auth';
 import { clientLogout } from '../service/Clients/Clients_auth';
+import { teamsLogout } from '../service/Teams/Teams_auth';
 import BASE_URL from '../config';
 
 // Create the Auth Context
@@ -22,27 +23,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+
+  console.log('AuthProvider user state:', user);
+
   // Fetch user details 
   const fetchUserDetails = async (token, role) => {
     try {
-      const endpoint = role === 'admin' 
-        ? `${BASE_URL}/admin/auth/me` 
-        : `${BASE_URL}/client/auth/me`;
+      let endpoint;
+      if (role === 'admin') {
+        endpoint = `${BASE_URL}/admin/auth/me`;
+      } else if (role === 'client') {
+        endpoint = `${BASE_URL}/client/auth/me`;
+      } else if (role === 'team') {
+        endpoint = `${BASE_URL}/team/auth/me`;
+      }
 
       const response = await axios.get(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
+      console.log('Fetched user details response:', response.data);
       if (response.data.success) {
-        const userData = response.data.data.admin || response.data.data.client;
-        
+        const userData = response.data.data.admin || response.data.data.client || response.data.data.teamMember;
+        console.log('User data fetched:', userData);
         if (userData) {
           setUser({
             ...userData,
             token,
-            role
+            role,
+            teamRole: userData.role || null
+            
           });
           return true;
         }
@@ -55,6 +66,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('admin_token');
         } else if (role === 'client') {
           localStorage.removeItem('client_token');
+        } else if (role === 'team') {
+          localStorage.removeItem('team_token');
         }
       }
       return false;
@@ -85,6 +98,16 @@ export const AuthProvider = ({ children }) => {
           }
         }
 
+        // Check for team token
+        const teamToken = localStorage.getItem('team_token');
+        if (teamToken) {
+          const success = await fetchUserDetails(teamToken, 'team');
+          if (success) {
+            setLoading(false);
+            return;
+          }
+        }
+
         // No valid token found
         setUser(null);
       } catch (error) {
@@ -106,10 +129,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('admin_token', token);
       } else if (role === 'client') {
         localStorage.setItem('client_token', token);
+      } else if (role === 'team') {
+        localStorage.setItem('team_token', token);
       }
 
       // Fetch user details from API
       const success = await fetchUserDetails(token, role);
+      console.log('Fetch user details success:', success);
       
       if (success) {
         return true;
@@ -119,6 +145,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('admin_token');
         } else if (role === 'client') {
           localStorage.removeItem('client_token');
+        } else if (role === 'team') {
+          localStorage.removeItem('team_token');
         }
         return false;
       }
@@ -146,7 +174,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('client_token');
         setUser(null);
         navigate('/clients/login');
-      } 
+      } else if (userRole === 'team') {
+        const res = await teamsLogout();
+        console.log('teamsLogout response:', res);
+        localStorage.removeItem('team_token');
+        setUser(null);
+        navigate('/teams/login');
+      }
     } catch (error) {
       console.error('Logout error:', error);
       if (userRole === 'admin') {
@@ -155,6 +189,9 @@ export const AuthProvider = ({ children }) => {
       } else if (userRole === 'client') {
         localStorage.removeItem('client_token');
         navigate('/clients/login');
+      } else if (userRole === 'team') {
+        localStorage.removeItem('team_token');
+        navigate('/teams/login');
       } else {
         localStorage.clear();
         navigate('/');

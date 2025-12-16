@@ -32,6 +32,8 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
         teamMembers,
     } = useTaskContext();
 
+    console.log("teamMembers in filter:", teamMembers);
+
     // // Apply initial filters on mount
     // useEffect(() => {
     //     if (initialFilters) {

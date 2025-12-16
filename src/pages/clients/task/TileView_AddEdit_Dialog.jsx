@@ -380,7 +380,8 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 size="small"
                                 options={daysOfWeek}
                                 getOptionLabel={(option) => String(option)}
-                                value={repeatData.days || []}
+                                //value={repeatData.days || []}
+                                value={Array.isArray(repeatData.days) ? repeatData.days : []}
                                 onChange={(event, newValue) => {
                                     setRepeatData({ days: newValue });
                                 }}
@@ -406,7 +407,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 size="small"
                                 options={datesOfMonth}
                                 getOptionLabel={(option) => String(option)}
-                                value={repeatData.date || []}
+                                value={Array.isArray(repeatData.date) ? repeatData.date : []}
                                 onChange={(event, newValue) => {
                                     setRepeatData({ date: newValue.sort((a, b) => a - b) });
                                 }}
@@ -455,7 +456,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                     size="small"
                                     options={monthsOfYear}
                                     getOptionLabel={(option) => String(option)}
-                                    value={repeatData.month || []}
+                                    value={Array.isArray(repeatData.month) ? repeatData.month : []}
                                     onChange={(event, newValue) => {
                                         setRepeatData({ ...repeatData, month: newValue });
                                     }}

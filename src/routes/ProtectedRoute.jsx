@@ -49,6 +49,8 @@ const ProtectedRoute = ({
       ? '/admin/login' 
       : requiredRole === 'client'
       ? '/clients/login'
+      : requiredRole === 'team'
+      ? '/teams/login'
       : redirectTo || '/clients/login';
 
     // Redirect to login, preserving the attempted location
@@ -67,6 +69,8 @@ const ProtectedRoute = ({
     // Redirect to their appropriate dashboard
     const dashboardPath = user.role === 'admin' 
       ? '/admin/dashboard' 
+      : user.role === 'team'
+      ? '/teams/dashboard'
       : '/clients/dashboard';
     
     return <Navigate to={dashboardPath} replace />;

@@ -55,9 +55,9 @@ export const useInventoryData = () => {
     }, []);
 
     // Fetch properties
-    const fetchProperties = useCallback(async () => {
+    const fetchProperties = useCallback(async (page = 1) => {
         try {
-            const res = await getClientProperties();
+            const res = await getClientProperties(page);
             setProperties(res.data || []);
             return res.data;
         } catch (err) {

@@ -244,7 +244,11 @@ const Tile_View_Team = () => {
       <Grid container spacing={2}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, width: '100%' }}>
-            <Typography>Loading team members...</Typography>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                <CardSkeleton />
+              </Grid>
+            ))}
           </Box>
         ) : (
           teamData.map((member) => (
@@ -354,20 +358,26 @@ const Tile_View_Team = () => {
 
       {/* Loading indicator for infinite scroll */}
       {isLoadingMore && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3,}}>
-          <CardSkeleton />
-        </Box>
+        <Grid container spacing={2} sx={{ mt: 2 }}>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
+              <CardSkeleton />
+            </Grid>
+          ))}
+        </Grid>
       )}
 
       {/* Intersection observer target */}
       <div ref={observerTarget} style={{ height: '20px' }} />
 
       {/* pagination info */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Page {teamPagination.page} of {teamPagination.totalPages} • Total: {teamPagination.total} members
-        </Typography>
-      </Box>
+      {teamPagination.totalPages > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Page {teamPagination.page} of {teamPagination.totalPages} • Total: {teamPagination.total} members
+          </Typography>
+        </Box>
+      )}
 
       {/* Menu for Edit and Delete */}
       <Menu

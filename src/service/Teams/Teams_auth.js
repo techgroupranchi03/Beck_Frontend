@@ -1,52 +1,52 @@
 import axios from 'axios';
-import BASE_URL from '../../config.js';
+import BASE_URL from '../../config';
 
-const getClientToken = () => {
-    return localStorage.getItem('client_token');
+const getTeamsToken = () => {
+    return localStorage.getItem('teams_token');
 };
 
-export const clientSendOtp = async (credentials) => {
+export const teamsSendOtp = async (credentials) => {
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/auth/login`,
+            `${BASE_URL}/team/auth/login`,
             credentials
         );
         //console.log('send OTP response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Client OTP sending error:', error);
+        console.error('Teams OTP sending error:', error);
         return Promise.reject(error.response?.data || { message: 'OTP sending failed' });
     }
 };
 
-// Client verify OTP API
-export const verfiyOtp = async (credentials) => {
+// Teams verify OTP API
+export const verifyOtp = async (credentials) => {
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/auth/verify-otp`,
+            `${BASE_URL}/team/auth/verify-otp`,
             credentials
         );
-        console.log('Client OTP verification response:', response.data);
+    console.log('Teams OTP verification response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Client OTP verification error:', error);
+        console.error('Teams OTP verification error:', error);
         return Promise.reject(error.response?.data || { message: 'OTP verification failed' });
     }
 };
 
-// client logout API
-export const clientLogout = async () => {
-    const token = getClientToken();
+// Teams logout API
+export const teamsLogout = async () => {
+    const token = getTeamsToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/auth/logout`,
+            `${BASE_URL}/team/auth/logout`,
             {
                 headers: {
                     token: `Bearer ${token}`,
                 },
             }
         );
-        localStorage.removeItem('client_token');
+        localStorage.removeItem('teams_token');
         return response.data;
     } catch (error) {
         return Promise.reject(error.response?.data || { message: 'Logout failed' });

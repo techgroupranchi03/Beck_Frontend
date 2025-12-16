@@ -28,7 +28,7 @@ const InventoryManagement = () => {
     <InventoryContext.Provider value={inventoryData}>
       <Box>
         {/* View Toggle Button */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <ViewToggle />
         </Box>
         

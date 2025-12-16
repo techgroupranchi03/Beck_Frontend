@@ -1,6 +1,5 @@
 import React from "react";
 import {
-    Avatar,
     Box,
     Button,
     Divider,
@@ -22,6 +21,8 @@ export default function ProfileMenu() {
     const { user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
+
+    console.log('ProfileMenu user:', user);
 
     const handleLogout = () => {
         setAnchorEl(null);
@@ -56,33 +57,36 @@ export default function ProfileMenu() {
         return user?.name || user?.username || 'User';
     };
 
-    // Get role label
-    const getRoleLabel = () => {
-        if (user?.role === 'admin') return 'Administrator';
-        if (user?.role === 'client') return 'Client';
-        return 'User';
-    };
 
     return (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 0 }}>
             {/* Theme Toggle Button */}
             <ThemeToggleButton />
 
-            {/* Avatar button to open menu */}
-            <Avatar
-                alt="Admin User"
-                src="/user-avatar.jpg"
+            {/* Profile button to open menu */}
+            <Box
                 onClick={handleMenuOpen}
                 sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '50%',
                     bgcolor: theme.palette.primary.main,
                     color: theme.palette.custom.cream,
                     cursor: "pointer",
                     fontSize: 16,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                        bgcolor: theme.palette.secondary.main,
+                        transform: 'scale(1.05)',
+                    }
                 }}
             >
                 {getInitials()}
-              
-            </Avatar>
+            </Box>
            
 
 
@@ -122,19 +126,23 @@ export default function ProfileMenu() {
                 {/* Profile Header as MenuItem */}
                 <MenuItem>
                     <ListItemIcon>
-                        <Avatar
-                            src="/user-avatar.jpg"
-                            alt="Admin User"
+                        <Box
                             sx={{
                                 mr: 1,
                                 width: 35,
                                 height: 35,
+                                borderRadius: '50%',
                                 bgcolor: theme.palette.secondary.main,
                                 color: theme.palette.custom.cream,
+                                fontSize: 14,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                             }}
                         >
                             {getInitials()}
-                        </Avatar>
+                        </Box>
                     </ListItemIcon>
 
                     <ListItemText
@@ -148,7 +156,7 @@ export default function ProfileMenu() {
                                 variant="body2"
                                 sx={{ fontSize: 13, color: theme.palette.primary.light }}
                             >
-                                {user?.role || "super_admin"}
+                                {user?.teamRole || "super_admin"}
                             </Typography>
                         }
                     />

@@ -18,6 +18,7 @@ import Task_Accordian from './Task_Accordian';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
 import { categories } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
+import ViewToggle from '../../../resuable_components/ViewToggle';
 
 const All_Inventory = () => {
   const theme = useTheme();
@@ -588,9 +589,9 @@ const All_Inventory = () => {
       <Container
         maxWidth={false}
         sx={{
-          mt: 2,
+          mt: -2,
           mb: 2,
-          px: { xs: 1, sm: 2, md: 3 },
+          px: { xs: 1, sm: 2, md: 2 },
 
         }}>
         <Box
@@ -797,17 +798,17 @@ const All_Inventory = () => {
           )}
           renderTopToolbarCustomActions={({ table }) => {
             return (
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <Button
                   variant="contained"
                   disableElevation
-                  size='small'
                   onClick={() => {
                     table.setCreatingRow(true);
                   }}
-                  startIcon={<Inventory2Rounded fontSize='large' />}
+                  startIcon={<Inventory2Rounded/>}
                   sx={{
-                    fontSize: '1rem',
+                    paddingLeft: 2,
+                    height: 40,
                     bgcolor: palette.secondary.main,
                     "&:hover": { bgcolor: palette.primary.main },
                   }}
@@ -816,6 +817,24 @@ const All_Inventory = () => {
                 </Button>
               </Box>
             );
+          }}
+          muiTopToolbarProps={{
+            sx: {
+              '& .MuiBox-root': {
+                padding: 0,
+                paddingLeft: 0.5,
+              },
+              '& .MuiIconButton-root': {
+                padding: '8px',
+              },
+            }
+          }}
+          muiSearchTextFieldProps={{
+            sx: {
+              '& .MuiInputBase-root': {
+                height: 40,
+              }
+            }
           }}
           enableColumnFilters={false}
           enableSorting={false}

@@ -6,6 +6,7 @@ import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { TeamStatus } from '../../../constant';
 import { useTeamContext } from './TeamManagement';
+import NavigateToTask from './NavigateToTask'
 
 const AllTeam = () => {
   const theme = useTheme();
@@ -14,6 +15,8 @@ const AllTeam = () => {
   const [openConfirm, setOpenConfirm] = useState(false);
   const [teamMemberToDelete, setTeamMemberToDelete] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
+  const [deleteResponse, setDeleteResponse] = useState(null);
 
   // Get data from context
   const {
@@ -24,6 +27,12 @@ const AllTeam = () => {
     updateTeam,
     deleteTeam
   } = useTeamContext();
+
+  // Navigate Dialog Handlers
+  const handleCloseNavigateDialog = () => {
+    setOpenNavigateDialog(false);
+    setDeleteResponse(null);
+  };
 
 
   // CREATE 
@@ -116,8 +125,13 @@ const AllTeam = () => {
         const res = await deleteTeam(teamMemberToDelete);
         showSnackbar(res.message || "Team member deleted successfully", "success");
       } catch (error) {
-        showSnackbar(error.message || "Failed to delete team member", "error");
-        console.error("Error deleting team member:", error);
+        if (error.actionRequired === 'reassign_tasks') {
+          setDeleteResponse(error);
+          setOpenNavigateDialog(true);
+        } else {
+          showSnackbar(error.message || "Failed to delete team member", "error");
+          console.error("Error deleting team member:", error);
+        }
       }
     }
     setOpenConfirm(false);
@@ -384,6 +398,12 @@ const AllTeam = () => {
           onDelete={handleDelete}
           title="Delete Team Member"
           message="Are you sure you want to delete this team member? This action cannot be undone."
+        />
+
+        <NavigateToTask
+          open={openNavigateDialog}
+          onClose={handleCloseNavigateDialog}
+          deleteResponse={deleteResponse}
         />
       </Container>
     </React.Fragment>

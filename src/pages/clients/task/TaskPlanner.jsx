@@ -377,9 +377,11 @@ const TaskPlanner = () => {
                 },
             },
             {
-                accessorKey: 'assigned_to',
+                id: 'assigned_to',
+                accessorKey:  teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
                 header: 'Assigned To',
                 size: 150,
+                enableEditing: teamMembers && teamMembers.length > 0,
                 editVariant: 'select',
                 editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
                 muiEditTextFieldProps: {
@@ -404,6 +406,11 @@ const TaskPlanner = () => {
                         })
                 },
                 Cell: ({ row }) => {
+                    // if teamMembers is empty, show assigned_to_name  directly
+                    if (!teamMembers || teamMembers.length === 0) {
+                        return row.original.assigned_to_name || '-';
+                    }
+                    // Otherwise, find the member name from teamMembers
                     const member = teamMembers.find(m => m.id === row.original.assigned_to);
                     return member ? member.name : '-';
                 }
@@ -530,10 +537,10 @@ const TaskPlanner = () => {
                         isLoading: loading,
                     }}
                     editDisplayMode="row"
+                    createDisplayMode="row"
                     enableEditing
                     enableRowActions
                     positionActionsColumn="last"
-                    createDisplayMode="row"
 
                     displayColumnDefOptions={{
                         'mrt-row-actions': {

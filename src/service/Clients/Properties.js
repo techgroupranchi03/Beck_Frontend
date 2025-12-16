@@ -7,6 +7,7 @@ const getClientToken = () => {
 
 // client/properties  method "GET" API
 export const getClientProperties = async (page) => {
+    console.log("Fetching client properties, page:", page);
     const token = getClientToken();
     try {
         const response = await axios.get(
@@ -17,7 +18,7 @@ export const getClientProperties = async (page) => {
                 },
             }
         );
-        //console.log('Client properties response:', response.data);
+        console.log('Client properties response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client properties fetching error:', error);

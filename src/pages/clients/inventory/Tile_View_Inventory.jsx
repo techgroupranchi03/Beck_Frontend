@@ -27,6 +27,7 @@ import {
     Avatar,
     Select,
     Chip,
+    Icon,
 } from '@mui/material';
 import {
     Clear,
@@ -54,7 +55,9 @@ import {
     ScheduleOutlined,
     Alarm,
     Person,
-    CalendarMonthOutlined
+    CalendarMonthOutlined,
+    Camera,
+    CameraAltOutlined
 } from '@mui/icons-material';
 import InventoryFilter from './InventoryFilter';
 import { useInventoryContext } from './InventoryManagement';
@@ -65,6 +68,8 @@ import { formatDate } from '../../../utils/dateFormat';
 import ViewMoreText from '../../../resuable_components/ViewMore';
 import CardSkeleton from '../../../resuable_components/CardSkeleton';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
+import IconLabel from '../../../resuable_components/IconLabel';
+import ViewToggle from '../../../resuable_components/ViewToggle';
 
 const Tile_View_Inventory = () => {
     const theme = useTheme();
@@ -87,9 +92,9 @@ const Tile_View_Inventory = () => {
         const savedMode = localStorage.getItem('inventoryViewMode');
         return savedMode ? savedMode : 'taskPlanner';
     });
-    
+
     const observerTarget = useRef(null);
-    
+
 
 
     // get Data from context 
@@ -167,7 +172,7 @@ const Tile_View_Inventory = () => {
 
     const handleSearch = async (text) => {
         setSearchText(text);
-        
+
         try {
             await fetchInventoryItems(filters, text);
         } catch (error) {
@@ -260,6 +265,8 @@ const Tile_View_Inventory = () => {
                     >
                         {isSearchVisible ? <SearchOff /> : <Search />}
                     </IconButton>
+
+                    {/* <ViewToggle /> */}
                 </Stack>
             </Box>
 
@@ -280,7 +287,7 @@ const Tile_View_Inventory = () => {
                         ),
                         sx: { paddingRight: 0 },
                     }}
-                    sx={{ mb: 2 }} 
+                    sx={{ mb: 2 }}
                 />
             )}
 
@@ -291,11 +298,14 @@ const Tile_View_Inventory = () => {
                     </Typography>
                 </Box>
             )}
+
             <Grid container spacing={2}>
                 {loading ? (
-                    <Box width="100%" textAlign="center" py={4}>
-                        <Typography>Loading inventory...</Typography>
-                    </Box>
+                    Array.from({ length: 6 }).map((_, index) => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                            <CardSkeleton />
+                        </Grid>
+                    ))  
                 ) : (inventoryData.map((item) => (
                     <Grid
                         size={{ xs: 12, sm: 6, md: 4 }}
@@ -468,14 +478,15 @@ const Tile_View_Inventory = () => {
                                                     <ListItem
                                                         key={task.id}
                                                         alignItems="flex-start"
-
+                                                   
                                                         sx={{
                                                             position: 'relative',
                                                             border: `1px solid ${palette.primary.light}`,
                                                             borderRadius: 2,
                                                             mb: 1,
                                                             bgcolor: palette.background.default,
-
+                                                            paddingLeft: 1,
+                                                             
                                                         }}
                                                     >
                                                         <IconButton
@@ -486,8 +497,11 @@ const Tile_View_Inventory = () => {
                                                             <Edit fontSize="small" />
                                                         </IconButton>
                                                         {/* Avatar */}
-                                                        <ListItemAvatar>
-                                                            <Avatar sx={{ bgcolor: palette.secondary.main, width: 35, height: 35 }}>
+                                                        <ListItemAvatar sx={{ minWidth: 35 }}>
+                                                            <Avatar
+                                                            
+                                                                sx={{ bgcolor: palette.secondary.main, width: 30, height: 30 }}
+                                                            >
                                                                 <ScheduleOutlined fontSize="small" />
                                                             </Avatar>
                                                         </ListItemAvatar>
@@ -507,46 +521,26 @@ const Tile_View_Inventory = () => {
 
                                                                     {/* Chips below the description */}
                                                                     <Stack direction="row" gap={1} flexWrap="wrap" mb={1}>
-
-                                                                        <Chip
+                                                                        <IconLabel
+                                                                            icon={Alarm}
                                                                             label={task.schedule_type}
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            avatar={<Alarm fontSize="small" />}
-                                                                            sx={{ borderRadius: 1 }}
                                                                         />
-                                                                        <Chip
+                                                                        <IconLabel
+                                                                            icon={Person}
                                                                             label={task.assigned_to_name}
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            avatar={<Person fontSize="small" />}
-                                                                            sx={{ borderRadius: 1 }}
                                                                         />
-                                                                        <Chip
+                                                                        <IconLabel
+                                                                            icon={Assignment}
                                                                             label={task.task_type}
-                                                                            size="small"
-                                                                            variant="outlined"
-                                                                            avatar={<Assignment fontSize="small" />}
-                                                                            sx={{
-
-                                                                                borderRadius: 1,
-
-                                                                            }}
                                                                         />
-
-                                                                        <Chip
+                                                                        <IconLabel
+                                                                            icon={CalendarMonthOutlined}
                                                                             label={formatDate(task.start_date)}
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            avatar={<CalendarMonthOutlined fontSize="small" />}
-                                                                            sx={{ borderRadius: 1 }}
                                                                         />
                                                                         {!!task.is_photo_required && (
-                                                                            <Chip
-                                                                                label="📷 Photo Required "
-                                                                                variant="outlined"
-                                                                                size="small"
-                                                                                sx={{ borderRadius: 1 }}
+                                                                            <IconLabel
+                                                                                icon={CameraAltOutlined}
+                                                                                label="Photo Required"
                                                                             />
                                                                         )}
                                                                     </Stack>
@@ -584,6 +578,7 @@ const Tile_View_Inventory = () => {
                                                             mb: 1,
                                                             position: 'relative',
                                                             bgcolor: palette.background.default,
+                                                            paddingLeft: 0,
 
                                                         }}
                                                     >
@@ -596,7 +591,7 @@ const Tile_View_Inventory = () => {
                                                             <Edit fontSize="small" />
                                                         </IconButton>
 
-                                                        <ListItemAvatar>
+                                                        <ListItemAvatar sx={{ minWidth: 30 }}>
                                                             <IconButton size="small">
                                                                 {task.status === 'completed' ? (
                                                                     <CheckCircle color="success" />
@@ -633,48 +628,23 @@ const Tile_View_Inventory = () => {
                                                                         py: 0.5,
                                                                     }}
                                                                 />
-                                                                <Chip
+                                                                <IconLabel
+                                                                    icon={Assignment}
                                                                     label={task.task_type}
-                                                                    size="small"
-                                                                    variant='outlined'
-
-                                                                    avatar={<Assignment fontSize='small' />}
-                                                                    sx={{
-                                                                        borderRadius: 1,
-                                                                        textTransform: "capitalize",
-                                                                    }}
                                                                 />
-                                                                <Chip
+                                                               <IconLabel
+                                                                    icon={Person}
                                                                     label={task.assigned_to_name}
-                                                                    size="small"
-                                                                    variant='outlined'
-
-                                                                    avatar={<Person fontSize='small' />}
-                                                                    sx={{
-                                                                        textTransform: "capitalize",
-                                                                        borderRadius: 1,
-                                                                    }}
                                                                 />
                                                                 {!!task.is_photo_required && (
-                                                                    <Chip
-                                                                        label="📷 Photo Required "
-                                                                        variant="outlined"
-                                                                        size="small"
-                                                                        sx={{ borderRadius: 1 }}
+                                                                    <IconLabel
+                                                                        icon={CameraAltOutlined}
+                                                                        label="Photo Required"
                                                                     />
                                                                 )}
-                                                                <Chip
+                                                                <IconLabel
+                                                                    icon={CalendarMonthOutlined}
                                                                     label={formatDate(task.scheduled_date)}
-                                                                    size="small"
-                                                                    variant='outlined'
-                                                                    textTransform="capitalize"
-                                                                    avatar={<CalendarMonthOutlined fontSize='small' />}
-                                                                    sx={{
-
-                                                                        textTransform: "capitalize",
-                                                                        borderRadius: 1,
-                                                                        fontSize: '0.75rem',
-                                                                    }}
                                                                 />
                                                             </Stack>
                                                         </Box>
@@ -705,9 +675,13 @@ const Tile_View_Inventory = () => {
 
             {/* Loading indicator for infinite scroll */}
             {isLoadingMore && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                    <CardSkeleton />
-                </Box>
+                <Grid container spacing={2} sx={{ mt: 2 }}>
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
+                            <CardSkeleton />
+                        </Grid>
+                    ))}
+                </Grid>
             )}
 
             {/* Intersection observer target */}

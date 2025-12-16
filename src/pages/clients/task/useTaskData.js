@@ -12,8 +12,11 @@ import {
 import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
 import { getTeamMembers } from '../../../service/Clients/Team';
+import { useAuth } from '../../../context/AuthContext';
+import { createTeamTask, getActiveTasks, getPlannerTasks, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamTask } from '../../../service/Teams/Team_Task';
 
 export const useTaskData = () => {
+    const { user } = useAuth();
     const [taskPlannerData, setTaskPlannerData] = useState([]);
     const [activeTasksData, setActiveTasksData] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -24,6 +27,10 @@ export const useTaskData = () => {
     const [taskPlannerPagination, setTaskPlannerPagination] = useState({});
     const [activeTasksPagination, setActiveTasksPagination] = useState({});
 
+    // check user role
+    const isTeamUser = user?.role === 'team';
+    console.log("Is Team User:", isTeamUser);
+
     // Fetch Task Planner tasks
     const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
@@ -31,7 +38,9 @@ export const useTaskData = () => {
             if (!append) {
                 setLoading(true);
             }
-            const res = await getClientTasks(filters, searchText, page);
+            const res = isTeamUser
+                ? await getPlannerTasks(filters, searchText, page)
+                : await getClientTasks(filters, searchText, page);
             if (append) {
                 setTaskPlannerData((prev) => [...prev, ...(res.data || [])]);
             } else {
@@ -44,7 +53,7 @@ export const useTaskData = () => {
                 total: res.total || 0,
                 totalPages: res.totalPages || 1,
             })
-           // console.log("Fetched Task Planner Data:", res);
+            console.log("Fetched Task Planner Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching task planner data:', err);
@@ -61,7 +70,10 @@ export const useTaskData = () => {
             if (!append) {
                 setLoading(true);
             }
-            const res = await getClientActiveTasks(filters, searchText, page);
+            // const res = await getClientActiveTasks(filters, searchText, page);
+            const res = isTeamUser
+                ? await getActiveTasks(filters, searchText, page)
+                : await getClientActiveTasks(filters, searchText, page);
             if (append) {
                 setActiveTasksData((prev) => [...prev, ...(res.data || [])]);
             } else {
@@ -86,9 +98,9 @@ export const useTaskData = () => {
     }, []);
 
     // Fetch Properties
-    const fetchProperties = useCallback(async () => {
+    const fetchProperties = useCallback(async (page = 1) => {
         try {
-            const res = await getClientProperties();
+            const res = await getClientProperties(page);
             setProperties(res.data || []);
             return res.data;
         } catch (err) {
@@ -101,7 +113,11 @@ export const useTaskData = () => {
     // Fetch Inventory Items
     const fetchInventoryItems = useCallback(async () => {
         try {
-            const res = await getInventoryItems();
+            // const res = await getInventoryItems();
+            const res = isTeamUser
+                ? await getTeamsInventoryItems()
+                : await getInventoryItems();
+            // console.log("Fetched Inventory Items Response:", res);
             setInventoryItems(res.data || []);
             return res.data;
         } catch (err) {
@@ -114,9 +130,13 @@ export const useTaskData = () => {
     // Fetch Team Members
     const fetchTeamMembers = useCallback(async () => {
         try {
-            const res = await getTaskTeamMembers();
-           // console.log("Fetched Team Members Response:", res);
+            // const res = await getTaskTeamMembers();
+            const res = isTeamUser
+                ? await getTeamsTeamMembers()
+                : await getTaskTeamMembers();
+            console.log("Fetched Team Members Response:", res);
             setTeamMembers(res.data || []);
+            
             return res.data;
         } catch (err) {
             console.error('Error fetching team members:', err);
@@ -154,7 +174,10 @@ export const useTaskData = () => {
     // Create new task
     const createTask = async (values) => {
         try {
-            const res = await createClientTask(values);
+            // const res = await createClientTask(values);
+            const res = isTeamUser
+                ? await createTeamTask(values)
+                : await createClientTask(values);
             console.log("Created Task Response:", res);
 
             // Determine if task should go to Task Planner or Active Tasks
@@ -184,7 +207,10 @@ export const useTaskData = () => {
     // Update existing task planner
     const updateTaskPlannerData = async (id, values) => {
         try {
-            const res = await updateTaskPlanner(id, values);
+            //const res = await updateTaskPlanner(id, values);
+            const res = isTeamUser
+                ? await updateTeamTask(id, values)
+                : await updateTaskPlanner(id, values);
 
             // Update in taskPlannerData if it exists there
             setTaskPlannerData((prev) =>
@@ -201,7 +227,10 @@ export const useTaskData = () => {
     // Update active task (task instance)
     const updateActiveTaskData = async (id, values) => {
         try {
-            const res = await updateActiveTask(id, values);
+            // const res = await updateActiveTask(id, values);
+            const res = isTeamUser
+                ? await updateTeamTask(id, values)
+                : await updateActiveTask(id, values);
 
             // Update in activeTasksData
             setActiveTasksData((prev) =>

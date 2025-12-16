@@ -21,7 +21,10 @@ import {
     ListItemText,
     TextField,
     Select,
-    CircularProgress
+    CircularProgress,
+    Switch,
+    FormControlLabel,
+    Icon
 } from "@mui/material";
 import {
     Alarm,
@@ -46,10 +49,13 @@ import TileView_AddEdit_Dialog from "./TileView_AddEdit_Dialog.jsx";
 import { useTaskContext } from "./TaskManagement.jsx";
 import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { formatDate } from "../../../utils/dateFormat.js";
-import { useLocation } from "react-router-dom";
+import { Form, useLocation } from "react-router-dom";
 import CardSkeleton from "../../../resuable_components/CardSkeleton.jsx";
+import { useAuth } from "../../../context/AuthContext.jsx";
+import IconLabel from "../../../resuable_components/IconLabel.jsx";
 
 export const Tile_View_task = () => {
+    const { user } = useAuth();
     const location = useLocation();
     const [viewMode, setViewMode] = useState(() => {
         const savedViewMode = localStorage.getItem('taskViewMode');
@@ -72,10 +78,12 @@ export const Tile_View_task = () => {
     console.log("filters:", filters);
 
     console.log("selectedTask:", selectedTask);
-
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
+
+    // get login user id 
+    const isMytaskId = user?.id;
 
     // get Data from context
     const {
@@ -336,8 +344,14 @@ export const Tile_View_task = () => {
 
 
             <Divider sx={{ my: 2 }} />
-            {viewMode === "taskPlanner" && (
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2, mr: 1 }}>
+
+            <Box sx={{
+                display: "flex",
+                justifyContent: viewMode === "taskPlanner" ? "space-between" : "flex-end",
+                mb: 2
+            }}
+            >
+                {viewMode === "taskPlanner" && (
                     <Select
                         value={viewMode}
                         onChange={handleChange}
@@ -356,8 +370,45 @@ export const Tile_View_task = () => {
                         <MenuItem value="taskPlanner">Task Planner</MenuItem>
                         <MenuItem value="activeTasks">Active Tasks</MenuItem>
                     </Select>
-                </Box>
-            )}
+                )}
+
+                {/* add swith button to my tasks call appplyt fillter and send id  */}
+
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={isMytaskId && filters.assigned_to === isMytaskId}
+                            onChange={async (e) => {
+                                const newFilters = { ...filters };
+                                if (e.target.checked) {
+                                    newFilters.assigned_to = isMytaskId;
+                                } else {
+                                    newFilters.assigned_to = null;
+                                }
+                                setFilters(newFilters);
+                                setCurrentPage(1);
+                                try {
+                                    if (viewMode === "taskPlanner") {
+                                        await fetchTaskPlannerData(newFilters, searchText);
+                                    } else {
+                                        await fetchActiveTasksData(newFilters, searchText);
+                                    }
+                                    showSnackbar("Filter applied successfully", "success");
+                                } catch (error) {
+                                    console.error("Error applying filters:", error);
+                                    showSnackbar("Failed to apply filters", "error");
+                                }
+                            }}
+                            color="primary"
+                            inputProps={{ 'aria-label': 'My Tasks Only' }}
+                        />
+                    }
+                    label={"My Tasks Only"}
+                />
+            </Box>
+
+
+
 
 
 
@@ -371,9 +422,11 @@ export const Tile_View_task = () => {
             )}
             <Grid container spacing={2}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                        <Typography>Loading tasks...</Typography>
-                    </Box>
+                    Array.from({ length: 6 }).map((_, index) => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                            <CardSkeleton />
+                        </Grid>
+                    ))
                 ) : (
                     tasks.map((task) => (
                         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={task.id}>
@@ -461,63 +514,47 @@ export const Tile_View_task = () => {
                                         )}
                                     </Stack>
                                     <Stack direction="row" flexWrap="wrap" gap={1}>
-                                        <Chip
-                                            label={task.inventory_name}
-                                            variant="outlined"
-                                            size="small"
-                                            avatar={<InventoryOutlined fontSize="small" />}
-                                            sx={{ fontWeight: 600, borderRadius: 1 }}
-                                        />
+
                                         {task.schedule_type && (
-                                            <Chip
-                                                label={task.schedule_type}
-                                                variant="outlined"
-                                                size="small"
-                                                avatar={<Alarm fontSize="small" />}
-                                                sx={{ fontWeight: 600, borderRadius: 1 }}
+                                            <IconLabel
+                                                icon={Alarm}
+                                                label={task.schedule_type.replace('_', ' ')}
                                             />
                                         )}
-
-                                        <Chip
-                                            label={task.assigned_to_name || '-'}
-                                            variant="outlined"
-                                            size="small"
-                                            avatar={<Person size="small" />}
-                                            sx={{ fontWeight: 600, borderRadius: 1 }}
-                                        />
-                                        {/* //schedule date */}
                                         {(task.scheduled_date || task.start_date) && (
-                                            <Chip
+                                            <IconLabel
+                                                icon={CalendarMonth}
                                                 label={formatDate(task.scheduled_date || task.start_date)}
-                                                variant="outlined"
-                                                size="small"
-                                                avatar={<CalendarMonth fontSize="small" />}
-                                                sx={{ fontWeight: 600, borderRadius: 1 }}
                                             />
+
                                         )}
 
+                                        <IconLabel
+                                            icon={Person}
+                                            label={task.assigned_to_name || '-'}
+                                        />
 
 
                                         {task.scheduled_day && (
-                                            <Chip
+                                            <IconLabel
+                                                icon={CalendarMonth}
                                                 label={task.scheduled_day}
-                                                variant="outlined"
-                                                size="small"
-                                                avatar={<CalendarMonth fontSize="medium" />}
-                                                sx={{ fontWeight: 600, borderRadius: 1 }}
                                             />
                                         )}
 
                                         {!!task.is_photo_required && (
-                                            <Chip
-                                                label="📷 Photo Required "
-                                                variant="outlined"
-                                                size="small"
-                                                sx={{ fontWeight: 600, borderRadius: 1 }}
+                                            <IconLabel
+                                                icon={PhotoCameraBackOutlined}
+                                                label="Photo Required"
+                                            />
+                                        )}
+                                        {task.inventory_name && (
+                                            <IconLabel
+                                                icon={InventoryOutlined}
+                                                label={task.inventory_name}
                                             />
                                         )}
                                     </Stack>
-
                                     {/* Assigned To */}
 
 
@@ -556,11 +593,16 @@ export const Tile_View_task = () => {
                 )}
             </Grid>
 
-                   {/* Loading indicator for infinite scroll */}
+            {/* Loading indicator for infinite scroll */}
             {isLoadingMore && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                    <CardSkeleton />
-                </Box>
+                // use 6 skeleton cards to indicate loading more
+                <Grid container spacing={2} sx={{ mt: 2 }}>
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
+                            <CardSkeleton />
+                        </Grid>
+                    ))}
+                </Grid>
             )}
 
             {/* Observer target for infinite scroll */}

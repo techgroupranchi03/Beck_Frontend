@@ -6,13 +6,20 @@ import {
     deleteTeamMember,
     getRoles
 } from '../../../service/Clients/Team';
+import { useAuth } from '../../../context/AuthContext';
+import { getTeamsTeamMembers } from '../../../service/Teams/Team_Task';
+import { createTeamsTeamMember, deleteTeamsTeamMember, getTeamsRoles, updateTeamsTeamMember } from '../../../service/Teams/TeamMembers';
 
 export const useTeamData = () => {
+    const { user } = useAuth();
     const [teamData, setTeamData] = useState([]);
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [teamPagination, setTeamPagination] = useState({});
+
+    // check user role 
+    const isTeamUser = user?.role === 'team';
 
     // Fetch team members
     const fetchTeamMembers = useCallback(async (searchText = "", page = 1, append = false) => {
@@ -20,7 +27,10 @@ export const useTeamData = () => {
             if (!append) {
                 setLoading(true);
             }
-            const res = await getTeamMembers(searchText , page);
+            // const res = await getTeamMembers(searchText , page);
+            const res = isTeamUser
+                ? await getTeamsTeamMembers(searchText, page)
+                : await getTeamMembers(searchText, page);
             if (append) {
                 setTeamData((prev) => [...prev, ...(res.data || [])]);
             } else {
@@ -49,8 +59,12 @@ export const useTeamData = () => {
     // Fetch roles
     const fetchRoles = useCallback(async () => {
         try {
-            const res = await getRoles();
+            // const res = await getRoles();
+            const res = isTeamUser
+                ? await getTeamsRoles()
+                : await getRoles();
             setRoles(res.data || []);
+            console.log("Fetched Roles:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching roles:', err);
@@ -85,7 +99,10 @@ export const useTeamData = () => {
     // Create new team member
     const createTeam = async (values) => {
         try {
-            const res = await createTeamMember(values);
+            //const res = await createTeamMember(values);
+            const res = isTeamUser
+                ? await createTeamsTeamMember(values)
+                : await createTeamMember(values);
             if (res.data) {
                 setTeamData((prev) => [res.data, ...prev]);
             }
@@ -99,7 +116,10 @@ export const useTeamData = () => {
     // Update existing team member
     const updateTeam = async (id, values) => {
         try {
-            const res = await updateTeamMember(id, values);
+            // const res = await updateTeamMember(id, values);
+            const res = isTeamUser
+                ? await updateTeamsTeamMember(id, values)
+                : await updateTeamMember(id, values);
             if (res.data) {
                 setTeamData((prev) =>
                     prev.map((member) => (member.id === id ? res.data : member))
@@ -115,7 +135,10 @@ export const useTeamData = () => {
     // Delete team member
     const deleteTeam = async (id) => {
         try {
-            const res = await deleteTeamMember(id);
+            //const res = await deleteTeamMember(id);
+            const res = isTeamUser
+                ? await deleteTeamsTeamMember(id)
+                : await deleteTeamMember(id);
             setTeamData((prev) => prev.filter((member) => member.id !== id));
             return res;
         } catch (err) {

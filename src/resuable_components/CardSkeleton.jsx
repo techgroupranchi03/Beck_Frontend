@@ -1,84 +1,61 @@
 import React from 'react';
-import {
-  Skeleton,
-  Box,
-  Stack,
-  Chip,
-  Typography,
-  Divider,
-} from '@mui/material';
-import {
-  Assignment as AssignmentIcon,
-  Person as PersonIcon,
-  CalendarToday as CalendarTodayIcon,
-  PhotoCamera as PhotoCameraIcon,
-} from '@mui/icons-material';
 
-const CardSkeleton = () => {
+export default function CardSkeleton() {
   return (
-    <Box
-      sx={{
-        bgcolor: 'background.paper',
-        borderRadius: 2,
-        boxShadow: 1,
-        p: 2,
-        width: '100%',
-        maxWidth: 480,
-        mx: 'auto',
-      }}
-    >
-      {/* Header - Title + Menu */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Skeleton variant="text" width="40%" height={40} />
-        <Skeleton variant="circular" width={32} height={32} />
-      </Stack>
+    <div className="max-w-2xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        {/* Header with title and menu */}
+        <div className="flex justify-between items-start mb-2">
+          <div className="skeleton-wave h-8 w-64 rounded"></div>
+          <div className="skeleton-wave h-6 w-6 rounded"></div>
+        </div>
 
-      {/* Subtitle */}
-      <Skeleton variant="text" width="60%" sx={{ mt: 0.5 }} />
+        {/* Description */}
+        <div className="skeleton-wave h-4 w-full rounded mb-2"></div>
+        <div className="skeleton-wave h-4 w-3/4 rounded mb-4"></div>
 
-      <Stack direction="row" spacing={2} mt={2}>
-        <Chip
-          label={<Skeleton width={80} />}
-          color="default"
-          sx={{ bgcolor: 'grey.300' }}
-        />
-        <Chip
-          label={<Skeleton width={60} />}
-          color="primary"
-         
-        />
-      </Stack>
+        {/* Maintenance Badge */}
+        <div className="mb-4">
+          <div className="skeleton-wave h-8 w-32 rounded-full"></div>
+        </div>
 
-      {/* Icons row */}
-      <Stack direction="row" spacing={4} alignItems="center" mt={3}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Skeleton variant="circular" width={24} height={24} />
-          <Skeleton variant="text" width={80} />
-        </Stack>
+        {/* Info chips row 1 */}
+        <div className="flex flex-wrap gap-2 mb-2">
+          <div className="skeleton-wave h-8 w-24 rounded-full"></div>
+          <div className="skeleton-wave h-8 w-32 rounded-full"></div>
+          <div className="skeleton-wave h-8 w-36 rounded-full"></div>
+        </div>
 
-        <Stack direction="row" spacing={1} alignItems="center">
-          <PersonIcon sx={{ color: 'transparent' }} />
-          <Skeleton variant="text" width={60} />
-        </Stack>
+        {/* Info chips row 2 */}
+        <div className="flex flex-wrap gap-2">
+          <div className="skeleton-wave h-8 w-40 rounded-full"></div>
+          <div className="skeleton-wave h-8 w-48 rounded-full"></div>
+        </div>
+      </div>
 
-        <Stack direction="row" spacing={1} alignItems="center">
-          <CalendarTodayIcon sx={{ color: 'transparent' }} />
-          <Skeleton variant="text" width={100} />
-        </Stack>
-      </Stack>
+      <style>{`
+        .skeleton-wave {
+          background: linear-gradient(
+            90deg,
+            #f0f0f0 0%,
+            #f0f0f0 40%,
+            #e0e0e0 50%,
+            #f0f0f0 60%,
+            #f0f0f0 100%
+          );
+          background-size: 200% 100%;
+          animation: wave 1.5s ease-in-out infinite;
+        }
 
-      {/* Photo required badge */}
-      <Stack direction="row" alignItems="center" spacing={1} mt={2}>
-        <PhotoCameraIcon sx={{ color: 'grey.500' }} />
-        <Skeleton variant="text" width={120} />
-      </Stack>
-
-      <Divider sx={{ my: 2 }} />
-
-      {/* Optional extra line at the bottom */}
-      <Skeleton variant="text" width="30%" />
-    </Box>
+        @keyframes wave {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+      `}</style>
+    </div>
   );
-};
-
-export default CardSkeleton;
+}

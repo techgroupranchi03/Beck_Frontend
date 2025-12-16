@@ -22,6 +22,9 @@ const ActiveTask = () => {
     updateActiveTaskData
   } = useTaskContext();
 
+  console.log("Active Tasks Data:", activeTasksData);
+  console.log("teamMembers in ActiveTask:", teamMembers);
+
   const [validationErrors, setValidationErrors] = useState({});
 
   const columns = useMemo(() => [
@@ -164,12 +167,48 @@ const ActiveTask = () => {
         )
       },
     },
+    //   {
+    //   accessorKey: 'assigned_to',
+    //   header: 'Assigned To',
+    //   size: 150,
+    //   editVariant: 'select',
+    //   editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
+    //   muiEditTextFieldProps: {
+    //     select: true,
+    //     required: true,
+    //     error: !!validationErrors?.assigned_to,
+    //     helperText: validationErrors?.assigned_to,
+    //     SelectProps: {
+    //       displayEmpty: true,
+    //       renderValue: (selected) => {
+    //         if (!selected) {
+    //           return <em>Select Team Member</em>;
+    //         }
+    //         const member = teamMembers.find(m => m.id === selected);
+    //         return member ? member.name : selected;
+    //       },
+    //     },
+    //     onFocus: () =>
+    //       setValidationErrors({
+    //         ...validationErrors,
+    //         assigned_to: undefined,
+    //       }),
+    //   },
+    //   Cell: ({ row }) => {
+    //     const member = teamMembers.find(m => m.id === row.original.assigned_to);
+    //     return member ? member.name : '-';
+    //   }
+    // },
     {
-      accessorKey: 'assigned_to',
+      id: 'assigned_to',
+      accessorKey: teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
       header: 'Assigned To',
       size: 150,
+      enableEditing: teamMembers && teamMembers.length > 0,
       editVariant: 'select',
-      editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
+      editSelectOptions: teamMembers && teamMembers.length > 0
+        ? teamMembers.map(member => ({ value: member.id, label: member.name }))
+        : [],
       muiEditTextFieldProps: {
         select: true,
         required: true,
@@ -192,8 +231,13 @@ const ActiveTask = () => {
           }),
       },
       Cell: ({ row }) => {
+        // If teamMembers is empty, show the assigned_to_name directly
+        if (!teamMembers || teamMembers.length === 0) {
+          return row.original.assigned_to_name || '-';
+        }
+        // Otherwise, find the member from teamMembers
         const member = teamMembers.find(m => m.id === row.original.assigned_to);
-        return member ? member.name : '-';
+        return member ? member.name : (row.original.assigned_to_name || '-');
       }
     },
     {
@@ -347,7 +391,6 @@ const ActiveTask = () => {
           editDisplayMode="row"
           createDisplayMode="row"
           enableEditing={true}
-          enableRowActions
           positionActionsColumn="last"
           displayColumnDefOptions={{
             'mrt-row-actions': {

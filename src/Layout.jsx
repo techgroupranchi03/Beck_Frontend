@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { People, TrendingUp, Menu as MenuIcon, Business, Inventory, Assignment } from "@mui/icons-material";
 import ProfileMenu from "./resuable_components/profile_menu.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 
 const getPageTitle = (pathname) => {
   const path = pathname.split(/[?#]/)[0];
@@ -26,8 +27,13 @@ const getPageTitle = (pathname) => {
     if (path.includes("property")) return "Property Management";
     if (path.includes("inventory")) return "Inventory Management";
     if (path.includes("team")) return "Team Management";
-    if(path.includes("task")) return "Task Management";
+    if (path.includes("task")) return "Task Management";
     return "Client Portal";
+  }
+  if (path.startsWith("/teams")) {
+    if (path.includes("dashboard")) return "Team Dashboard";
+    if (path.includes("task")) return "Task Management";
+    return "Team Portal";
   }
   return "Beck Holiday Homes";
 };
@@ -35,7 +41,9 @@ const getPageTitle = (pathname) => {
 export default function Layout({ role }) {
   const theme = useTheme();
   const location = useLocation();
+  const { user } = useAuth();
   const pageTitle = getPageTitle(location.pathname);
+
 
   // Responsive breakpoints
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
@@ -44,6 +52,8 @@ export default function Layout({ role }) {
 
   // Drawer state - closed on mobile by default, open on desktop
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+
+  console.log('Layout user:', user);
 
   // Auto-close drawer on mobile when route changes
   useEffect(() => {
@@ -57,10 +67,21 @@ export default function Layout({ role }) {
     const p = location.pathname;
     if (p.startsWith("/admin")) return "admin";
     if (p.startsWith("/clients")) return "client";
+    if (p.startsWith("/teams")) return "team";
     return "guest";
   }, [role, location.pathname]);
 
-  const basePath = resolvedRole === "admin" ? "/admin" : resolvedRole === "client" ? "/clients" : "";
+  const basePath = resolvedRole === "admin" ? "/admin" : resolvedRole === "client" ? "/clients" : resolvedRole === "team" ? "/teams" : "";
+  // has permissions for nav items - checks if at least one operation is true
+  const hasPermission = (module) => {
+    if (!user?.permissions || !Object.prototype.hasOwnProperty.call(user.permissions, module)) {
+      return false;
+    }
+    const modulePermissions = user.permissions[module];
+    // Check if at least one operation (create, read, update, delete) is true
+    return modulePermissions.create || modulePermissions.read || modulePermissions.update || modulePermissions.delete;
+  };
+  console.log('User permissions:', user?.permissions);
 
   const navItems = useMemo(() => {
     if (resolvedRole === "admin") {
@@ -79,6 +100,35 @@ export default function Layout({ role }) {
         // {to: `${basePath}/all-task`, icon: <Assignment />, label: "All Tasks" },
       ];
     }
+
+    if (resolvedRole === "team") {
+      return [
+        { to: `${basePath}/dashboard`, icon: <TrendingUp />, label: "Dashboard" },
+        hasPermission("property") && {
+          to: `${basePath}/property-management`,
+          icon: <Business />,
+          label: "Properties",
+        },
+        hasPermission("task") && {
+          to: `${basePath}/task-management`,
+          icon: <Assignment />,
+          label: "Tasks",
+        },
+        hasPermission("team") && {
+          to: `${basePath}/team-management`,
+          icon: <People />,
+          label: "Team",
+        },
+        // hasPermission("inventory") && {
+        //   to: `${basePath}/inventory-management`,
+        //   icon: <Inventory />,
+        //   label: "Inventory",
+        // },
+
+
+      ].filter(Boolean);
+    }
+
     return [];
   }, [resolvedRole, basePath]);
 
