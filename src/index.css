@@ -4,6 +4,7 @@
 
 html,
 body,
+
 #root {
     height: 100%;
     margin: 0;
@@ -25,6 +26,6 @@ header {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
-h1 {
+/* h1 {
     margin: 0 0 .5rem 0;
-}
+} */

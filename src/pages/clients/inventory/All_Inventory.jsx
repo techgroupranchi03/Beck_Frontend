@@ -128,18 +128,19 @@ const All_Inventory = () => {
       formData.append('quantity', values.quantity);
       formData.append('unit', values.unit);
       formData.append('create_tasks', create_tasks);
-      formData.append('locaed_at', values.locaed_at);
+      formData.append('located_at', values.located_at);
       formData.append('lower_limit', values.lower_limit);
 
       if (create_tasks && task) {
         formData.append('task_title', task.title);
         formData.append('task_description', task.description);
         formData.append('task_assigned_to', task.assigned_to);
-        formData.append('task_schedule_type', task.schedule_type);
+        formData.append('task_schedule_type', task.schedule_type || 'one_time');
         formData.append('task_is_photo_required', task.is_photo_required);
         formData.append('task_task_status', task.status);
         formData.append('task_task_type', task.task_type);
-        formData.append('task_start_date', task.start_date);
+        // Use scheduled_date if available (from active task), otherwise use start_date (from task planner)
+        formData.append('task_start_date', task.scheduled_date || task.start_date || ''); 
 
         // Parse repeat_on and send appropriate fields based on schedule_type
         if (['weekly', 'monthly', 'yearly'].includes(task.schedule_type) && task.repeat_on) {
@@ -170,8 +171,13 @@ const All_Inventory = () => {
         formData.append('inventory_image', imageFile);
       }
 
+      // console the formData entries for debugging
+      for (let pair of formData.entries()) {
+        console.log(pair[0]+ ': ' + pair[1]);
+      }
+
       const res = await createInventory(formData);
-      showSnackbar(res.message || "Inventory item created successfully", "success");
+      showSnackbar(res.message, "success");
       table.setCreatingRow(null);
       clearImageState();
       setTask(null);
@@ -187,7 +193,7 @@ const All_Inventory = () => {
         });
         setValidationErrors(apiErrors);
       }
-      showSnackbar(error.message || "Failed to create inventory item", "error");
+      showSnackbar(error.message, "error");
       console.error("Error creating inventory item:", error);
     }
   };
@@ -209,7 +215,8 @@ const All_Inventory = () => {
         formData.append('inventory_image', imageFile);
       }
       const res = await updateInventory(row.original.id, formData);
-      showSnackbar(res.message || "Inventory item updated successfully", "success");
+      console.log("Update response:", res);
+      showSnackbar(res.message , "success");
       table.setEditingRow(null);
       clearImageState();
       setValidationErrors({});
@@ -223,7 +230,7 @@ const All_Inventory = () => {
         });
         setValidationErrors(apiErrors);
       }
-      showSnackbar(error.message || "Failed to update inventory item", "error");
+      showSnackbar(error.message, "error");
       console.error("Error updating inventory item:", error);
     }
   };
@@ -243,9 +250,9 @@ const All_Inventory = () => {
     if (inventoryToDelete != null) {
       try {
         const res = await deleteInventory(inventoryToDelete);
-        showSnackbar(res.message || "Inventory item deleted successfully", "success");
+        showSnackbar(res.message, "success");
       } catch (error) {
-        showSnackbar(error.message || "Failed to delete inventory item", "error");
+        showSnackbar(error.message, "error");
         console.error("Error deleting inventory item:", error);
       }
     }
@@ -262,7 +269,7 @@ const All_Inventory = () => {
         enableEditing: false,
       },
       {
-        accessorKey: 'image_url',
+        accessorKey: 'inventory_image_url',
         header: 'Image',
         size: 150,
         enableEditing: false,
@@ -376,7 +383,7 @@ const All_Inventory = () => {
         header: 'Category',
         size: 150,
         editVariant: 'select',
-        editSelectOptions: categories,
+        editSelectOptions: categories.map((cat) => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) })),
         muiEditTextFieldProps: {
           select: true,
           required: true,
@@ -388,7 +395,7 @@ const All_Inventory = () => {
               if (!selected) {
                 return <em>Select Category</em>;
               }
-              return selected;
+              return selected.charAt(0).toUpperCase() + selected.slice(1);
             },
           },
           onFocus: () =>
@@ -686,7 +693,7 @@ const All_Inventory = () => {
                             <SaveIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={!hasNameAndCategory ? "Fill name and category first" : "Add Task"}>
+                        <Tooltip title={!hasNameAndCategory ? "Fill name and category first" : "Task Manager"}>
                           <span>
                             <IconButton
                               onClick={() => {
@@ -767,7 +774,7 @@ const All_Inventory = () => {
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title={hasAnyEditingRow ? "Finish editing first" : "Add Task"} placement='top' arrow>
+                <Tooltip title={hasAnyEditingRow ? "Finish editing first" : "Task Manager"} placement='top' arrow>
                   <span>
                     <IconButton
                       onClick={() => row.toggleExpanded()}
@@ -807,13 +814,12 @@ const All_Inventory = () => {
                   }}
                   startIcon={<Inventory2Rounded/>}
                   sx={{
-                    paddingLeft: 2,
-                    height: 40,
-                    bgcolor: palette.secondary.main,
-                    "&:hover": { bgcolor: palette.primary.main },
+                    bgcolor: palette.primary.main,
+                    "&:hover": { bgcolor: palette.secondary.main },
+                    borderRadius: 10,
                   }}
                 >
-                  Add Inventory
+                  Add Inventorys
                 </Button>
               </Box>
             );

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Typography, Button } from "@mui/material";
 
-const ViewMoreText = ({ text, limit = 120 }) => {
+const ViewMoreText = ({ text, limit = 60 }) => {
     const [expanded, setExpanded] = useState(false);
 
     const isLong = text?.length > limit;
@@ -24,7 +24,7 @@ const ViewMoreText = ({ text, limit = 120 }) => {
                         padding: 0,
                         minWidth: 0,
                         textTransform: "none",
-                        fontSize: "14px",
+                        fontSize: "12px",
                         display: "inline-flex",
                         verticalAlign: "baseline",
                         color: "primary.main",

@@ -10,6 +10,7 @@ import {
 import { getClientProperties } from '../../../service/Clients/Properties';
 import {
     createClientTask,
+    createClientActiveTask,
     updateTaskPlanner,
     updateActiveTask
 } from '../../../service/Clients/Task';
@@ -121,6 +122,7 @@ export const useInventoryData = () => {
 
     // Create new inventory item
     const createInventory = async (formData) => {
+        console.log("Creating inventory with data:", formData);
         try {
             const res = await createInventoryItem(formData);
            // console.log('Create response:', res);
@@ -146,11 +148,10 @@ export const useInventoryData = () => {
     const updateInventory = async (id, formData) => {
         try {
             const res = await updateInventoryItem(id, formData);
-            //console.log('Update response:', res);
+            console.log('Update response:', res);
 
             // Handle different response structures
             const updatedItem = res.data?.data || res.data;
-
             if (updatedItem && updatedItem.id) {
                 // Update the item in the list
                 setInventoryData((prev) =>
@@ -160,7 +161,7 @@ export const useInventoryData = () => {
                 await fetchInventoryItems();
             }
 
-            return res.data;
+            return res;
         } catch (err) {
             console.error('Error updating inventory item:', err);
             throw err;
@@ -204,6 +205,22 @@ export const useInventoryData = () => {
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
+            throw err;
+        }
+    };
+
+    // create new active task
+    const createActiveTask = async (values) => {
+        try {
+            const res = await createClientActiveTask(values);
+           // console.log("Created Active Task Response:", res);
+
+            // After creating active task, refresh inventory to get updated task lists
+            await fetchInventoryItems();
+
+            return res;
+        } catch (err) {
+            console.error('Error creating active task:', err);
             throw err;
         }
     };
@@ -266,6 +283,7 @@ export const useInventoryData = () => {
 
         // Task operations
         createTask,
+        createActiveTask,
         updateTaskPlannerData,
         updateActiveTaskData,
 

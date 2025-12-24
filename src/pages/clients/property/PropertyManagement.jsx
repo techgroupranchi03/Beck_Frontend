@@ -81,14 +81,17 @@ const PropertyManagement = () => {
           </Typography>
           <Button
             variant="contained"
+            size="medium"
             disableElevation
             onClick={() => setAddPropertyOpen(true)}
             sx={{
               bgcolor: palette.primary.main,
               "&:hover": { bgcolor: palette.secondary.main },
+              textTransform: "none",
+              borderRadius: 10,
             }}
           >
-            ADD PROPERTY
+            Add Property
           </Button>
         </Stack>
 

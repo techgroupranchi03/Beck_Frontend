@@ -27,8 +27,8 @@ const TaskTabs = () => {
                     onChange={handleChange}
                     sx={{ borderBottom: 1, borderColor: 'divider' }}
                 >
-                    <Tab label="Task Planner" />
-                    <Tab label="Active Tasks" />
+                    <Tab label="Recurring Tasks" />
+                    <Tab label="One Time Tasks" />
                 </Tabs>
             </Box>
 

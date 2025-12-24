@@ -10,23 +10,32 @@ import {
     useTheme,
     CircularProgress,
     IconButton,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemAvatar
+
 } from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack, Person } from "@mui/icons-material";
 import { teamsSendOtp, verifyOtp } from "../../service/Teams/Teams_auth";
+import { postSelectAccount } from "../../service/Teams/SelectAccount";
 
 const Teams_login = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const { login, isAuthenticated } = useAuth();
-    
-    const [step, setStep] = useState(1); 
+    const [accountData, setAccountData] = useState(null);
+    const [accountMessage, setAccountMessage] = useState("");
+
+    const [step, setStep] = useState(1); // 1: phone, 1.5: account selection, 2: OTP
     const [phoneNumber, setPhoneNumber] = useState("");
     const [otp, setOtp] = useState(["", "", "", ""]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
+    
 
     // Refs for OTP input fields
     const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
@@ -66,13 +75,23 @@ const Teams_login = () => {
     const handleSendOTP = async () => {
         setError("");
         setLoading(true);
-        
+
         try {
             const res = await teamsSendOtp({ phone: phoneNumber });
             console.log('send OTP response:', res);
-            // Move to OTP verification step
-            setStep(2);
-            setResendTimer(120); // 120 seconds = 2 minutes
+
+            // Check if multiple accounts exist
+            if (res.data?.accounts && res.data.accounts.length > 1) {
+                // Multiple accounts found, show account selection
+                setAccountData(res.data);
+                setAccountMessage(res.message);
+                setStep(1.5);
+            } else {
+                // Single account or no accounts, move to OTP verification
+                setAccountData(res.data);
+                setStep(2);
+                setResendTimer(120); // 120 seconds = 2 minutes
+            }
         } catch (err) {
             setError(err.message || "Failed to send OTP. Please try again.");
         } finally {
@@ -83,19 +102,19 @@ const Teams_login = () => {
     const handleVerifyOTP = async () => {
         setError("");
         setLoading(true);
-        
+
         try {
             const otpString = otp.join("");
-            
+
             // Call verifyOtp API
-            const response = await verifyOtp({ 
+            const response = await verifyOtp({
                 phone: phoneNumber,
-                otp: otpString 
+                otp: otpString
             });
-            
-            
+
+
             // Extract token from response
-            const token = response.data?.token || response.token; 
+            const token = response.data?.token || response.token;
             if (!token) {
                 setError("Invalid response from server. Token not found.");
                 return;
@@ -119,7 +138,7 @@ const Teams_login = () => {
     const handleOTPChange = (index, value) => {
         // Only allow single digit
         const digit = value.replace(/\D/g, '').slice(-1);
-        
+
         const newOtp = [...otp];
         newOtp[index] = digit;
         setOtp(newOtp);
@@ -136,7 +155,7 @@ const Teams_login = () => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             otpRefs[index - 1].current?.focus();
         }
-        
+
         // Handle Enter key
         if (e.key === 'Enter' && otp.every(digit => digit) && !loading) {
             handleVerifyOTP();
@@ -146,7 +165,7 @@ const Teams_login = () => {
     const handleOTPPaste = (e) => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-        
+
         if (pastedData.length === 4) {
             const newOtp = pastedData.split('');
             setOtp(newOtp);
@@ -156,7 +175,7 @@ const Teams_login = () => {
 
     const handleResendOTP = async () => {
         if (resendTimer > 0) return;
-        
+
         setOtp(["", "", "", ""]);
         setError("");
         await handleSendOTP();
@@ -166,6 +185,30 @@ const Teams_login = () => {
         setStep(1);
         setOtp(["", "", "", ""]);
         setError("");
+    };
+
+    const handleAccountSelection = async (selectedAccount) => {
+        setError("");
+        setLoading(true);
+
+        try {
+            const requestData = {
+                phone: phoneNumber,
+                team_member_id: selectedAccount.id,
+                client_id: selectedAccount.client_id
+            };
+
+            const response = await postSelectAccount(requestData);
+            console.log('Account selection response:', response);
+
+            // Move to OTP verification step
+            setStep(2);
+            setResendTimer(120); // 120 seconds = 2 minutes
+        } catch (err) {
+            setError(err.message || "Failed to select account. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Handle Enter key press for phone input
@@ -197,10 +240,17 @@ const Teams_login = () => {
                     position: "relative",
                 }}
             >
-                {/* Back Button - Only show on OTP step */}
-                {step === 2 && (
+                {/* Back Button - Show on account selection and OTP step */}
+                {(step === 1.5 || step === 2) && (
                     <IconButton
-                        onClick={handleBackToPhone}
+                        onClick={() => {
+                            if (step === 1.5) {
+                                setStep(1);
+                                setError("");
+                            } else {
+                                handleBackToPhone();
+                            }
+                        }}
                         disabled={loading}
                         sx={{
                             position: "absolute",
@@ -214,7 +264,7 @@ const Teams_login = () => {
                 )}
 
                 {/* Logo and App Name */}
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3, mt: step === 2 ? 3 : 0 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3, mt: step !== 1 ? 3 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
                         alt="Beck HolidayHomes Logo"
@@ -231,12 +281,13 @@ const Teams_login = () => {
                         variant="h6"
                         sx={{ color: theme.palette.text.secondary }}
                     >
-                        {step === 1 ? 'Team Login' : 'Enter Your OTP code here'}
+                        {step === 1 ? 'Team Login' : step === 1.5 ? 'Select Your Account' : 'Enter Your OTP code here'}
                     </Typography>
                 </Box>
 
                 {step === 1 ? (
                     <>
+                        {/* Phone Number Input Step */}
                         {/* Phone Number Field */}
                         <TextField
                             fullWidth
@@ -289,8 +340,81 @@ const Teams_login = () => {
                             {loading ? <CircularProgress size={24} color="inherit" /> : "Send OTP"}
                         </Button>
                     </>
+                ) : step === 1.5 ? (
+                    <>
+                        {/* Account Selection Step */}
+                        <Box sx={{ mt: 2, mb: 2 }}>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 2, fontWeight: 'bold' }}>
+                            
+                               {accountMessage || "Multiple accounts found. Please select one to continue."}
+                            </Typography>
+
+                            {accountData?.accounts?.map((account) => (
+                                // use list items for better accessibility
+                                <List key={account.id} disablePadding sx={{ mb: 1 }}>
+                                    <ListItem
+                                        button
+                                        onClick={() => !loading && handleAccountSelection(account)}
+                                        disabled={loading}
+                                        sx={{
+                                            border: `2px solid ${theme.palette.divider}`,
+                                            borderRadius: 2,
+                                            '&:hover': {
+                                                borderColor: theme.palette.primary.main,
+                                                backgroundColor: theme.palette.action.hover,
+                                            },
+                                        }}
+                                    >
+                                        <ListItemAvatar>
+
+                                            <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                                <Person />
+                                            </Avatar>
+
+                                        </ListItemAvatar>
+                                        <ListItemText
+                                            primary={
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
+                                                    {account.client_name}
+                                                </Typography>
+                                            }
+                                            secondary={
+                                                <>
+                                                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                                        Role: {account.role}
+                                                    </Typography>
+
+                                                </>
+                                            }
+                                        />
+                                    </ListItem>
+                                </List>
+                            ))}
+                        </Box>
+
+                        {/* Error Message */}
+                        {error && (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: "error.main",
+                                    mb: 2,
+                                    textAlign: "center",
+                                }}
+                            >
+                                {error}
+                            </Typography>
+                        )}
+
+                        {loading && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                <CircularProgress size={24} />
+                            </Box>
+                        )}
+                    </>
                 ) : (
                     <>
+                        {/* OTP Verification Step */}
                         {/* OTP Input Fields */}
                         <Box
                             sx={{
@@ -348,7 +472,7 @@ const Teams_login = () => {
                         {resendTimer > 0 && (
                             <Typography
                                 variant="body2"
-                                sx={{ 
+                                sx={{
                                     color: theme.palette.text.secondary,
                                     mb: 2,
                                 }}

@@ -196,6 +196,7 @@ const Tile_View_Team = () => {
             bgcolor: palette.primary.main,
             "&:hover": { bgcolor: palette.secondary.main },
             textTransform: "none",
+            borderRadius: 10,
           }}
         >
           Add Team Member
@@ -265,8 +266,8 @@ const Tile_View_Team = () => {
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Avatar
                         sx={{
-                          height: 56,
-                          width: 56,
+                          height: 50,
+                          width: 50,
                           bgcolor: palette.primary.main
                         }}
                       >
@@ -371,7 +372,7 @@ const Tile_View_Team = () => {
       <div ref={observerTarget} style={{ height: '20px' }} />
 
       {/* pagination info */}
-      {teamPagination.totalPages > 0 && (
+      {teamPagination.totalPages > 9 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
             Page {teamPagination.page} of {teamPagination.totalPages} • Total: {teamPagination.total} members

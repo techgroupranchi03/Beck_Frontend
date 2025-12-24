@@ -45,8 +45,14 @@ export default function ConfirmationDialog({ open, onCancel, onDelete, title, me
                     <Button
                         onClick={onDelete}
                         disableElevation
-                        sx={{ fontSize: "1.1rem", textTransform: "none", '&:hover': { backgroundColor: palette.secondary.main } }}
                         variant="contained"
+                        size="small"
+                        sx={{
+                            borderRadius: 10,
+                            px: 2,
+                            backgroundColor: palette.primary.main,
+                            '&:hover': { backgroundColor: palette.secondary.main }
+                        }}
                     >
                         Delete
                     </Button>

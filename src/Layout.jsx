@@ -28,6 +28,7 @@ const getPageTitle = (pathname) => {
     if (path.includes("inventory")) return "Inventory Management";
     if (path.includes("team")) return "Team Management";
     if (path.includes("task")) return "Task Management";
+        // if (path.includes("task-management")) return "Task Management";
     return "Client Portal";
   }
   if (path.startsWith("/teams")) {
@@ -53,7 +54,7 @@ export default function Layout({ role }) {
   // Drawer state - closed on mobile by default, open on desktop
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
 
-  console.log('Layout user:', user);
+ // console.log('Layout user:', user);
 
   // Auto-close drawer on mobile when route changes
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function Layout({ role }) {
     // Check if at least one operation (create, read, update, delete) is true
     return modulePermissions.create || modulePermissions.read || modulePermissions.update || modulePermissions.delete;
   };
-  console.log('User permissions:', user?.permissions);
+  //console.log('User permissions:', user?.permissions);
 
   const navItems = useMemo(() => {
     if (resolvedRole === "admin") {

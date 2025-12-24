@@ -40,7 +40,9 @@ import {
     SearchOff,
     Inventory,
     InventoryOutlined,
-    PhotoCameraBackOutlined
+    PhotoCameraBackOutlined,
+    Update,
+    PhotoCamera
 } from "@mui/icons-material";
 import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
 import ImageViewer from "../../../resuable_components/ImageViewer.jsx";
@@ -53,14 +55,15 @@ import { Form, useLocation } from "react-router-dom";
 import CardSkeleton from "../../../resuable_components/CardSkeleton.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import IconLabel from "../../../resuable_components/IconLabel.jsx";
+import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog.jsx";
 
 export const Tile_View_task = () => {
+    const theme = useTheme();
+    const { palette } = theme;
+    const { showSnackbar } = useSnackbar();
+    const observerTarget = useRef(null);
     const { user } = useAuth();
     const location = useLocation();
-    const [viewMode, setViewMode] = useState(() => {
-        const savedViewMode = localStorage.getItem('taskViewMode');
-        return savedViewMode ? savedViewMode : "taskPlanner";
-    });
     const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [openImage, setOpenImage] = useState(false);
@@ -72,118 +75,72 @@ export const Tile_View_task = () => {
     const [filters, setFilters] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [openConfirm, setOpenConfirm] = useState(false);
+    const isFetchingRef = useRef(false);
 
-    const observerTarget = useRef(null);
+    //console.log('filters applied:', filters);
 
-    console.log("filters:", filters);
 
-    console.log("selectedTask:", selectedTask);
-    const theme = useTheme();
-    const { palette } = theme;
-    const { showSnackbar } = useSnackbar();
-
-    // get login user id 
-    const isMytaskId = user?.id;
+    //console.log('selectedTask for delete:', selectedTask);
 
     // get Data from context
     const {
-        taskPlannerData,
-        activeTasksData,
+        allTasksData,
+        deleteOneTimeTask,
+        deleteRecurringTask,
         loading,
-        updateActiveTaskStatus,
-        deleteTask,
-        properties,
-        inventoryItems,
-        teamMembers,
-        fetchTaskPlannerData,
-        fetchActiveTasksData,
-        taskPlannerPagination,
-        activeTasksPagination,
+        fetchAllTasks,
+        allTaskPagination
     } = useTaskContext();
 
-
-    //get current pagination based on view mode 
-    const pagination = useMemo(() => {
-        return viewMode === "taskPlanner" ? taskPlannerPagination : activeTasksPagination;
-    }, [viewMode, taskPlannerPagination, activeTasksPagination]);
-
-    // display tasks based on view mode
-    const tasks = useMemo(() => {
-        return viewMode === "taskPlanner" ? taskPlannerData : activeTasksData;
-    }, [viewMode, taskPlannerData, activeTasksData]);
-    // handle navigation state and apply filters 
-    useEffect(() => {
-        if (location.state?.assignedTo) {
-            const assignedToId = location.state.assignedTo;
-
-            const newFilters = {
-                assigned_to: assignedToId,
-            };
-            setFilters(newFilters);
-
-
-            const applyNavigationFilter = async () => {
-                try {
-                    if (viewMode === "taskPlanner") {
-                        await fetchTaskPlannerData(newFilters, searchText);
-                    } else {
-                        await fetchActiveTasksData(newFilters, searchText);
-                    }
-                    showSnackbar("Filter applied from navigation", "success");
-                } catch (error) {
-                    console.error("Error applying navigation filter:", error);
-                    showSnackbar("Failed to apply filter from navigation", "error");
-                }
-            };
-            applyNavigationFilter();
-
-            // Clear the navigation state to prevent reapplying the filter
-            window.history.replaceState({}, document.title);
-        }
-    }, [location.state, teamMembers, viewMode]);
-
-    // reset page when view mode , filters or search text changes
+    //console.log('allTasksData:', allTasksData);
+    // reset page when filters or search text changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [viewMode, filters, searchText]);
+    }, [filters, searchText]);
 
+    // normalize tasks: merge active and recurring arrays when provided separately
+    const tasksToRender = useMemo(() => {
+        if (Array.isArray(allTasksData)) return allTasksData;
+        if (allTasksData && (allTasksData.active_tasks || allTasksData.recurring_tasks)) {
+            return [...(allTasksData.active_tasks || []), ...(allTasksData.recurring_tasks || [])];
+        }
+        return [];
+    }, [allTasksData]);
 
     // infinite scroll observer
-
-    // Infinite scroll observer
     const loadMoreTasks = useCallback(async () => {
-        if (!pagination?.hasNextPage || isLoadingMore || loading) return;
+        if (!allTaskPagination?.hasNextPage || isLoadingMore || loading || isFetchingRef.current) return;
 
+        isFetchingRef.current = true;
         setIsLoadingMore(true);
         const nextPage = currentPage + 1;
-
         try {
-            if (viewMode === "taskPlanner") {
-                await fetchTaskPlannerData(filters, searchText, nextPage, true);
-            } else {
-                await fetchActiveTasksData(filters, searchText, nextPage, true);
-            }
+            await fetchAllTasks(filters, searchText, nextPage, true);
             setCurrentPage(nextPage);
         } catch (error) {
             console.error("Error loading more tasks:", error);
-            showSnackbar("Failed to load more tasks", "error");
         } finally {
             setIsLoadingMore(false);
+            isFetchingRef.current = false;
         }
-    }, [pagination, isLoadingMore, loading, currentPage, viewMode, filters, searchText, fetchTaskPlannerData, fetchActiveTasksData, showSnackbar]);
+    }, [allTaskPagination, isLoadingMore, loading, currentPage, fetchAllTasks, filters, searchText]);
 
     useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && pagination?.hasNextPage && !isLoadingMore) {
-                    loadMoreTasks();
-                }
-            },
-            { threshold: 0.1 }
-        );
+        // Reset fetching flag when filters or search change
+        isFetchingRef.current = false;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && allTaskPagination?.hasNextPage && !isLoadingMore && !loading && !isFetchingRef.current) {
+                loadMoreTasks();
+            }
+        }, {
+            threshold: 0.5,
+            rootMargin: '100px',
+        });
 
         const currentTarget = observerTarget.current;
-        if (currentTarget) {
+        if (currentTarget && !loading && tasksToRender.length > 0) {
             observer.observe(currentTarget);
         }
 
@@ -191,48 +148,88 @@ export const Tile_View_task = () => {
             if (currentTarget) {
                 observer.unobserve(currentTarget);
             }
+            observer.disconnect();
         };
-    }, [loadMoreTasks, pagination, isLoadingMore]);
-
-
-
+    }, [allTaskPagination?.hasNextPage, isLoadingMore, loading, tasksToRender.length]);
 
     const handleEdit = (task) => {
         setSelectedTask(task);
         setOpenAddEditDialog(true);
         setAnchorEl(null);
     };
+    const openDeleteDialog = (task) => {
+        setSelectedTask(task);
+        setOpenConfirm(true);
+        setAnchorEl(null);
+    };
+    const handleCancelDelete = () => {
+        setOpenConfirm(false);
+        setSelectedTask(null);
+    };
+
+    const handleDeleteTask = async () => {
+        try {
+            if (selectedTask.schedule_type && selectedTask.schedule_type !== 'one_time') {
+                const res = await deleteRecurringTask(selectedTask.id);
+                showSnackbar(res.message, "success");
+            } else {
+                const res = await deleteOneTimeTask(selectedTask.id);
+                showSnackbar(res.message, "success");
+            }
+        } catch (error) {
+            console.error("Error deleting task:", error);
+            showSnackbar("Failed to delete task", "error");
+        } finally {
+            setOpenConfirm(false);
+            setSelectedTask(null);
+        }
+    };
+
 
     const handleFilterToggle = () => {
         setIsFilterVisible((prev) => !prev);
     };
 
     const handleApplyFilters = async (appliedFilters) => {
+        if (isFetchingRef.current) return;
+
+        isFetchingRef.current = true;
         setFilters(appliedFilters);
         setCurrentPage(1);
         try {
-            if (viewMode === "taskPlanner") {
-                await fetchTaskPlannerData(appliedFilters, searchText);
-            } else {
-                await fetchActiveTasksData(appliedFilters, searchText);
-            }
-            showSnackbar("Filters applied successfully", "success");
+            await fetchAllTasks(appliedFilters, searchText);
         } catch (error) {
             console.error("Error applying filters:", error);
             showSnackbar("Failed to apply filters", "error");
+        } finally {
+            isFetchingRef.current = false;
         }
     };
+
+    // handle navigation state for filters
+    useEffect(() => {
+        if (location.state?.assignedTo) {
+            const navFilters = {
+                ...filters,
+                assigned_to: location.state.assignedTo,
+            };
+            handleApplyFilters(navFilters);
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state?.assignedTo]);
+
     const handleSearch = async (text) => {
+        if (isFetchingRef.current) return;
+
+        isFetchingRef.current = true;
         setSearchText(text);
         setCurrentPage(1);
         try {
-            if (viewMode === "taskPlanner") {
-                await fetchTaskPlannerData(filters, text);
-            } else {
-                await fetchActiveTasksData(filters, text);
-            }
+            await fetchAllTasks(filters, text);
         } catch (error) {
             console.error("Error searching tasks:", error);
+        } finally {
+            isFetchingRef.current = false;
         }
     };
 
@@ -241,55 +238,29 @@ export const Tile_View_task = () => {
         setSelectedTask(null);
     };
 
-    const handleChange = (event) => {
-        setViewMode(event.target.value);
-        setCurrentPage(1);
-        localStorage.setItem('taskViewMode', event.target.value);
-    };
-
     return (
         <Container maxWidth="mx" sx={{ mt: 2, px: 0 }}>
             {/* ---------- Header + Filter ---------- */}
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 {/* Create New Task Button when in Task Planner View */}
-                {viewMode === "taskPlanner" && (
-                    <Button
-                        variant="contained"
-                        disableElevation
-                        size="medium"
-                        sx={{
-                            bgcolor: palette.primary.main,
-                            "&:hover": { bgcolor: palette.secondary.main },
-                            textTransform: "none",
-                        }}
-                        onClick={() => {
-                            setSelectedTask(null);
-                            setOpenAddEditDialog(true);
-                        }}
-                    >
-                        Create New Task
-                    </Button>
-                )}
-                {viewMode === "activeTasks" && (
-                    <Select
-                        value={viewMode}
-                        onChange={handleChange}
-                        size="small"
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    '& .MuiMenuItem-root': {
-                                        minHeight: '30px',
-                                        fontSize: '0.85rem',
-                                    }
-                                }
-                            }
-                        }}
-                    >
-                        <MenuItem value="taskPlanner">Task Planner</MenuItem>
-                        <MenuItem value="activeTasks">Active Tasks</MenuItem>
-                    </Select>
-                )}
+                <Button
+                    variant="contained"
+                    disableElevation
+                    size="medium"
+
+                    sx={{
+                        bgcolor: palette.primary.main,
+                        "&:hover": { bgcolor: palette.secondary.main },
+                        textTransform: "none",
+                        borderRadius: 10,
+                    }}
+                    onClick={() => {
+                        setSelectedTask(null);
+                        setOpenAddEditDialog(true);
+                    }}
+                >
+                    Create New Task
+                </Button>
                 <Stack direction="row" spacing={1}>
                     <IconButton
                         onClick={handleFilterToggle}
@@ -338,82 +309,13 @@ export const Tile_View_task = () => {
                 open={isFilterVisible}
                 onClose={handleFilterToggle}
                 onApplyFilters={handleApplyFilters}
-                viewMode={viewMode}
                 initialFilters={filters}
             />
 
-
             <Divider sx={{ my: 2 }} />
 
-            <Box sx={{
-                display: "flex",
-                justifyContent: viewMode === "taskPlanner" ? "space-between" : "flex-end",
-                mb: 2
-            }}
-            >
-                {viewMode === "taskPlanner" && (
-                    <Select
-                        value={viewMode}
-                        onChange={handleChange}
-                        size="small"
-                        MenuProps={{
-                            PaperProps: {
-                                sx: {
-                                    '& .MuiMenuItem-root': {
-                                        minHeight: '30px',
-                                        fontSize: '0.85rem',
-                                    }
-                                }
-                            }
-                        }}
-                    >
-                        <MenuItem value="taskPlanner">Task Planner</MenuItem>
-                        <MenuItem value="activeTasks">Active Tasks</MenuItem>
-                    </Select>
-                )}
-
-                {/* add swith button to my tasks call appplyt fillter and send id  */}
-
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={isMytaskId && filters.assigned_to === isMytaskId}
-                            onChange={async (e) => {
-                                const newFilters = { ...filters };
-                                if (e.target.checked) {
-                                    newFilters.assigned_to = isMytaskId;
-                                } else {
-                                    newFilters.assigned_to = null;
-                                }
-                                setFilters(newFilters);
-                                setCurrentPage(1);
-                                try {
-                                    if (viewMode === "taskPlanner") {
-                                        await fetchTaskPlannerData(newFilters, searchText);
-                                    } else {
-                                        await fetchActiveTasksData(newFilters, searchText);
-                                    }
-                                    showSnackbar("Filter applied successfully", "success");
-                                } catch (error) {
-                                    console.error("Error applying filters:", error);
-                                    showSnackbar("Failed to apply filters", "error");
-                                }
-                            }}
-                            color="primary"
-                            inputProps={{ 'aria-label': 'My Tasks Only' }}
-                        />
-                    }
-                    label={"My Tasks Only"}
-                />
-            </Box>
-
-
-
-
-
-
             {/* ---------- Task Grid ---------- */}
-            {tasks.length === 0 && !loading && (
+            {tasksToRender.length === 0 && !loading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                         No tasks found.
@@ -428,7 +330,7 @@ export const Tile_View_task = () => {
                         </Grid>
                     ))
                 ) : (
-                    tasks.map((task) => (
+                    tasksToRender.map((task) => (
                         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={task.id}>
                             <Card
                                 elevation={0}
@@ -450,7 +352,6 @@ export const Tile_View_task = () => {
                                         </Typography>
                                     }
                                     action={
-                                        // viewMode === "taskPlanner" ? (
                                         <IconButton
                                             aria-label="settings"
                                             onClick={(e) => {
@@ -460,13 +361,38 @@ export const Tile_View_task = () => {
                                         >
                                             <MoreVert fontSize="medium" />
                                         </IconButton>
-                                        // ) : null
                                     }
                                 />
 
                                 <CardContent sx={{ pt: 0 }}>
                                     {/* Description */}
-                                    <ViewMoreText text={task.description} limit={100} />
+                                    <ViewMoreText text={task.description} limit={60} />
+                                    {task.schedule_type && task.schedule_type !== 'one_time' && (
+                                        <Stack direction="row" alignItems="center" flexWrap="wrap" mb={1} mt={1} spacing={1}>
+                                            {task.repeat_on?.days && task.repeat_on.days.length > 0 && (
+                                                <>
+                                                    {task.repeat_on.days.map((day, idx) => (
+                                                        <Chip
+                                                            key={idx}
+                                                            label={day}
+                                                            size="small"
+                                                            variant="contained"
+                                                            sx={{
+                                                                height: 22,
+                                                                // fontSize: '0.8rem',
+                                                                px: 0.5,
+                                                                '&:hover': {
+                                                                    bgcolor: palette.primary.main,
+                                                                    color: palette.primary.contrastText,
+                                                                }
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
+                                        </Stack>
+                                    )}
+
 
                                     {/* Task Type + Status */}
                                     <Stack
@@ -477,50 +403,33 @@ export const Tile_View_task = () => {
                                         justifyContent="space-between"
                                     >
                                         <Tooltip placement="top" arrow title="Task Type">
-                                            <Box
+                                            <Chip
                                                 sx={{
-                                                    display: 'inline-block',
                                                     px: 1.5,
-                                                    py: 0.5,
-                                                    borderRadius: 2,
+                                                    borderRadius: 5,
                                                     bgcolor: palette.taskType?.[task.task_type] || palette.grey[500],
                                                     color: 'white',
-                                                    fontSize: '0.75rem',
-                                                    fontWeight: 600,
-                                                    textTransform: 'capitalize',
                                                 }}
-                                            >
-                                                {task.task_type}
-                                            </Box>
-                                        </Tooltip>
-
-                                        {viewMode === "activeTasks" && (
-                                            <Tooltip placement="top" arrow title="Task Status">
-                                                <Chip
-                                                    label={task.status.replace('_', ' ')}
-                                                    size="small"
-                                                    sx={{
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        textTransform: 'capitalize',
-                                                        bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                        color: 'white',
-                                                        px: 1.5,
-                                                        borderRadius: 2,
-                                                        py: 0.5,
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        )}
-                                    </Stack>
-                                    <Stack direction="row" flexWrap="wrap" gap={1}>
-
-                                        {task.schedule_type && (
-                                            <IconLabel
-                                                icon={Alarm}
-                                                label={task.schedule_type.replace('_', ' ')}
+                                                label={task.task_type.replace('_', ' ')}
+                                                size="small"
                                             />
-                                        )}
+                                        </Tooltip>
+                                        <Tooltip placement="top" arrow title="Task Status">
+                                            <Chip
+                                                label={task.status.replace('_', ' ')}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                    color: 'white',
+                                                    px: 1.5,
+                                                    borderRadius: 5,
+
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    </Stack>
+
+                                    <Stack direction="row" flexWrap="wrap" gap={1}>
                                         {(task.scheduled_date || task.start_date) && (
                                             <IconLabel
                                                 icon={CalendarMonth}
@@ -541,21 +450,28 @@ export const Tile_View_task = () => {
                                                 label={task.scheduled_day}
                                             />
                                         )}
-
-                                        {!!task.is_photo_required && (
-                                            <IconLabel
-                                                icon={PhotoCameraBackOutlined}
-                                                label="Photo Required"
-                                            />
-                                        )}
                                         {task.inventory_name && (
                                             <IconLabel
                                                 icon={InventoryOutlined}
                                                 label={task.inventory_name}
                                             />
                                         )}
+                                        {task.property_name && (
+                                            <IconLabel
+                                                icon={Business}
+                                                label={task.property_name}
+                                            />
+                                        )
+                                        }
                                     </Stack>
-                                    {/* Assigned To */}
+                                    <Stack direction="row" spacing={1} mt={2} alignItems="center">
+                                        {!!task.is_photo_required && (
+                                            <PhotoCamera sx={{ color: palette.text.secondary }} />
+                                        )}
+                                         {!!task.update_inventory && (
+                                            <Update sx={{ color: palette.text.secondary }} />
+                                        )}
+                                    </Stack>
 
 
                                     {/* <Divider sx={{ my: 1 }}>
@@ -593,29 +509,23 @@ export const Tile_View_task = () => {
                 )}
             </Grid>
 
-            {/* Loading indicator for infinite scroll */}
+            {/* observer target for infinite scroll */}
+            <div ref={observerTarget} style={{ height: '10px' }}></div>
             {isLoadingMore && (
-                // use 6 skeleton cards to indicate loading more
-                <Grid container spacing={2} sx={{ mt: 2 }}>
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
-                            <CardSkeleton />
-                        </Grid>
-                    ))}
-                </Grid>
-            )}
-
-            {/* Observer target for infinite scroll */}
-            <div ref={observerTarget} style={{ height: '20px' }} />
-
-            {/* Pagination info */}
-            {pagination && tasks.length > 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Page {pagination.page} of {pagination.totalPages} • Total: {pagination.total}
-                    </Typography>
+                    <CircularProgress size={24} />
                 </Box>
             )}
+            {/* pagination Info */}
+            {allTaskPagination && tasksToRender.length > 8 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        Page {allTaskPagination.page} of {allTaskPagination.totalPages}  • Total: {allTaskPagination.total}
+                    </Typography>
+                    {/* You can add pagination controls here if needed */}
+                </Box>
+            )}
+
 
             {/* EDIT AND DELETE ICON BUTTON  */}
             <Menu
@@ -662,21 +572,21 @@ export const Tile_View_task = () => {
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
-                {/* <MenuItem onClick={() => openDeleteDialog(selectedTask)} dense>
+                <MenuItem onClick={() => openDeleteDialog(selectedTask)} dense>
                     <ListItemIcon>
                         <Delete fontSize="small" sx={{ color: palette.error.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
-                </MenuItem> */}
+                </MenuItem>
             </Menu>
 
-            {/* <ConfirmationDialog
+            <ConfirmationDialog
                 open={openConfirm}
                 onCancel={handleCancelDelete}
                 onDelete={handleDeleteTask}
                 title="Delete Task"
                 message="Are you sure you want to delete this task? This action cannot be undone."
-            /> */}
+            />
 
             <ImageViewer
                 open={openImage}
@@ -689,7 +599,6 @@ export const Tile_View_task = () => {
                 open={openAddEditDialog}
                 onClose={handleCloseDialog}
                 task={selectedTask}
-                viewMode={viewMode}
             />
         </Container>
     );

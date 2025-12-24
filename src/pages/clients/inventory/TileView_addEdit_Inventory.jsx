@@ -1,5 +1,5 @@
 import { Close, Inventory, CloudUpload, ExpandMore } from '@mui/icons-material';
-import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Accordion, AccordionSummary, AccordionDetails, Checkbox, FormControlLabel } from '@mui/material'
+import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Accordion, AccordionSummary, AccordionDetails, Checkbox, FormControlLabel, Radio, RadioGroup, FormLabel } from '@mui/material'
 import React, { useState, useEffect } from 'react'
 import { categories, taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
@@ -13,7 +13,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
-    // console.log('inventory in dialog:', inventory);
+    console.log('inventory in dialog:', inventory);
 
     // get data form context
     const {
@@ -25,6 +25,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         createInventory,
         updateInventory,
     } = useInventoryContext();
+
+    console.log("properties:", properties);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -44,18 +46,24 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
 
     // Task form state
     const [createTasks, setCreateTasks] = useState(false);
+    const [taskScheduleType, setTaskScheduleType] = useState('one_time');
     const [taskFormData, setTaskFormData] = useState({
         task_title: '',
         task_description: '',
+        // task_property_id: '',
         task_assigned_to: '',
         task_schedule_type: '',
         task_is_photo_required: 0,
+        task_update_inventory: 0,
         task_status: '',
         task_type: '',
         task_start_date: '',
+        // task_scheduled_date: '',
         task_repeat_on: '{}'
     });
     const [repeatData, setRepeatData] = useState({});
+
+    console.log('taskScheduleType:', taskScheduleType);
 
     // Update form data when inventory changes
     useEffect(() => {
@@ -69,7 +77,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 unit: inventory.unit || '',
                 quantity: inventory.quantity || '',
             });
-            setImagePreview(inventory.image_url || null);
+            setImagePreview(inventory.inventory_image_url || null);
             setSelectedUnit(inventory.unit || '');
         } else {
             // Reset form for create mode
@@ -89,15 +97,19 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         setValidationErrors({});
         // Reset task form data
         setCreateTasks(false);
+        setTaskScheduleType('one_time');
         setTaskFormData({
             task_title: '',
             task_description: '',
+            // task_property_id: '',
             task_assigned_to: '',
             task_schedule_type: '',
             task_is_photo_required: 0,
+            task_update_inventory: 0,
             task_status: '',
             task_type: '',
             task_start_date: '',
+            // task_scheduled_date: '',
             task_repeat_on: '{}'
         });
         setRepeatData({});
@@ -169,6 +181,26 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }));
     };
 
+    const handleTaskInventoryCheckboxChange = (event) => {
+        setTaskFormData(prev => ({
+            ...prev,
+            task_update_inventory: event.target.checked ? 1 : 0
+        }));
+    };
+
+    // Sync taskScheduleType with task_schedule_type
+    useEffect(() => {
+        if (taskScheduleType === 'one_time') {
+            setTaskFormData(prev => ({
+                ...prev,
+                task_schedule_type: 'one_time',
+                task_repeat_on: '{}'
+            }));
+        } else if (taskFormData.task_schedule_type && taskFormData.task_schedule_type !== 'one_time') {
+            setTaskScheduleType('recurring');
+        }
+    }, [taskScheduleType, taskFormData.task_schedule_type]);
+
     // Sync repeatData to taskFormData.task_repeat_on
     useEffect(() => {
         if (['weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type)) {
@@ -199,15 +231,26 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             if (!isEdit && createTasks) {
                 formDataToSend.append('task_title', taskFormData.task_title);
                 formDataToSend.append('task_description', taskFormData.task_description);
+                // formDataToSend.append('task_property_id', taskFormData.task_property_id);
                 formDataToSend.append('task_assigned_to', taskFormData.task_assigned_to);
-                formDataToSend.append('task_schedule_type', taskFormData.task_schedule_type);
-                formDataToSend.append('task_is_photo_required', taskFormData.task_is_photo_required);
-                formDataToSend.append('task_task_status', taskFormData.task_status);
                 formDataToSend.append('task_task_type', taskFormData.task_type);
+                formDataToSend.append('task_is_photo_required', taskFormData.task_is_photo_required);
+                formDataToSend.append('task_update_inventory', taskFormData.task_update_inventory);
                 formDataToSend.append('task_start_date', taskFormData.task_start_date);
 
-                // Parse repeat_on and send appropriate fields based on schedule_type
-                if (['weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type) && taskFormData.task_repeat_on) {
+                // Send appropriate schedule type and dates based on taskScheduleType
+                if (taskScheduleType === 'one_time') {
+                    formDataToSend.append('task_schedule_type', 'one_time');
+                    // formDataToSend.append('task_scheduled_date', taskFormData.task_scheduled_date);
+                    formDataToSend.append('task_status', taskFormData.task_status);
+                } else {
+                    // Recurring task
+                    formDataToSend.append('task_schedule_type', taskFormData.task_schedule_type);
+                    // formDataToSend.append('task_start_date', taskFormData.task_start_date);
+                }
+
+                // Parse repeat_on and send appropriate fields based on schedule_type for recurring tasks
+                if (taskScheduleType === 'recurring' && ['weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type) && taskFormData.task_repeat_on) {
                     try {
                         const repeatData = typeof taskFormData.task_repeat_on === 'string' ?
                             JSON.parse(taskFormData.task_repeat_on) : taskFormData.task_repeat_on;
@@ -231,12 +274,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 }
             }
 
-            // Log FormData contents
-            // console.log('FormData contents:');
-            // for (let [key, value] of formDataToSend.entries()) {
-            //     console.log(`${key}:`, value);
-            // }
-
             let res;
             if (isEdit) {
                 // Update existing inventory
@@ -246,7 +283,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 // Create new inventory
                 res = await createInventory(formDataToSend);
                 //console.log('Create Inventory Response:', res);
-                showSnackbar(res.message , 'success');
+                showSnackbar(res.message, 'success');
             }
             onClose();
         } catch (error) {
@@ -339,6 +376,18 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             options={properties}
                             getOptionLabel={(option) => option.name}
                             value={properties.find(p => p.id === formData.property_id) || null}
+                            renderOption={(props, option) => (
+                                <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                    {(option.image_url) && (
+                                        <img
+                                            src={option.image_url}
+                                            alt={option.name || ''}
+                                            style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                        />
+                                    )}
+                                </li>
+                            )}
                             onChange={(event, newValue) => handleChange('property_id', newValue ? newValue.id : '')}
                             renderInput={(params) => (
                                 <TextField
@@ -349,7 +398,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     error={!!validationErrors?.property_id}
                                     helperText={validationErrors?.property_id}
                                     required
-                                    fullWidth
                                 />
                             )}
                         />
@@ -386,13 +434,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth error={!!validationErrors?.unit}>
                             <InputLabel id="unit-label" size='small'>
-                                Unit *
+                                Unit
                             </InputLabel>
                             <Select
-                                label="Unit *"
+                                label="Unit"
                                 variant="outlined"
                                 size='small'
-                                required
                                 value={formData.unit}
                                 onChange={(e) => handleUnitChange(e.target.value)}
                                 fullWidth
@@ -415,13 +462,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         {selectedUnit.toLowerCase() === 'container' ? (
                             <FormControl fullWidth error={!!validationErrors?.quantity}>
                                 <InputLabel id="quantity-label" size='small'>
-                                    Quantity *
+                                    Quantity
                                 </InputLabel>
                                 <Select
-                                    label="Quantity *"
+                                    label="Quantity"
                                     variant="outlined"
                                     size='small'
-                                    required
                                     value={formData.quantity}
                                     onChange={(e) => handleChange('quantity', e.target.value)}
                                     fullWidth
@@ -444,7 +490,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 variant="outlined"
                                 size='small'
                                 type="number"
-                                required
                                 value={formData.quantity}
                                 onChange={(e) => handleChange('quantity', e.target.value)}
                                 error={!!validationErrors?.quantity}
@@ -461,34 +506,23 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     {/* upload image also preview image with option to remove image "inventory_image" */}
                     <Grid size={{ xs: 12 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <input
+                            {/* <input
                                 accept="image/*"
                                 type="file"
                                 id="inventory-image-upload"
                                 style={{ display: 'none' }}
                                 onChange={handleImageChange}
-                            />
-                            <label htmlFor="inventory-image-upload">
-                                <Button
-                                    variant="outlined"
-                                    component="span"
-                                    startIcon={<CloudUpload />}
-                                    sx={{ textTransform: 'none' }}
-                                >
-                                    Upload Image
-                                </Button>
-                            </label>
-
+                            /> */}
                             {imagePreview && (
-                                <Box sx={{ position: 'relative', width: 'fit-content' }}>
+                                <Box sx={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
                                     <Box
                                         component="img"
                                         src={imagePreview}
                                         alt="Preview"
                                         sx={{
-                                            width: 200,
-                                            height: 200,
-                                            objectFit: 'cover',
+                                            width: 250,
+                                            height: 250,
+                                            objectFit: 'fill',
                                             borderRadius: 2,
                                             border: '1px solid',
                                             borderColor: 'divider',
@@ -512,6 +546,25 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </IconButton>
                                 </Box>
                             )}
+                           
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    startIcon={<CloudUpload />}
+                                    sx={{ textTransform: 'none' }}
+                                >
+                                    Upload Image
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        name="inventory_image"
+                                        onChange={handleImageChange}
+                                    />
+                                </Button>
+                        
+
+
 
                             {validationErrors?.inventory_image && (
                                 <Typography variant="caption" color="error">
@@ -563,8 +616,59 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         error={!!validationErrors?.task_description}
                                         helperText={validationErrors?.task_description}
                                         fullWidth
-                                        required
                                     />
+                                </Grid>
+
+                                {/* Task Schedule Radio Buttons */}
+                                <Grid size={{ xs: 12 }} container spacing={2}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControl component="fieldset">
+                                            <FormLabel component="legend">Task Schedule</FormLabel>
+                                            <RadioGroup
+                                                row
+                                                value={taskScheduleType}
+                                                onChange={(e) => setTaskScheduleType(e.target.value)}
+                                            >
+                                                <FormControlLabel value="one_time" control={<Radio />} label="One Time" />
+                                                <FormControlLabel value="recurring" control={<Radio />} label="Recurring" />
+                                            </RadioGroup>
+                                        </FormControl>
+                                    </Grid>
+
+                                    {/* Schedule Type Radio Buttons - Show for recurring */}
+                                    {taskScheduleType === 'recurring' && (
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <FormControl component="fieldset">
+                                                <FormLabel
+                                                    component="legend"
+                                                    sx={{
+                                                        color: validationErrors.task_schedule_type ? 'error.main' : 'inherit'
+                                                    }}
+                                                >
+                                                    Schedule Type
+                                                </FormLabel>
+                                                <RadioGroup
+                                                    row
+                                                    value={taskFormData.task_schedule_type}
+                                                    onChange={(e) => handleTaskChange('task_schedule_type', e.target.value)}
+                                                >
+                                                    {scheduleTypes.filter(type => type !== 'one_time').map((type) => (
+                                                        <FormControlLabel
+                                                            key={type}
+                                                            value={type}
+                                                            control={<Radio />}
+                                                            label={type.charAt(0).toUpperCase() + type.slice(1)}
+                                                        />
+                                                    ))}
+                                                </RadioGroup>
+                                                {validationErrors.task_schedule_type && (
+                                                    <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
+                                                        {validationErrors.task_schedule_type}
+                                                    </Box>
+                                                )}
+                                            </FormControl>
+                                        </Grid>
+                                    )}
                                 </Grid>
 
                                 {/* Task Type */}
@@ -575,8 +679,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         size='small'
                                         value={taskFormData.task_type}
                                         onChange={(e) => handleTaskChange('task_type', e.target.value)}
-                                        error={!!validationErrors?.task_type}
-                                        helperText={validationErrors?.task_type}
+                                        error={!!validationErrors?.task_task_type}
+                                        helperText={validationErrors?.task_task_type}
                                         fullWidth
                                         required
                                     >
@@ -609,11 +713,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </TextField>
                                 </Grid>
 
-                                {/* Start Date */}
+                                {/* Start Date - Show for recurring */}
+                                {/* {taskScheduleType === 'recurring' && ( */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField
                                         type="date"
-                                        label="Start Date"
+                                        label={taskScheduleType === 'recurring' ? "Start Date" : "Scheduled Date"}
                                         size='small'
                                         value={taskFormData.task_start_date}
                                         onChange={(e) => handleTaskChange('task_start_date', e.target.value)}
@@ -623,39 +728,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             shrink: true,
                                         }}
                                         fullWidth
-                                        required
                                     />
                                 </Grid>
-
-                                {/* Schedule Type */}
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <Autocomplete
-                                        size="small"
-                                        fullWidth
-                                        options={scheduleTypes}
-                                        getOptionLabel={(option) => String(option)}
-                                        value={taskFormData.task_schedule_type || null}
-                                        onChange={(e, newValue) => {
-                                            handleTaskChange('task_schedule_type', newValue || '');
-                                            if (newValue !== 'weekly' && newValue !== 'monthly' && newValue !== 'yearly') {
-                                                setRepeatData({});
-                                            }
-                                        }}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Schedule Type"
-                                                placeholder="Select Schedule Type"
-                                                required
-                                                error={!!validationErrors?.task_schedule_type}
-                                                helperText={validationErrors?.task_schedule_type}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
+                                {/* )} */}
 
                                 {/* Repeat On - Weekly */}
-                                {taskFormData.task_schedule_type === 'weekly' && (
+                                {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'weekly' && (
                                     <Grid size={{ xs: 12 }}>
                                         <Autocomplete
                                             multiple
@@ -682,7 +760,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 )}
 
                                 {/* Repeat On - Monthly */}
-                                {taskFormData.task_schedule_type === 'monthly' && (
+                                {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'monthly' && (
                                     <Grid size={{ xs: 12 }}>
                                         <Autocomplete
                                             multiple
@@ -709,7 +787,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 )}
 
                                 {/* Repeat On - Yearly */}
-                                {taskFormData.task_schedule_type === 'yearly' && (
+                                {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'yearly' && (
                                     <>
                                         <Grid size={{ xs: 12, sm: 6 }}>
                                             <TextField
@@ -759,8 +837,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </>
                                 )}
 
-                                {/* Status - Show only for one_time tasks */}
-                                {taskFormData.task_schedule_type === 'one_time' && (
+                                {/* Status - Show for one_time */}
+                                {taskScheduleType === 'one_time' && (
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
                                             select
@@ -771,7 +849,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             error={!!validationErrors?.task_status}
                                             helperText={validationErrors?.task_status}
                                             fullWidth
-                                            required
                                         >
                                             {statusOpts.map((status) => (
                                                 <MenuItem key={status.value} value={status.value} dense>
@@ -782,17 +859,30 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </Grid>
                                 )}
 
-                                {/* Photo Required */}
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <FormControlLabel
-                                        control={
-                                            <Checkbox
-                                                checked={taskFormData.task_is_photo_required === 1}
-                                                onChange={handleTaskCheckboxChange}
-                                            />
-                                        }
-                                        label="Photo Required"
-                                    />
+                                {/* Checkboxes */}
+                                <Grid size={{ xs: 12 }} container spacing={2}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={taskFormData.task_is_photo_required === 1}
+                                                    onChange={handleTaskCheckboxChange}
+                                                />
+                                            }
+                                            label="A Photo Proof is Required"
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={taskFormData.task_update_inventory === 1}
+                                                    onChange={handleTaskInventoryCheckboxChange}
+                                                />
+                                            }
+                                            label="Update Inventory Quantity"
+                                        />
+                                    </Grid>
                                 </Grid>
                             </Grid>
                         </AccordionDetails>
@@ -812,17 +902,20 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 </Button>
                 <Button
                     variant="contained"
-                    size='medium'
+                    size='small'
                     disableElevation
                     disabled={loading}
                     onClick={handleCreateUpdate}
                     sx={{
                         textTransform: 'none',
                         backgroundColor: palette.primary.main,
-                        '&:hover': { backgroundColor: palette.secondary.main }
+                        '&:hover': { backgroundColor: palette.secondary.main },
+                        borderRadius: 10,
+                        px: 2,
+                        py: 1,
                     }}
                 >
-                    {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+                    {loading ? 'Saving...' : isEdit ? 'Update' : 'Create Inventory'}
                 </Button>
             </DialogActions>
         </Dialog>

@@ -1,67 +1,70 @@
-import { 
-    Autocomplete, 
-    Dialog, 
-    DialogContent, 
-    DialogTitle, 
+import {
+    Dialog,
+    DialogContent,
+    DialogTitle,
     DialogActions,
-    Grid, 
-    IconButton, 
+    Grid,
+    IconButton,
     TextField,
-    Select,
     MenuItem,
     Button,
-    useTheme 
+    useTheme
 } from '@mui/material'
 import React, { useState, useEffect } from 'react'
-import { useSnackbar } from '../../../resuable_components/Snackbar';
+import { useSnackbar } from '../../resuable_components/Snackbar';
 import { Close } from '@mui/icons-material';
-import { TeamStatus } from '../../../constant';
-import { useTeamContext } from './TeamManagement';
 
-const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
-    const isEdit = !!teamMember;
+const Tileview_addEdit_Clients = ({ open, onClose, client, createClient, updateClient }) => {
+    const isEdit = !!client;
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
 
-    // Get data from context
-    const {
-        roles,
-        createTeam,
-        updateTeam,
-    } = useTeamContext();
-
-   // console.log('teamMember in dialog:', teamMember , roles);
+    const statusOptions = ['active', 'inactive'];
+    const planOptions = ['basic', 'premium'];
 
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
-        role: '',
+        company: '',
         phone: '',
+        plan: '',
         status: '',
+        valid_from: '',
+        valid_to: '',
     });
 
-    // Initialize form data when teamMember changes
+    // Initialize form data when client changes
     useEffect(() => {
-        if (isEdit && teamMember) {
+        if (isEdit && client) {
             setFormData({
-                name: teamMember.name || '',
-                role: teamMember.role || '',
-                phone: teamMember.phone || '',
-                status: teamMember.status || '',
+                name: client.name || '',
+                company: client.company || '',
+                phone: client.phone || '',
+                plan: client.plan || '',
+                status: client.status || '',
+                valid_from: client.valid_from 
+                    ? new Date(client.valid_from).toISOString().split('T')[0]
+                    : '',
+                valid_to: client.valid_to 
+                    ? new Date(client.valid_to).toISOString().split('T')[0]
+                    : '',
             });
         } else {
-            // Reset form for new team member
+            // Reset form for new client
             setFormData({
                 name: '',
-                role: '',
+                company: '',
                 phone: '',
+                plan: '',
                 status: '',
+                valid_from: '',
+                valid_to: '',
             });
         }
         setValidationErrors({});
-    }, [teamMember, isEdit, open]);
+    }, [client, isEdit, open]);
 
     const handleChange = (field) => (event) => {
         const value = event.target.value;
@@ -81,10 +84,21 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
     const validateForm = () => {
         const errors = {};
         if (!formData.name?.trim()) errors.name = 'Name is required';
-        if (!formData.role) errors.role = 'Role is required';
         if (!formData.phone) errors.phone = 'Phone is required';
         if (formData.phone && formData.phone.length !== 10) errors.phone = 'Phone must be 10 digits';
+        if (!formData.plan) errors.plan = 'Plan is required';
         if (!formData.status) errors.status = 'Status is required';
+        if (!formData.valid_from) errors.valid_from = 'Valid from date is required';
+        if (!formData.valid_to) errors.valid_to = 'Valid to date is required';
+        
+        // Check if valid_to is after valid_from
+        if (formData.valid_from && formData.valid_to) {
+            const fromDate = new Date(formData.valid_from);
+            const toDate = new Date(formData.valid_to);
+            if (toDate <= fromDate) {
+                errors.valid_to = 'Valid to date must be after valid from date';
+            }
+        }
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
@@ -99,11 +113,11 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
         setLoading(true);
         try {
             if (isEdit) {
-                const res = await updateTeam(teamMember.id, formData);
-                showSnackbar(res.message || 'Team member updated successfully', 'success');
+                const res = await updateClient(client.id, formData);
+                showSnackbar(res.message || 'Client updated successfully', 'success');
             } else {
-                const res = await createTeam(formData);
-                showSnackbar(res.message || 'Team member created successfully', 'success');
+                const res = await createClient(formData);
+                showSnackbar(res.message || 'Client created successfully', 'success');
             }
             onClose();
         } catch (error) {
@@ -121,6 +135,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             setLoading(false);
         }
     };
+
     return (
         <Dialog
             open={open}
@@ -129,7 +144,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             fullWidth
         >
             <DialogTitle>
-                {isEdit ? 'Edit Team Member' : 'Add Team Member'}
+                {isEdit ? 'Edit Client' : 'Add Client'}
                 <IconButton
                     onClick={onClose}
                     sx={{
@@ -156,31 +171,21 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             helperText={validationErrors.name}
                         />
                     </Grid>
-                    
-                    {/* Role */}
+
+                    {/* Company */}
                     <Grid size={{ xs: 12, sm: 6 }}>
-                        <Autocomplete
+                        <TextField
+                            label="Company"
+                            value={formData.company}
+                            onChange={handleChange('company')}
+                            fullWidth
                             size="small"
-                            options={roles.map(role => role.name)}
-                            value={formData.role || null}
-                            onChange={(e, newValue) => {
-                                handleChange("role")({
-                                    target: { value: newValue || "" }
-                                });
-                            }}
-                            renderInput={(params) => (
-                                <TextField 
-                                    {...params} 
-                                    label="Role" 
-                                    required
-                                    error={!!validationErrors.role}
-                                    helperText={validationErrors.role}
-                                />
-                            )}
+                            error={!!validationErrors.company}
+                            helperText={validationErrors.company}
                         />
                     </Grid>
-                    
-                    {/* Phone number only 10 digits */}
+
+                    {/* Phone */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Phone Number"
@@ -199,6 +204,27 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                         />
                     </Grid>
 
+                    {/* Plan */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                            select
+                            label="Plan"
+                            value={formData.plan}
+                            onChange={handleChange('plan')}
+                            fullWidth
+                            size="small"
+                            required
+                            error={!!validationErrors.plan}
+                            helperText={validationErrors.plan}
+                        >
+                            {planOptions.map((plan) => (
+                                <MenuItem key={plan} value={plan}>
+                                    {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                                </MenuItem>
+                            ))}
+                        </TextField>
+                    </Grid>
+
                     {/* Status */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
@@ -212,12 +238,48 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             error={!!validationErrors.status}
                             helperText={validationErrors.status}
                         >
-                            {TeamStatus.map((status) => (
+                            {statusOptions.map((status) => (
                                 <MenuItem key={status} value={status}>
-                                    {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
                                 </MenuItem>
                             ))}
                         </TextField>
+                    </Grid>
+
+                    {/* Valid From */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                            type="date"
+                            label="Valid From"
+                            value={formData.valid_from}
+                            onChange={handleChange('valid_from')}
+                            fullWidth
+                            size="small"
+                            required
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            error={!!validationErrors.valid_from}
+                            helperText={validationErrors.valid_from}
+                        />
+                    </Grid>
+
+                    {/* Valid To */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                            type="date"
+                            label="Valid To"
+                            value={formData.valid_to}
+                            onChange={handleChange('valid_to')}
+                            fullWidth
+                            size="small"
+                            required
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            error={!!validationErrors.valid_to}
+                            helperText={validationErrors.valid_to}
+                        />
                     </Grid>
                 </Grid>
             </DialogContent>
@@ -234,21 +296,21 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                 <Button
                     variant='contained'
                     disableElevation
-                    size='medium'
+                    size='small'
                     onClick={handleSubmit}
                     disabled={loading}
                     sx={{
-                        textTransform: 'none',
                         backgroundColor: palette.primary.main,
                         '&:hover': { backgroundColor: palette.secondary.main },
-                        borderRadius: 10,
+                        fontSize: '0.875rem',
                     }}
                 >
-                    {loading ? 'Saving...' : (isEdit ? 'Update Team Member' : 'Add Team Member')}
+                    {loading ? 'Saving...' : (isEdit ? 'Update Client' : 'Add Client')}
                 </Button>
+                
             </DialogActions>
         </Dialog>
     )
 }
 
-export default TileView_addEdit_team
+export default Tileview_addEdit_Clients

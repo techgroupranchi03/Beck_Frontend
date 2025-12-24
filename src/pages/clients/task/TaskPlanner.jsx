@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocomplete, TextField, Typography } from '@mui/material'
+import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocomplete, TextField, Typography, MenuList, ListItem, ListItemIcon } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
-import { Edit as EditIcon} from '@mui/icons-material'
+import { Delete, Edit as EditIcon } from '@mui/icons-material'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant'
 import { formatDate } from '../../../utils/dateFormat'
 import { useTaskContext } from './TaskManagement'
+import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
+import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog.jsx'
 
 
 
@@ -13,21 +15,30 @@ const TaskPlanner = () => {
     const theme = useTheme()
     const { palette } = theme
     const { showSnackbar } = useSnackbar();
+    const [openConfirm, setOpenConfirm] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+
 
     // Get shared data from context
     const {
+        allTasksData,
+        deleteRecurringTask,
         properties,
         inventoryItems,
         teamMembers,
         loading,
         createTask,
-        taskPlannerData,
-        updateTaskPlannerData
+        updateTaskPlannerData,
+        fetchInventoryByProperty,
     } = useTaskContext();
 
     const [validationErrors, setValidationErrors] = useState({});
+    console.log('allTasksData in TaskPlanner:', allTasksData);
 
+    // Map of rowId -> inventory options for that row (used when editing/creating rows)
+    const [inventoryOptionsMap, setInventoryOptionsMap] = useState({});
 
+    console.log('inventoryOptionsMap:', inventoryOptionsMap);
 
     const columns = useMemo(
         () => [
@@ -62,52 +73,139 @@ const TaskPlanner = () => {
                             description: undefined,
                         }),
                 },
+                Cell: ({ cell }) => (
+                    <ViewMoreText text={cell.getValue() || '-'} maxCharacter={20} />
+                ),
             },
             {
-                accessorKey: 'inventory_id',
-                header: 'Inventory',
+                accessorKey: 'property_id',
+                header: 'Property',
                 size: 180,
                 editVariant: 'select',
-                editSelectOptions: inventoryItems.map(item => ({ value: item.id, label: item.name })),
-                muiEditTextFieldProps: {
+                editSelectOptions: properties.map(item => ({ value: item.id, label: item.name })),
+                muiEditTextFieldProps: ({ row }) => ({
                     select: true,
                     required: true,
-                    error: !!validationErrors?.inventory_id,
-                    helperText: validationErrors?.inventory_id,
+                    error: !!validationErrors?.property_id,
+                    helperText: validationErrors?.property_id,
                     SelectProps: {
                         displayEmpty: true,
                         renderValue: (selected) => {
                             if (!selected) {
-                                return <em>Select Inventory</em>;
+                                return <em>Select Property</em>;
                             }
-                            const inventory = inventoryItems.find(i => i.id === selected);
-                            return inventory ? inventory.name : selected;
+                            const property = properties.find(p => p.id === selected);
+
+                            return property ? property.name : selected;
                         },
                     },
                     onFocus: () =>
                         setValidationErrors({
                             ...validationErrors,
-                            inventory_id: undefined,
+                            property_id: undefined,
                         }),
+                    onChange: (e) => {
+                        const value = e.target.value;
+                        if (row && row._valuesCache) row._valuesCache['property_id'] = value;
+                        if (!value) {
+                            setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+                        } else {
+                            if (fetchInventoryByProperty) {
+                                fetchInventoryByProperty(value)
+                                    .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: data || [] })))
+                                    .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: [] })));
+                            } else {
+                                setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+                            }
+                        }
+                    },
                     children: [
                         <MenuItem key="empty-placeholder" value="">
-                            <em>Select Inventory</em>
+                            <em>Select Property</em>
                         </MenuItem>,
-                        ...inventoryItems.map((item) => (
-                            <MenuItem key={item.id} value={item.id}>
-                                {item.name}
+                        ...properties.map((prop) => (
+                            <MenuItem key={prop.id} value={prop.id}>
+                                {prop.name}
                             </MenuItem>
-                        ))
+                        )),
                     ],
+                }),
+                Cell: ({ row }) => {
+                    const property = properties.find(p => p.id === row.original.property_id);
+                    return property ? property.name : '-';
                 },
+            },
+            {
+                accessorKey: 'inventory_id',
+                header: 'Inventory',
+                size: 200,
+                // show name in read-only cell
                 Cell: ({ row }) => row.original.inventory_name || '-',
+                // custom Edit UI so we can show inventory options based on selected property
+                Edit: ({ row, cell }) => {
+                    const rowKey = row.id;
+                    const options = inventoryOptionsMap[rowKey] || inventoryItems || [];
+
+                    // Ensure we have options for this row when editing: if not set, try to fetch based on current property
+                    useEffect(() => {
+                        if (inventoryOptionsMap[rowKey] === undefined) {
+                            const propId = row._valuesCache?.property_id || row.original?.property_id;
+                            if (propId) {
+                                fetchInventoryByProperty(propId)
+                                    .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [rowKey]: data || [] })))
+                                    .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [rowKey]: [] })));
+                            } else {
+                                setInventoryOptionsMap(prev => ({ ...prev, [rowKey]: inventoryItems || [] }));
+                            }
+                        }
+                    }, [rowKey]);
+
+                    return (
+                        <Autocomplete
+                            size="small"
+                            options={options}
+                            getOptionLabel={(option) => option.name ? String(option.name) : ''}
+                            value={options.find((it) => it.id === cell.getValue()) || null}
+                            renderOption={(props, option) => (
+                                <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                    {(option.property_image_url) && (
+                                        <img
+                                            src={option.property_image_url}
+                                            alt={option.name || ''}
+                                            style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                        />
+                                    )}
+                                </li>
+                            )}
+                            onChange={(_, newValue) => {
+                                // store selected id in the row cache so MRT will pick it up
+                                row._valuesCache[cell.column.id] = newValue ? newValue.id : '';
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Inventory"
+                                    required
+                                    error={!!validationErrors.inventory_id}
+                                    helperText={validationErrors.inventory_id}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            clearOnEscape
+                            fullWidth
+                        />
+                    );
+                },
             },
             {
                 accessorKey: 'schedule_type',
                 header: 'Schedule Type',
                 size: 130,
                 editVariant: 'select',
-                editSelectOptions: scheduleTypes,
+                editSelectOptions: scheduleTypes
+                    .filter(type => type !== 'one_time')
+                    .map(type => ({ value: type, label: type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) })),
                 muiEditTextFieldProps: {
                     select: true,
                     required: true,
@@ -117,7 +215,7 @@ const TaskPlanner = () => {
                         displayEmpty: true,
                         renderValue: (selected) => {
                             if (!selected) {
-                                return <em>Select Schedule Type</em>;
+                                return <em>Select Type</em>;
                             }
                             return selected;
                         },
@@ -325,7 +423,6 @@ const TaskPlanner = () => {
                 }),
                 Cell: ({ cell }) => formatDate(cell.getValue()),
             },
-
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
@@ -369,6 +466,7 @@ const TaskPlanner = () => {
                                 fontWeight: 600,
                                 textAlign: 'center',
                                 textTransform: 'capitalize',
+                                borderRadius: 10,
                             }}
                         >
                             {value}
@@ -378,7 +476,7 @@ const TaskPlanner = () => {
             },
             {
                 id: 'assigned_to',
-                accessorKey:  teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
+                accessorKey: teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
                 header: 'Assigned To',
                 size: 150,
                 enableEditing: teamMembers && teamMembers.length > 0,
@@ -452,8 +550,44 @@ const TaskPlanner = () => {
                     );
                 },
             },
+            {
+                accessorKey: 'update_inventory',
+                header: 'Qty',
+                size: 130,
+                Cell: ({ row }) => (
+                    <Checkbox
+                        checked={row.original.update_inventory === 1 ? true : false}
+                        disabled
+                        slotProps={{
+                            input: { 'aria-label': 'update inventory' },
+                        }}
+                    />
+                ),
+                Edit: ({ row, cell, table }) => {
+                    const [checked, setChecked] = useState(() => {
+                        const currentValue = cell.getValue();
+                        return currentValue === 1 ? true : false;
+                    });
+
+                    const handleChange = (e) => {
+                        const newChecked = e.target.checked;
+                        setChecked(newChecked);
+                        row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+                    };
+
+                    return (
+                        <Checkbox
+                            checked={checked}
+                            onChange={handleChange}
+                            slotProps={{
+                                input: { 'aria-label': 'update inventory' },
+                            }}
+                        />
+                    );
+                },
+            }
         ],
-        [validationErrors, properties, inventoryItems, teamMembers, taskTypes, scheduleTypes, statusOpts, palette]
+        [validationErrors, properties, inventoryItems, teamMembers, taskTypes, scheduleTypes, statusOpts, palette, fetchInventoryByProperty, inventoryOptionsMap]
     )
 
     // Add these helper functions before the return statement
@@ -527,12 +661,27 @@ const TaskPlanner = () => {
         }
     }
 
+    // DELETE action
+    const handleDelete = async () => {
+        if (!taskToDelete) return;
+
+        try {
+            const res = await deleteRecurringTask(taskToDelete.id);
+            showSnackbar(res.message || 'Task deleted successfully', 'success');
+            setOpenConfirm(false);
+            setTaskToDelete(null);
+        } catch (error) {
+            showSnackbar(error.message || 'Failed to delete task', 'error');
+            console.error('Error deleting task:', error);
+        }
+    };
+
     return (
         <React.Fragment>
             <Box>
                 <MaterialReactTable
                     columns={columns}
-                    data={taskPlannerData}
+                    data={allTasksData?.recurring_tasks || []}
                     state={{
                         isLoading: loading,
                     }}
@@ -563,6 +712,18 @@ const TaskPlanner = () => {
                                     <EditIcon fontSize="small" />
                                 </IconButton>
                             </Tooltip>
+                            <Tooltip title="Delete">
+                                <IconButton
+                                    onClick={() => {
+                                        setTaskToDelete(row.original);
+                                        setOpenConfirm(true);
+                                    }}
+                                    size="small"
+                                    sx={{ color: palette.secondary.main }}
+                                >
+                                    <Delete fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
                         </Box>
                     )}
                     renderTopToolbarCustomActions={({ table }) => (
@@ -576,7 +737,7 @@ const TaskPlanner = () => {
                                 bgcolor: palette.primary.main,
                                 "&:hover": { bgcolor: palette.secondary.main },
                                 fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                px: { xs: 2, sm: 3 }
+                                borderRadius: 10,
                             }}
                         >
                             Create New Task
@@ -604,6 +765,14 @@ const TaskPlanner = () => {
 
                 />
             </Box>
+
+            <ConfirmationDialog
+                open={openConfirm}
+                onCancel={() => setOpenConfirm(false)}
+                onDelete={handleDelete}
+                title="Delete Task"
+                message="Are you sure you want to delete this task? This action cannot be undone."
+            />
         </React.Fragment>
     )
 }

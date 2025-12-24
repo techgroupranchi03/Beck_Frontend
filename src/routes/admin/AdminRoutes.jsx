@@ -24,7 +24,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../../Layout.jsx';
 import Dashboard from '../../pages/admin/Dashboard.jsx';
-import Clients from '../../pages/admin/Clients.jsx';
+import ClientsManagement from '../../pages/admin/ClientsManagement.jsx';
 import Admin_login from '../../auth/admin/Admin_login.jsx';
 import ProtectedRoute from '../ProtectedRoute.jsx';
 
@@ -45,7 +45,7 @@ const AdminRoutes = () => (
       {/* Nested routes inside Layout */}
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
-      <Route path="clients" element={<Clients />} />
+      <Route path="clients" element={<ClientsManagement />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Route>
   </Routes>

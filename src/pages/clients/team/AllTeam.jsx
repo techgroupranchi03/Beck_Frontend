@@ -285,7 +285,7 @@ const AllTeam = () => {
                 display: "inline-block",
                 px: 1.5,
                 py: 0.5,
-                borderRadius: 1,
+                borderRadius: 10,
                 bgcolor,
                 color,
                 fontSize: "0.75rem",
@@ -347,15 +347,17 @@ const AllTeam = () => {
             <Button
               variant="contained"
               disableElevation
-              size='small'
+              size='medium'
               onClick={() => {
                 table.setCreatingRow(true);
               }}
               startIcon={<Person2Rounded fontSize='large' />}
               sx={{
-                fontSize: '1rem',
-                bgcolor: palette.secondary.main,
-                "&:hover": { bgcolor: palette.primary.main },
+                fontSize: '0.875rem',
+                bgcolor: palette.primary.main,
+                "&:hover": { bgcolor: palette.secondary.main },
+                textTransform: "none",
+                borderRadius: 10,
               }}
             >
               Add Team Member

@@ -18,6 +18,7 @@ import { MaterialReactTable } from "material-react-table";
 import ConfirmationDialog from "../../dialoge/admin/Confirmation_dialog";
 import { getAllClients, deleteClient, addClient, editClient } from "../../service/Admin/Admin_auth";
 import { useSnackbar } from "../../resuable_components/Snackbar";
+import { formatDate } from "../../utils/dateFormat";
 
 export default function Clients() {
   const theme = useTheme();
@@ -29,22 +30,23 @@ export default function Clients() {
   const [loading, setLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
+
+  console.log("clients data:", clients);
   // Fetch all clients from API
   useEffect(() => {
+    const fetchClients = async () => {
+      setLoading(true);
+      try {
+        const res = await getAllClients();
+        setClients(res.data);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchClients();
   }, []);
-
-  const fetchClients = async () => {
-    setLoading(true);
-    try {
-      const res = await getAllClients();
-      setClients(res.data);
-    } catch (err) {
-      console.error("Error fetching clients:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Status and Plan options
   const statusOptions = ['active', 'inactive'];
@@ -53,8 +55,6 @@ export default function Clients() {
   // CREATE
   const handleCreateClient = async ({ values, table }) => {
     try {
-      setLoading(true);
-
       // Format dates to YYYY-MM-DD
       const formattedValues = { ...values };
       if (formattedValues.valid_from) {
@@ -68,7 +68,7 @@ export default function Clients() {
 
       const res = await addClient(formattedValues);
       showSnackbar(res.message || "Client created successfully", "success");
-      await fetchClients();
+      setClients((prev) => [...prev, res.data]);
       table.setCreatingRow(null);
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
@@ -89,8 +89,6 @@ export default function Clients() {
   // UPDATE
   const handleSaveClient = async ({ values, table, row }) => {
     try {
-      setLoading(true);
-
       // Format dates to YYYY-MM-DD
       const formattedValues = { ...values };
       if (formattedValues.valid_from) {
@@ -103,7 +101,7 @@ export default function Clients() {
       }
       const res = await editClient({ id: row.original.id, ...formattedValues });
       showSnackbar(res.message || "Client updated successfully", "success");
-      await fetchClients();
+      setClients((prev) => prev.map(client => client.id === row.original.id ? res.data : client));
       table.setEditingRow(null);
     } catch (error) {
       if (error.errors && Array.isArray(error.errors)) {
@@ -116,8 +114,6 @@ export default function Clients() {
         setValidationErrors(apiErrors);
       }
       console.error("Error updating client:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -130,15 +126,12 @@ export default function Clients() {
   const handleConfirmDelete = async () => {
     if (clientToDelete != null) {
       try {
-        setLoading(true);
         const res = await deleteClient({ id: clientToDelete });
         showSnackbar(res.message || 'Client deleted successfully', 'success');
-        await fetchClients();
+        setClients((prev) => prev.filter(client => client.id !== clientToDelete));
       } catch (err) {
         console.error('Error deleting client:', err);
         showSnackbar('Failed to delete client', 'error');
-      } finally {
-        setLoading(false);
       }
     }
     setOpenConfirm(false);
@@ -237,7 +230,7 @@ export default function Clients() {
         header: "Plan",
         size: 120,
         editVariant: 'select',
-        editSelectOptions: planOptions,
+        editSelectOptions: planOptions.map((plan) => ({ value: plan, label: plan.charAt(0).toUpperCase() + plan.slice(1) })),
         muiEditTextFieldProps: {
           select: true,
           required: true,
@@ -268,7 +261,7 @@ export default function Clients() {
         header: "Status",
         size: 130,
         editVariant: 'select',
-        editSelectOptions: statusOptions,
+        editSelectOptions: statusOptions.map((status) => ({ value: status, label: status.charAt(0).toUpperCase() + status.slice(1) })),
         muiEditTextFieldProps: {
           select: true,
           required: true,
@@ -313,64 +306,54 @@ export default function Clients() {
         },
       },
       {
-        accessorKey: "valid_from",
-        header: "Valid From",
+        accessorKey: 'valid_from',
+        header: 'Valid From',
         size: 150,
-        muiEditTextFieldProps: ({ row }) => {
-          const date = row.original.valid_from;
-          let formattedDate = '';
-          if (date) {
-            const dateObj = new Date(date);
-            formattedDate = dateObj.toISOString().split('T')[0];
-          }
-          return {
-            type: 'date',
-            required: true,
-            error: !!validationErrors?.valid_from,
-            helperText: validationErrors?.valid_from,
-            value: formattedDate,
-            onFocus: () =>
-              setValidationErrors({
-                ...validationErrors,
-                valid_from: undefined,
-              }),
-          };
+        accessorFn: (row) => {
+          if (!row.valid_from) return '';
+          return new Date(row.valid_from).toISOString().split('T')[0];
         },
-        Cell: ({ cell }) => {
-          const date = cell.getValue();
-          if (!date) return '';
-          return new Date(date).toLocaleDateString();
+        muiEditTextFieldProps: {
+          type: 'date',
+          required: true,
+          error: !!validationErrors?.valid_from,
+          helperText: validationErrors?.valid_from,
+          InputLabelProps: {
+            shrink: true,
+          },
+          onFocus: () =>
+            setValidationErrors((prev) => ({
+              ...prev,
+              valid_from: undefined,
+            })),
         },
-      },
+        Cell: ({ row }) => formatDate(row.original.valid_from),
+      }
+      ,
+
       {
         accessorKey: "valid_to",
         header: "Valid To",
         size: 150,
-        muiEditTextFieldProps: ({ row }) => {
-          const date = row.original.valid_to;
-          let formattedDate = '';
-          if (date) {
-            const dateObj = new Date(date);
-            formattedDate = dateObj.toISOString().split('T')[0];
-          }
-          return {
-            type: 'date',
-            required: true,
-            error: !!validationErrors?.valid_to,
-            helperText: validationErrors?.valid_to,
-            value: formattedDate,
-            onFocus: () =>
-              setValidationErrors({
-                ...validationErrors,
-                valid_to: undefined,
-              }),
-          };
+        accessorFn: (row) => {
+          if (!row.valid_to) return '';
+          return new Date(row.valid_to).toISOString().split('T')[0];
         },
-        Cell: ({ cell }) => {
-          const date = cell.getValue();
-          if (!date) return '';
-          return new Date(date).toLocaleDateString();
+        muiEditTextFieldProps: {
+          type: 'date',
+          required: true,
+          error: !!validationErrors?.valid_to,
+          helperText: validationErrors?.valid_to,
+          InputLabelProps: {
+            shrink: true,
+          },
+          onFocus: () =>
+            setValidationErrors((prev) => ({
+              ...prev,
+              valid_to: undefined,
+            })),
         },
+        Cell: ({ row }) => formatDate(row.original.valid_to),
       },
     ],
     [validationErrors, palette]
@@ -425,20 +408,26 @@ export default function Clients() {
               onClick={() => {
                 table.setCreatingRow(true);
               }}
-              startIcon={<PersonAddIcon fontSize='large' />}
               sx={{
+                textTransform: 'none',
                 fontSize: '1rem',
-                bgcolor: palette.secondary.main,
-                "&:hover": { bgcolor: palette.primary.main },
+                bgcolor: palette.primary.main,
+                "&:hover": { bgcolor: palette.secondary.main },
+                paddingTop: '8px',
               }}
             >
               Add New Client
             </Button>
           )}
           enableColumnActions={false}
-          enableColumnFilters={true}
+          enableColumnFilters={false}
+
           enableSorting
           enablePagination
+          // false show hide columns button
+          enableHiding={false}
+          enableDensityToggle={false}
+
           muiTablePaperProps={{
             elevation: 2,
             sx: {

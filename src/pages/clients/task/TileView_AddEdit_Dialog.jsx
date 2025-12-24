@@ -15,41 +15,51 @@ import {
     FormControlLabel,
     Box,
     Autocomplete,
+    FormControl,
+    RadioGroup,
+    Radio,
+    FormLabel,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close';
 import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 
+
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
+const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
+    const [taskScheduleType, setTaskScheduleType] = useState('one_time');
+    //console.log('task in TileView_AddEdit_Dialog:', task);
     const isEdit = !!task;
-    const isActiveTask = viewMode === 'activeTasks';
-    const isTaskPlanner = viewMode === 'taskPlanner';
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
 
-    console.log('TileView_AddEdit_Dialog viewMode:', viewMode);
+    
+
 
     // Get data from context
     const {
         inventoryItems,
+        properties,
         teamMembers,
         createTask,
         updateTaskPlannerData,
-        updateActiveTaskData
+        updateActiveTaskData,
+        fetchInventoryByProperty
     } = useTaskContext();
+
+    //console.log('inventoryItems in TileView_AddEdit_Dialog:', inventoryItems);
 
     // Form state
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        property_id: '',
-        inventory_id: '',
+        property_id: null,
+        inventory_id: null,
         schedule_type: '',
         repeat_on: '{}',
         start_date: '',
@@ -57,23 +67,27 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
         task_type: '',
         assigned_to: '',
         is_photo_required: 0,
+        update_inventory: 0,
         status: ''
     });
 
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [inventoryOptions, setInventoryOptions] = useState(inventoryItems || []);
+
+   // console.log('inventoryOptions:', inventoryOptions);
 
     // Separate state for repeat_on data structure
     const [repeatData, setRepeatData] = useState({});
 
-    // Initialize form data when task changes
+    // Initialize form data when task changes and derive taskScheduleType for edits
     useEffect(() => {
         if (isEdit && task) {
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
-                // property_id: task.property_id || '',
-                inventory_id: task.inventory_id || '',
+                property_id: task.property_id || '',
+                inventory_id: task.inventory_id || null,
                 schedule_type: task.schedule_type || '',
                 repeat_on: task.repeat_on || '{}',
                 start_date: task.start_date || '',
@@ -81,8 +95,17 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 task_type: task.task_type || '',
                 assigned_to: task.assigned_to || '',
                 is_photo_required: task.is_photo_required || 0,
+                update_inventory: task.update_inventory || 0,
                 status: task.status || ''
             });
+
+            // Derive taskScheduleType from existing task's schedule_type
+            const taskSchedule = task.schedule_type;
+            if (taskSchedule && taskSchedule !== 'one_time') {
+                setTaskScheduleType('recurring');
+            } else {
+                setTaskScheduleType('one_time');
+            }
 
             // Parse repeat_on for edit mode
             try {
@@ -96,22 +119,34 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             } catch {
                 setRepeatData({});
             }
+
+            // Fetch inventory for the task's property when editing
+            if (task.property_id) {
+                fetchInventoryByProperty(task.property_id)
+                    .then((data) => setInventoryOptions(data || []))
+                    .catch(() => setInventoryOptions([]));
+            } else {
+                setInventoryOptions(inventoryItems || []);
+            }
         } else {
             // Reset form for new task
             setFormData({
                 title: '',
                 description: '',
-                // property_id: '',
-                inventory_id: '',
+                property_id: '',
+                inventory_id: null,
                 schedule_type: '',
                 repeat_on: '{}',
                 start_date: '',
                 task_type: '',
                 assigned_to: '',
                 is_photo_required: 0,
+                update_inventory: 0,
                 status: ''
             });
             setRepeatData({});
+            setTaskScheduleType('one_time');
+            setInventoryOptions(inventoryItems || []);
         }
         setValidationErrors({});
     }, [task, isEdit, open]);
@@ -125,6 +160,13 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             }));
         }
     }, [repeatData, formData.schedule_type]);
+
+    // keep inventoryOptions in sync when global inventoryItems change and no property is selected
+    useEffect(() => {
+        if (!formData.property_id) {
+            setInventoryOptions(inventoryItems || []);
+        }
+    }, [inventoryItems, formData.property_id]);
 
     const handleChange = (field) => (event) => {
         const value = event.target.value;
@@ -141,12 +183,20 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
         }
     };
 
-    const handleCheckboxChange = (event) => {
+    const handlePhotoChange = (event) => {
         setFormData(prev => ({
             ...prev,
             is_photo_required: event.target.checked ? 1 : 0
         }));
     };
+
+    const handleInventoryChange = (event) => {
+        setFormData(prev => ({
+            ...prev,
+            update_inventory: event.target.checked ? 1 : 0
+        }));
+    };
+
 
     const handleCreateUpdate = async () => {
         setValidationErrors({});
@@ -155,17 +205,31 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
             if (isEdit) {
                 // Call different APIs based on viewMode
                 let res;
-                if (isActiveTask) {
+                if (taskScheduleType === 'one_time') {
                     // Update active task (task instance)
                     res = await updateActiveTaskData(task.id, formData);
                 } else {
-                    // Update task planner
-                    res = await updateTaskPlannerData(task.id, formData);
+                    // Update task planner - don't send `status` for recurring tasks
+                    const plannerPayload = { ...formData };
+                    delete plannerPayload.status;
+                    res = await updateTaskPlannerData(task.id, plannerPayload);
                 }
-                showSnackbar(res.message || 'Task updated successfully', 'success');
+                showSnackbar(res.message, 'success');
             } else {
-                const res = await createTask(formData);
-                showSnackbar(res.message || 'Task created successfully', 'success');
+                let res;
+                if (taskScheduleType === 'one_time') {
+                    // Create one-time task
+                    const oneTimePayload = {
+                        ...formData,
+                        schedule_type: 'one_time',
+                        repeat_on: '{}'
+                    };
+                    res = await createTask(oneTimePayload);
+                } else {
+                    // Create recurring task
+                    res = await createTask(formData);
+                }
+                showSnackbar(res.message , 'success');
             }
             onClose();
         } catch (error) {
@@ -181,8 +245,8 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 } else if (typeof error.errors === 'object') {
                     // Handle case where errors is an object
                     Object.keys(error.errors).forEach((key) => {
-                        apiErrors[key] = Array.isArray(error.errors[key]) 
-                            ? error.errors[key][0] 
+                        apiErrors[key] = Array.isArray(error.errors[key])
+                            ? error.errors[key][0]
                             : error.errors[key];
                     });
                 }
@@ -215,6 +279,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 >
                     <CloseIcon />
                 </IconButton>
+
             </DialogTitle>
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
@@ -242,44 +307,129 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                             size="small"
                             multiline
                             rows={3}
-                            required
                             error={!!validationErrors.description}
-                            helperText={validationErrors.description}
+                            // set limit to 500 characters and show character count
+                            inputProps={{ maxLength: 500 }}
+                            helperText={
+                                <>
+                                    <span>{validationErrors.description}</span>
+                                    <span>{formData.description.length}/500</span>
+                                </>
+                            }
+                            slotProps={{
+                                formHelperText: {
+                                    sx: {
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                    },
+                                },
+                            }}
                         />
                     </Grid>
 
-                    {/* Property */}
-                    {/* <Grid size={{ xs: 12, sm: 6 }}>
+                    {/* Task Schedule and Schedule Type side-by-side */}
+                    <Grid size={{ xs: 12 }} container spacing={2}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <FormControl component="fieldset" disabled={isEdit}>
+                                <FormLabel component="legend">Task Schedule</FormLabel>
+                                <RadioGroup
+                                    row
+                                    value={taskScheduleType}
+                                    onChange={(e) => setTaskScheduleType(e.target.value)}
+                                >
+                                    <FormControlLabel value="one_time" control={<Radio />} label="One Time" />
+                                    <FormControlLabel value="recurring" control={<Radio />} label="Recurring" />
+                                </RadioGroup>
+                            </FormControl>
+                        </Grid>
+                        {taskScheduleType === 'recurring' && (
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <FormControl component="fieldset">
+                                    <FormLabel component="legend"
+                                        sx={{
+                                            color: validationErrors.schedule_type ? 'error.main' : 'inherit'
+                                        }}
+                                    >
+                                        Schedule Type
+                                    </FormLabel>
+                                    <RadioGroup
+                                        row
+                                        value={formData.schedule_type}
+                                        onChange={handleChange('schedule_type')}
+                                    >
+                                        {scheduleTypes.filter(type => type !== 'one_time').map((type) => (
+                                            <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1)} />
+                                        ))}
+                                    </RadioGroup>
+                                    {validationErrors.schedule_type && (
+                                        <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
+                                            {validationErrors.schedule_type}
+                                        </Box>
+                                    )}
+                                </FormControl>
+
+                            </Grid>
+                        )}
+                    </Grid>
+
+
+                    {/* property  */}
+                    <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
                             options={properties}
-                            getOptionLabel={(option) => option.name || ""}
-                            value={properties.find((prop) => prop.id === formData.property_id) || null}
+                            getOptionLabel={(option) => option.name ? String(option.name) : ""}
+                            value={properties.find((item) => item.id === formData.property_id) || null}
                             onChange={(e, newValue) => {
-                                handleChange("property_id")({
-                                    target: { value: newValue ? newValue.id : "" }
-                                });
+                                const propId = newValue ? newValue.id : "";
+                                handleChange("property_id")({ target: { value: propId } });
+
+                                if (newValue) {
+                                    fetchInventoryByProperty(newValue.id)
+                                        .then((data) => {
+                                            setInventoryOptions(data || []);
+                                            // clear inventory_id if it's not in the fetched list
+                                            if (!data || !data.find((it) => it.id === formData.inventory_id)) {
+                                                setFormData((prev) => ({ ...prev, inventory_id: '' }));
+                                            }
+                                        })
+                                        .catch(() => setInventoryOptions([]));
+                                } else {
+                                    setInventoryOptions(inventoryItems || []);
+                                    setFormData((prev) => ({ ...prev, inventory_id: '' }));
+                                }
                             }}
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
                                     label="Select Property"
-                                    required
                                     error={!!validationErrors.property_id}
                                     helperText={validationErrors.property_id}
                                 />
                             )}
                             isOptionEqualToValue={(option, value) => option.id === value.id}
-                        />
-                    </Grid> */}
-
+                        />  
+                     
+                    </Grid>
                     {/* Inventory */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
-                            options={inventoryItems}
+                            options={inventoryOptions}
                             getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                            value={inventoryItems.find((item) => item.id === formData.inventory_id) || null}
+                            value={inventoryOptions.find((item) => item.id === formData.inventory_id) || null}
+                            renderOption={(props, option) => (
+                                <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                    {(option.property_image_url) && (
+                                        <img
+                                            src={option.property_image_url}
+                                            alt={option.name || ''}
+                                            style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                        />
+                                    )}
+                                </li>
+                            )}
                             onChange={(e, newValue) => {
                                 handleChange("inventory_id")({
                                     target: { value: newValue ? newValue.id : "" }
@@ -289,7 +439,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 <TextField
                                     {...params}
                                     label="Select Inventory"
-                                    required
                                     error={!!validationErrors.inventory_id}
                                     helperText={validationErrors.inventory_id}
                                 />
@@ -298,9 +447,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         />
                     </Grid>
 
-
-                    {/* Start Date - Show when creating OR editing Task Planner */}
-                    {(!isEdit || (isEdit && isTaskPlanner)) && (
+                    {taskScheduleType === 'recurring'&& (
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 type="date"
@@ -309,7 +456,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 onChange={handleChange('start_date')}
                                 fullWidth
                                 size="small"
-                                required
                                 disabled={isEdit}
                                 error={!!validationErrors.start_date}
                                 helperText={validationErrors.start_date || (isEdit ? 'Cannot change start date' : '')}
@@ -320,8 +466,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </Grid>
                     )}
 
-                    {/* Schedule Date - ONLY when editing Active Task */}
-                    {isEdit && isActiveTask && (
+                    {taskScheduleType === 'one_time' && (
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 type="date"
@@ -330,8 +475,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 onChange={handleChange('scheduled_date')}
                                 fullWidth
                                 size="small"
-                                required
-                                disabled={isEdit}
                                 error={!!validationErrors.scheduled_date}
                                 helperText={validationErrors.scheduled_date || (isEdit ? 'Cannot change schedule date' : '')}
                                 InputLabelProps={{
@@ -341,38 +484,8 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </Grid>
                     )}
 
-                    {/* Schedule Type - Show when creating new task OR editing Task Planner */}
-                    {(!isEdit || (isEdit && isTaskPlanner)) && (
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Autocomplete
-                                size="small"
-                                fullWidth
-                                options={scheduleTypes}
-                                getOptionLabel={(option) => String(option)}
-                                value={formData.schedule_type || null}
-                                onChange={(e, newValue) => {
-                                    handleChange("schedule_type")({
-                                        target: { value: newValue || "" }
-                                    });
-                                }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Schedule Type"
-                                        placeholder="Select Schedule Type"
-                                        required
-                                        error={!!validationErrors.schedule_type}
-                                        helperText={validationErrors.schedule_type}
-                                    />
-                                )}
-                            />
-                        </Grid>
-                    )}
-
-
-
-                    {/* Repeat On - Show when creating new task OR editing Task Planner */}
-                    {(!isEdit || (isEdit && isTaskPlanner)) && formData.schedule_type === 'weekly' && (
+                    {/* Repeat On - Show when creating Task Planner OR editing Task Planner (NOT Active Task) */}
+                    {taskScheduleType === 'recurring' && formData.schedule_type === 'weekly' && (
                         <Grid size={{ xs: 12 }}>
                             <Autocomplete
                                 multiple
@@ -399,7 +512,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </Grid>
                     )}
 
-                    {(!isEdit || (isEdit && isTaskPlanner)) && formData.schedule_type === 'monthly' && (
+                    {taskScheduleType === 'recurring' && formData.schedule_type === 'monthly' && (
                         <Grid size={{ xs: 12 }}>
                             <Autocomplete
                                 multiple
@@ -425,7 +538,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </Grid>
                     )}
 
-                    {(!isEdit || (isEdit && isTaskPlanner)) && formData.schedule_type === 'yearly' && (
+                    {taskScheduleType === 'recurring' && formData.schedule_type === 'yearly' && (
                         <>
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <TextField
@@ -517,8 +630,8 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </TextField>
                     </Grid>
 
-                    {/* Status - Show when creating one_time task OR editing Active Task */}
-                    {((!isEdit && formData.schedule_type === 'one_time') || (isEdit && isActiveTask)) && (
+                    {/* Status - Show when creating/editing Active Task OR creating one_time task */}
+                    {(taskScheduleType === 'one_time' || formData.schedule_type === 'one_time') && (
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 select
@@ -527,7 +640,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                                 onChange={handleChange('status')}
                                 fullWidth
                                 size="small"
-                                required
                                 error={!!validationErrors.status}
                                 helperText={validationErrors.status}
                             >
@@ -540,17 +652,32 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                         </Grid>
                     )}
 
-                    {/* Photo Required */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={formData.is_photo_required === 1}
-                                    onChange={handleCheckboxChange}
-                                />
-                            }
-                            label="Photo Required"
-                        />
+                    <Grid size={{ xs: 12 }} container spacing={2}>
+                        {/* Photo Required */}
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.is_photo_required === 1}
+                                        onChange={handlePhotoChange}
+                                    />
+                                }
+                                label="A Photo Proof is Required"
+                            />
+                        </Grid>
+                        {/* update inventory checkbox  */}
+
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={formData.update_inventory === 1}
+                                        onChange={handleInventoryChange}
+                                    />
+                                }
+                                label="Update Inventory Quantity"
+                            />
+                        </Grid>
                     </Grid>
                 </Grid>
             </DialogContent>
@@ -558,7 +685,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 <Button
                     variant='text'
                     size='medium'
-                    sx={{ textTransform: 'none' , mr: 2 }}
+                    sx={{ textTransform: 'none', mr: 2 }}
                     onClick={onClose}
                     disabled={loading}
                 >
@@ -567,13 +694,15 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, viewMode }) => {
                 <Button
                     variant='contained'
                     disableElevation
-                    size='medium'
+                    size='small'
+                    margin='normal'
                     onClick={handleCreateUpdate}
                     disabled={loading}
                     sx={{
                         textTransform: 'none',
                         backgroundColor: palette.primary.main,
-                        '&:hover': { backgroundColor: palette.secondary.main }
+                        '&:hover': { backgroundColor: palette.secondary.main },
+                        borderRadius: 10,
                     }}
                 >
                     {loading ? 'Saving...' : (isEdit ? 'Update Task' : 'Create Task')}

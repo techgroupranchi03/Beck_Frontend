@@ -5,9 +5,13 @@ import {
     createClientTask,
     updateTaskPlanner,
     updateActiveTask,
-    deleteClientTask,
     updateClientActiveTaskStatus,
-    getTaskTeamMembers
+    getTaskTeamMembers,
+    createClientActiveTask,
+    getInventoryByPropertyId,
+    getAllClientTasks,
+    deleteOneTime,
+    deleteRecurring
 } from '../../../service/Clients/Task';
 import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
@@ -17,6 +21,8 @@ import { createTeamTask, getActiveTasks, getPlannerTasks, getTeamsInventoryItems
 
 export const useTaskData = () => {
     const { user } = useAuth();
+    const [allTasksData, setAllTasksData] = useState([]);
+    const [allTaskPagination, setAllTaskPagination] = useState({});
     const [taskPlannerData, setTaskPlannerData] = useState([]);
     const [activeTasksData, setActiveTasksData] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -29,7 +35,50 @@ export const useTaskData = () => {
 
     // check user role
     const isTeamUser = user?.role === 'team';
-    console.log("Is Team User:", isTeamUser);
+    //console.log("Is Team User:", isTeamUser);
+
+
+    // add new api for get all task 
+
+    const fetchAllTasks = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
+        try {
+            if (!append) {
+                setLoading(true);
+            }
+            const res = await getAllClientTasks(filters, searchText, page);
+            if (append) {
+                setAllTasksData((prev) => {
+                    // Handle if prev is an object with active_tasks and recurring_tasks
+                    if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                        const newData = res.data || {};
+                        return {
+                            active_tasks: [...(prev.active_tasks || []), ...(newData.active_tasks || [])],
+                            recurring_tasks: [...(prev.recurring_tasks || []), ...(newData.recurring_tasks || [])]
+                        };
+                    }
+                    // Default: just return new data
+                    return res.data || [];
+                });
+            } else {
+                setAllTasksData(res.data || []);
+            }
+            // set pagination data 
+            setAllTaskPagination({
+                hasNextPage: res.hasNextPage || false,
+                hasPreviousPage: res.hasPreviousPage || false,
+                page: res.page || 1,
+                total: res.total || 0,
+                totalPages: res.totalPages || 1,
+            });
+            return res.data;
+        } catch (err) {
+            console.error('Error fetching all tasks:', err);
+            setError(err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     // Fetch Task Planner tasks
     const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
@@ -53,7 +102,7 @@ export const useTaskData = () => {
                 total: res.total || 0,
                 totalPages: res.totalPages || 1,
             })
-            console.log("Fetched Task Planner Data:", res);
+            //console.log("Fetched Task Planner Data:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching task planner data:', err);
@@ -127,6 +176,18 @@ export const useTaskData = () => {
         }
     }, []);
 
+    // Fetch Inventory Items by property ( new added )
+    const fetchInventoryByProperty = useCallback(async (propertyId) => {
+        try {
+            const res = await getInventoryByPropertyId(propertyId);
+            return res.data || [];
+        } catch (err) {
+            console.error('Error fetching inventory by property:', err);
+            setError(err);
+            throw err;
+        }
+    }, []);
+
     // Fetch Team Members
     const fetchTeamMembers = useCallback(async () => {
         try {
@@ -134,9 +195,9 @@ export const useTaskData = () => {
             const res = isTeamUser
                 ? await getTeamsTeamMembers()
                 : await getTaskTeamMembers();
-            console.log("Fetched Team Members Response:", res);
+            //console.log("Fetched Team Members Response:", res);
             setTeamMembers(res.data || []);
-            
+
             return res.data;
         } catch (err) {
             console.error('Error fetching team members:', err);
@@ -151,18 +212,20 @@ export const useTaskData = () => {
         setError(null);
         try {
             await Promise.all([
+                fetchAllTasks({}, "", 1, false),
                 fetchTaskPlannerData(),
                 fetchActiveTasksData(),
                 fetchProperties(),
                 fetchInventoryItems(),
-                fetchTeamMembers()
+                fetchTeamMembers(),
+                fetchInventoryByProperty()
             ]);
         } catch (err) {
             console.error('Error fetching all data:', err);
         } finally {
             setLoading(false);
         }
-    }, [fetchTaskPlannerData, fetchActiveTasksData, fetchProperties, fetchInventoryItems, fetchTeamMembers]);
+    }, [fetchTaskPlannerData, fetchActiveTasksData, fetchProperties, fetchInventoryItems, fetchTeamMembers, fetchInventoryByProperty, fetchAllTasks]);
 
     // Initial data fetch
     useEffect(() => {
@@ -178,7 +241,7 @@ export const useTaskData = () => {
             const res = isTeamUser
                 ? await createTeamTask(values)
                 : await createClientTask(values);
-            console.log("Created Task Response:", res);
+            //console.log("Created Task Response:", res);
 
             // Determine if task should go to Task Planner or Active Tasks
             // Task Planner: recurring tasks (weekly, monthly, yearly)
@@ -197,9 +260,61 @@ export const useTaskData = () => {
                 ]);
             }
 
+            // Update allTasksData
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return [res.data, ...prev];
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    if (isRecurringTask) {
+                        return {
+                            active_tasks: prev.active_tasks || [],
+                            recurring_tasks: [res.data, ...(prev.recurring_tasks || [])]
+                        };
+                    } else {
+                        return {
+                            active_tasks: [res.data, ...(prev.active_tasks || [])],
+                            recurring_tasks: prev.recurring_tasks || []
+                        };
+                    }
+                }
+                return prev;
+            });
+
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
+            throw err;
+        }
+    };
+
+
+    // create active task directly
+    const createActiveTask = async (values) => {
+        try {
+            const res = await createClientActiveTask(values);
+            //console.log("Created Active Task Response:", res);
+
+            // Add to Active Tasks list
+            setActiveTasksData((prev) => [res.data, ...prev]);
+
+            // Update allTasksData
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return [res.data, ...prev];
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    return {
+                        active_tasks: [res.data, ...(prev.active_tasks || [])],
+                        recurring_tasks: prev.recurring_tasks || []
+                    };
+                }
+                return prev;
+            });
+
+            return res;
+        } catch (err) {
+            console.error('Error creating active task:', err);
             throw err;
         }
     };
@@ -212,10 +327,33 @@ export const useTaskData = () => {
                 ? await updateTeamTask(id, values)
                 : await updateTaskPlanner(id, values);
 
+            // If inventory_id changed, update inventory_name as well
+            const updatedValues = { ...values };
+            if (values.inventory_id !== undefined) {
+                const inventory = inventoryItems.find(item => item.id === values.inventory_id);
+                updatedValues.inventory_name = inventory ? inventory.name : null;
+            }
+
             // Update in taskPlannerData if it exists there
             setTaskPlannerData((prev) =>
-                prev.map((task) => (task.id === id ? { ...task, ...values } : task))
+                prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task))
             );
+
+            // Update in allTasksData
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task));
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    return {
+                        active_tasks: prev.active_tasks || [],
+                        recurring_tasks: (prev.recurring_tasks || []).map((task) =>
+                            task.id === id ? { ...task, ...updatedValues } : task
+                        )
+                    };
+                }
+                return prev;
+            });
 
             return res;
         } catch (err) {
@@ -232,10 +370,33 @@ export const useTaskData = () => {
                 ? await updateTeamTask(id, values)
                 : await updateActiveTask(id, values);
 
+            // If inventory_id changed, update inventory_name as well
+            const updatedValues = { ...values };
+            if (values.inventory_id !== undefined) {
+                const inventory = inventoryItems.find(item => item.id === values.inventory_id);
+                updatedValues.inventory_name = inventory ? inventory.name : null;
+            }
+
             // Update in activeTasksData
             setActiveTasksData((prev) =>
-                prev.map((task) => (task.id === id ? { ...task, ...values } : task))
+                prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task))
             );
+
+            // Update in allTasksData
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task));
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    return {
+                        active_tasks: (prev.active_tasks || []).map((task) =>
+                            task.id === id ? { ...task, ...updatedValues } : task
+                        ),
+                        recurring_tasks: prev.recurring_tasks || []
+                    };
+                }
+                return prev;
+            });
 
             return res;
         } catch (err) {
@@ -244,18 +405,50 @@ export const useTaskData = () => {
         }
     };
 
-    // Delete task
-    const deleteTask = async (id) => {
+    // delete one time and recurring task both
+    const deleteOneTimeTask = async (id) => {
         try {
-            const res = await deleteClientTask(id);
-
-            // Remove from both Task Planner and Active Tasks
-            setTaskPlannerData((prev) => prev.filter((task) => task.id !== id));
-            setActiveTasksData((prev) => prev.filter((task) => task.id !== id));
-
+            const res = await deleteOneTime(id);
+            // Update allTasksData by removing the deleted task
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return prev.filter((task) => task.id !== id);
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    return {
+                        active_tasks: (prev.active_tasks || []).filter((task) => task.id !== id),
+                        recurring_tasks: prev.recurring_tasks || []
+                    };
+                }
+                return prev;
+            });
             return res;
         } catch (err) {
-            console.error('Error deleting task:', err);
+            console.error('Error deleting one time task:', err);
+            throw err;
+        }
+    };
+
+    // delete recurring task
+    const deleteRecurringTask = async (id) => {
+        try {
+            const res = await deleteRecurring(id);
+            // Update allTasksData by removing the deleted task
+            setAllTasksData((prev) => {
+                if (Array.isArray(prev)) {
+                    return prev.filter((task) => task.id !== id);
+                }
+                if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    return {
+                        active_tasks: prev.active_tasks || [],
+                        recurring_tasks: (prev.recurring_tasks || []).filter((task) => task.id !== id)
+                    };
+                }
+                return prev;
+            });
+            return res;
+        } catch (err) {
+            console.error('Error deleting recurring task:', err);
             throw err;
         }
     };
@@ -298,6 +491,7 @@ export const useTaskData = () => {
 
     return {
         // Data States
+        allTasksData,
         taskPlannerData,
         activeTasksData,
         properties,
@@ -307,23 +501,31 @@ export const useTaskData = () => {
         error,
 
         // pagination data 
+        allTaskPagination,
         taskPlannerPagination,
         activeTasksPagination,
 
+
+
         // Task Planner Operations
         createTask,
+        createActiveTask,
         updateTaskPlannerData,
-        deleteTask,
         refreshTaskPlanner,
+
+        deleteOneTimeTask,
+        deleteRecurringTask,
 
         // Active Tasks Operations
         updateActiveTaskData,
         refreshActiveTasks,
         updateActiveTaskStatus,
 
-        // Fetch with filters
+        // Fetch Methods
+        fetchAllTasks,
         fetchTaskPlannerData,
         fetchActiveTasksData,
+        fetchInventoryByProperty,
 
         // General Operations
         refetchAll: fetchAllData,

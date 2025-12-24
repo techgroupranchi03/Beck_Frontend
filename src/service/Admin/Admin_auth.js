@@ -37,9 +37,10 @@ export const adminLogout = async () => {
 };
 
 // http://31.97.230.38:8080/api/clients method: get all clients
-export const getAllClients = async () => {
+export const getAllClients = async (filters = {}, searchText = "", page = 1) => {
     const token = getAdminToken();
     try {
+        
         const response = await axios.get(
             `${BASE_URL}/clients`,
             {
@@ -48,6 +49,7 @@ export const getAllClients = async () => {
                 },
             }
         );
+        console.log("getAllClients response:", response);
         return response.data;
     } catch (error) {
         return Promise.reject(error.response?.data || { message: 'Failed to fetch clients' });

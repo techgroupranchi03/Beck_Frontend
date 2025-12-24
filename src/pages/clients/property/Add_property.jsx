@@ -26,14 +26,21 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
     //Form State
     const [formData, setFormData] = useState({
         name: "",
+        googleMapLink: "",
         address: "",
         image: "",
         imageFile: null, 
     });
 
+    // console form data for debugging
+    useEffect(() => {
+        console.log('Form Data:', formData);
+    }, [formData]);
+
     // Error State
     const [errors, setErrors] = useState({
         name: "",
+        googleMapLink: "",
         address: "",
         image: "",
     });
@@ -44,6 +51,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
         if (open && initialData) {
             setFormData({
                 name: initialData.name ?? "",
+                googleMapLink: initialData.google_map_link ?? "",
                 address: initialData.address ?? "",
                 image: initialData.image_url ?? "",
                 imageFile: null,
@@ -51,6 +59,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
             // Clear errors
             setErrors({
                 name: "",
+                googleMapLink: "",
                 address: "",
                 image: "",
             });
@@ -59,6 +68,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
             // reset on open for create
             setFormData({
                 name: "",
+                googleMapLink: "",
                 address: "",
                 image: "",
                 imageFile: null,
@@ -66,6 +76,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
             // Clear errors
             setErrors({
                 name: "",
+                googleMapLink: "",
                 address: "",
                 image: "",
             });
@@ -141,6 +152,22 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                             error={!!errors.name}
                             helperText={errors.name}
                             required
+                        />
+                    </Grid>
+
+                     {/* add google map link (optional) field */}
+                    <Grid size={{ xs: 12 }}>
+                        <TextField
+                            fullWidth
+                            type="url"
+                            label="Add Google Map Link (optional)"
+                            name="googleMapLink"
+                            value={formData.googleMapLink}
+                            onChange={handleChange}
+                            variant="outlined"
+                            size="small"
+                            error={!!errors.googleMapLink}
+                            helperText={errors.googleMapLink}
                         />
                     </Grid>
 
@@ -232,7 +259,6 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                 {/* Buttons */}
                 <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
                     <Button
-                        variant="outlined"
                         disableElevation
                         onClick={onClose}
                         sx={{
@@ -252,10 +278,13 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                         variant="contained"
                         disableElevation
                         onClick={handleCreate}
+                        size="medium"
                         sx={{
                             textTransform: "none",
                             bgcolor: palette.primary.main,
                             "&:hover": { bgcolor: palette.secondary.main },
+                            borderRadius: 10,
+                            px: 3,
                         }}
                     >
                         {mode === "edit" ? "Save changes" : "Create"}

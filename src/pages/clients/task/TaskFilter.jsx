@@ -12,17 +12,16 @@ import {
     useTheme,
 } from "@mui/material";
 
-import { taskTypes, scheduleTypes, statusOpts, } from "../../../constant";
+import {taskStatusFilter, } from "../../../constant";
 import { useTaskContext } from "./TaskManagement";
 
 
 
 
-const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = {} }) => {
+const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
     const [AssignTo, setAssignTo] = useState(null);
+    const [selectedProperty, setSelectedProperty] = useState(null);
     const [Status, setStatus] = useState("");
-    const [TaskType, setTaskType] = useState("");
-    const [ScheduleType, setScheduleType] = useState("");
     const [isFilter, setIsFilter] = useState(false);
     const theme = useTheme();
     const { palette } = theme;
@@ -30,26 +29,10 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
     // get data form context
     const {
         teamMembers,
+        properties
     } = useTaskContext();
 
-    console.log("teamMembers in filter:", teamMembers);
-
-    // // Apply initial filters on mount
-    // useEffect(() => {
-    //     if (initialFilters) {
-    //         setAssignTo(initialFilters.assigned_to || null);
-    //         setStatus(initialFilters.status || "");
-    //         setTaskType(initialFilters.task_type || "");
-    //         setScheduleType(initialFilters.schedule_type || "");
-    //         setIsFilter(
-    //             initialFilters.assigned_to ||
-    //             initialFilters.status ||
-    //             initialFilters.task_type ||
-    //             initialFilters.schedule_type
-    //         );
-    //     }
-    // }, [initialFilters]);
-     // Update filter states when initialFilters change
+   // console.log("teamMembers in filter:", teamMembers);
     useEffect(() => {
         if (initialFilters.assigned_to) {
             setAssignTo(initialFilters.assigned_to);
@@ -59,12 +42,8 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
             setStatus(initialFilters.status);
             setIsFilter(true);
         }
-        if (initialFilters.task_type) {
-            setTaskType(initialFilters.task_type);
-            setIsFilter(true);
-        }
-        if (initialFilters.schedule_type) {
-            setScheduleType(initialFilters.schedule_type);
+        if (initialFilters.property_id) {
+            setSelectedProperty(initialFilters.property_id);
             setIsFilter(true);
         }
     }, [initialFilters]);
@@ -73,8 +52,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
         const filters = {
             assigned_to: AssignTo,
             status: Status,
-            task_type: TaskType,
-            schedule_type: ScheduleType,
+            property_id: selectedProperty,
         };
         setIsFilter(true);
         onApplyFilters(filters);
@@ -84,10 +62,9 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
     const handleClearFilters = () => {
         setAssignTo(null);
         setStatus("");
-        setTaskType("");
-        setScheduleType("");
+        setSelectedProperty(null);
         setIsFilter(false);
-        onApplyFilters({ assigned_to: null, status: "", task_type: "", schedule_type: "" });
+        onApplyFilters({ assigned_to: null, status: "", property_id: null });
     };
 
     return (
@@ -115,8 +92,6 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
                         </Button>
                     )}
                 </Stack>
-
-                {/* Assignee Filter */}
                 <Autocomplete
                     size="small"
                     value={teamMembers.find((member) => member.id === AssignTo) || null}
@@ -132,69 +107,54 @@ const TaskFilter = ({ open, onClose, onApplyFilters, viewMode, initialFilters = 
                     sx={{ mb: 3 }}
                 />
 
-                {/* Status Filter only show when the view mode is Active Tasks */}
-                {viewMode === 'activeTasks' &&
-                    <FormControl fullWidth>
-                        <TextField
-                            select
-                            label="Status"
-                            size="small"
-                            sx={{ mb: 3 }}
-                            value={Status}
-                            onChange={(event) => setStatus(event.target.value)}
-                        >
-                            {statusOpts.map((status) => (
-                                <MenuItem key={status.value} value={status.value} dense>
-                                    {status.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                }
+                <Autocomplete
+                    size="small"
+                    value={properties.find((property) => property.id === selectedProperty) || null}
+                    onChange={(event, newValue) => {
+                        setSelectedProperty(newValue ? newValue.id : null);
+                    }}
+                    options={properties}
+                    getOptionLabel={(option) => option.name || ""}
+                    renderOption={(props, option) => (
+                        <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                            {option.image_url && (
+                                <img
+                                    src={option.image_url}
+                                    alt={option.name || ''}
+                                    style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                />
+                            )}
+                        </li>
+                    )}
+                    renderInput={(params) => (
+                        <TextField {...params} label="Property" placeholder="Select property" />
+                    )}
+                    sx={{ mb: 3 }}
+                />
 
-                {/* Task Type Filter */}
                 <FormControl fullWidth>
                     <TextField
                         select
-                        label="Task Type"
+                        label="Status"
                         size="small"
                         sx={{ mb: 3 }}
-                        value={TaskType}
-                        onChange={(event) => setTaskType(event.target.value)}
+                        value={Status}
+                        onChange={(event) => setStatus(event.target.value)}
                     >
-                        {taskTypes.map((type) => (
-                            <MenuItem key={type} value={type} dense>
-                                {type}
+                        {taskStatusFilter.map((status) => (
+                            <MenuItem key={status.value} value={status.value} dense>
+                                {status.label}
                             </MenuItem>
                         ))}
                     </TextField>
                 </FormControl>
-                {/* Schedule Type Filter when the view mode is Task Planner */}
-                {viewMode === 'taskPlanner' &&
-                    <FormControl fullWidth>
-                        <TextField
-                            select
-                            label="Schedule Type"
-                            size="small"
-                            sx={{ mb: 3 }}
-                            value={ScheduleType}
-                            onChange={(event) => setScheduleType(event.target.value)}
-                        >
-                            {scheduleTypes.map((type) => (
-                                <MenuItem key={type} value={type} dense>
-                                    {type.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </FormControl>
-                }
-
                 <Button
                     variant="contained"
                     disableElevation
                     color="primary"
                     fullWidth
-                    sx={{ mt: 1, bgcolor: palette.primary.main, '&:hover': { bgcolor: palette.secondary.main } }}
+                    sx={{ mt: 1, bgcolor: palette.primary.main, '&:hover': { bgcolor: palette.secondary.main } ,borderRadius:10, textTransform: 'none'}}
                     onClick={handleFilterApply}
                 >
                     Apply Filters

@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
 
-  console.log('AuthProvider user state:', user);
+  //console.log('AuthProvider user state:', user);
 
   // Fetch user details 
   const fetchUserDetails = async (token, role) => {
@@ -43,10 +43,10 @@ export const AuthProvider = ({ children }) => {
           'Authorization': `Bearer ${token}`
         }
       });
-      console.log('Fetched user details response:', response.data);
+      // console.log('Fetched user details response:', response.data);
       if (response.data.success) {
         const userData = response.data.data.admin || response.data.data.client || response.data.data.teamMember;
-        console.log('User data fetched:', userData);
+       // console.log('User data fetched:', userData);
         if (userData) {
           setUser({
             ...userData,
@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }) => {
 
       // Fetch user details from API
       const success = await fetchUserDetails(token, role);
-      console.log('Fetch user details success:', success);
+      //console.log('Fetch user details success:', success);
       
       if (success) {
         return true;
@@ -164,19 +164,19 @@ export const AuthProvider = ({ children }) => {
       // Call logout API based on role
       if (userRole === 'admin') {
        const res = await adminLogout();
-        console.log('adminLogout response:', res);
+       // console.log('adminLogout response:', res);
         localStorage.removeItem('admin_token');
         setUser(null);
         navigate('/admin/login');
       } else if (userRole === 'client') {
         const res = await clientLogout();
-        console.log('clientLogout response:', res);
+        //console.log('clientLogout response:', res);
         localStorage.removeItem('client_token');
         setUser(null);
         navigate('/clients/login');
       } else if (userRole === 'team') {
         const res = await teamsLogout();
-        console.log('teamsLogout response:', res);
+        //console.log('teamsLogout response:', res);
         localStorage.removeItem('team_token');
         setUser(null);
         navigate('/teams/login');

@@ -4,7 +4,7 @@ import { MaterialReactTable } from 'material-react-table'
 import { Edit as EditIcon, Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material'
 import { getInventoryById } from '../../../service/Clients/Inventory'
 import { getTeamMembers } from '../../../service/Clients/Team'
-import { createClientTask, updateTaskPlanner, updateActiveTask } from '../../../service/Clients/Task'
+import { createClientTask, updateTaskPlanner, updateActiveTask, createClientActiveTask } from '../../../service/Clients/Task'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { formatDate } from '../../../utils/dateFormat'
@@ -22,11 +22,14 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     const [inventory_id, setInventory_id] = useState("");
     const [viewMode, setViewMode] = useState('taskPlanner');
 
+    console.log("create_tasks", create_tasks);
+    console.log("onTaskCreate", onTaskCreate);
+
     const handleViewChange = (event) => {
         setViewMode(event.target.value);
     };
 
-   // console.log("create_tasks", create_tasks);
+    // console.log("create_tasks", create_tasks);
     // console.log("newtaskData", newtaskData);
     // console.log("taskPlanner", taskPlanner);
     // console.log("activeTasks", activeTasks);
@@ -47,7 +50,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     const fetchInventoryById = async (id) => {
         try {
             const res = await getInventoryById(id);
-            //console.log("Fetched inventory data:", res.data);
+            console.log("Fetched inventory data:", res.data);
             setActiveTasks(res.data.task_instances || []);
             setTaskPlanner(res.data.tasks_planner || []);
             setProperties_id(res.data.property_id);
@@ -141,7 +144,9 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 header: 'Schedule Type',
                 size: 130,
                 editVariant: 'select',
-                editSelectOptions: scheduleTypes,
+                editSelectOptions: scheduleTypes
+                    .filter(type => type !== 'one_time')
+                    .map(type => ({ value: type, label: type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) })),
                 muiEditTextFieldProps: ({ row, table }) => ({
                     select: true,
                     required: true,
@@ -174,16 +179,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             ...validationErrors,
                             schedule_type: undefined,
                         }),
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Type</em>
-                        </MenuItem>,
-                        ...scheduleTypes.map((type) => (
-                            <MenuItem key={type} value={type}>
-                                {type}
-                            </MenuItem>
-                        ))
-                    ],
                 }),
                 Cell: ({ cell }) => (
                     <Box
@@ -447,13 +442,14 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             sx={{
                                 display: 'inline-block',
                                 px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
+                                height: 24,
+                                borderRadius: 10,
                                 bgcolor: colors[value] || palette.grey[500],
                                 color: 'white',
                                 fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textAlign: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 textTransform: 'capitalize',
                             }}
                         >
@@ -553,85 +549,55 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     );
                 },
             },
-            // {
-            //     accessorKey: 'status',
-            //     header: 'Status',
-            //     size: 120,
-            //     editVariant: 'select',
-            //     editSelectOptions: statusOpts.map(opt => opt.value),
-            //     muiEditTextFieldProps: ({ row, table }) => ({
-            //         select: true,
-            //         required: true,
-            //         error: !!validationErrors?.status,
-            //         helperText: validationErrors?.status,
-            //         onChange: (e) => {
-            //             row._valuesCache.status = e.target.value;
 
-            //             if (create_tasks && onTaskCreate) {
-            //                 const taskData = {
-            //                     ...row._valuesCache,
-            //                     property_id: properties_id,
-            //                     inventory_id: inventory_id
-            //                 };
-            //                 console.log("Auto-sending task data to parent:", taskData);
-            //                 onTaskCreate(taskData);
-            //             }
-            //         },
-            //         SelectProps: {
-            //             displayEmpty: true,
-            //             renderValue: (selected) => {
-            //                 if (!selected) {
-            //                     return <em>Select</em>;
-            //                 }
-            //                 const status = statusOpts.find(s => s.value === selected);
-            //                 return status ? status.label : selected;
-            //             },
-            //         },
-            //         onFocus: () =>
-            //             setValidationErrors({
-            //                 ...validationErrors,
-            //                 status: undefined,
-            //             }),
-            //         children: [
-            //             <MenuItem key="empty-placeholder" value="">
-            //                 <em>Select</em>
-            //             </MenuItem>,
-            //             ...statusOpts.map((status) => (
-            //                 <MenuItem key={status.value} value={status.value}>
-            //                     {status.label}
-            //                 </MenuItem>
-            //             ))
-            //         ],
-            //     }),
-            //     Cell: ({ cell }) => {
-            //         const value = cell.getValue()
-            //         const colors = {
-            //             pending: palette.error?.main || '#f44336',
-            //             in_progress: palette.info?.main || '#2196f3',
-            //             completed: palette.success?.main || '#4caf50',
-            //             cancelled: palette.grey[500],
-            //             overdue: palette.warning?.main || '#ff9800'
-            //         }
-            //         return (
-            //             <Box
-            //                 sx={{
-            //                     display: 'inline-block',
-            //                     px: 1.5,
-            //                     py: 0.5,
-            //                     borderRadius: 1,
-            //                     bgcolor: colors[value] || palette.grey[500],
-            //                     color: 'white',
-            //                     fontSize: '0.75rem',
-            //                     fontWeight: 600,
-            //                     textAlign: 'center',
-            //                     textTransform: 'capitalize',
-            //                 }}
-            //             >
-            //                 {statusOpts.find(s => s.value === value)?.label || value}
-            //             </Box>
-            //         )
-            //     },
-            // },
+            // add update inventory  checkbox here
+            {
+                accessorKey: 'update_inventory',
+                header: 'Inventory Qty',
+                size: 50,
+                Cell: ({ row }) => (
+                    <Checkbox
+                        checked={row.original.update_inventory === 1 ? true : false}
+                        disabled
+                        slotProps={{
+                            input: { 'aria-label': 'update inventory' },
+                        }}
+                    />
+                ),
+                Edit: ({ row, cell, table }) => {
+                    const [checked, setChecked] = React.useState(() => {
+                        const currentValue = cell.getValue();
+                        return currentValue === 1 ? true : false;
+                    });
+
+                    const handleChange = (e) => {
+                        const newChecked = e.target.checked;
+                        setChecked(newChecked);
+                        row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            //console.log("Auto-sending task data to parent:", taskData);
+                            onTaskCreate(taskData);
+                        }
+                    };
+
+                    return (
+                        <Checkbox
+                            checked={checked}
+                            onChange={handleChange}
+                            slotProps={{
+                                input: { 'aria-label': 'update inventory' },
+                            }}
+                        />
+                    );
+                },
+            },
+
         ],
         [validationErrors, teamMembers, taskTypes, scheduleTypes, recurringTypes, statusOpts, palette, create_tasks, onTaskCreate, properties_id, inventory_id]
     )
@@ -641,27 +607,64 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
             {
                 accessorKey: 'title',
                 header: 'Title',
-                muiEditTextFieldProps: {
+                size: 150,
+                muiEditTextFieldProps: ({ row, table }) => ({
                     required: true,
                     error: !!validationErrors?.title,
                     helperText: validationErrors?.title,
-                },
+                    onChange: (e) => {
+                        // Update the cached value
+                        row._valuesCache.title = e.target.value;
+                        // If create_tasks is true, automatically send data to parent
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            title: undefined,
+                        }),
+                }),
             },
             {
                 accessorKey: 'description',
                 header: 'Description',
-                muiEditTextFieldProps: {
+                muiEditTextFieldProps: ({ row, table }) => ({
                     required: true,
                     multiline: true,
                     rows: 2,
                     error: !!validationErrors?.description,
                     helperText: validationErrors?.description,
-                },
+                    onChange: (e) => {
+                        row._valuesCache.description = e.target.value;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            description: undefined,
+                        }),
+                }),
             },
             {
+                id: 'scheduled_date',
                 accessorKey: 'scheduled_date',
                 header: 'Scheduled Date',
-                muiEditTextFieldProps: {
+                muiEditTextFieldProps: ({ row, table }) => ({
                     type: 'date',
                     required: true,
                     error: !!validationErrors?.scheduled_date,
@@ -669,21 +672,75 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     InputLabelProps: {
                         shrink: true,
                     },
-                },
+                    onChange: (e) => {
+                        row._valuesCache.scheduled_date = e.target.value;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            scheduled_date: undefined,
+                        }),
+                }),
                 Cell: ({ cell }) => formatDate(cell.getValue()),
             },
 
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
+                size: 130,
                 editVariant: 'select',
                 editSelectOptions: taskTypes,
-                muiEditTextFieldProps: {
+                muiEditTextFieldProps: ({ row, table }) => ({
                     select: true,
                     required: true,
                     error: !!validationErrors?.task_type,
                     helperText: validationErrors?.task_type,
-                },
+                    onChange: (e) => {
+                        row._valuesCache.task_type = e.target.value;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    SelectProps: {
+                        displayEmpty: true,
+                        renderValue: (selected) => {
+                            if (!selected) {
+                                return <em>Select Task Type</em>;
+                            }
+                            return selected;
+                        }
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            task_type: undefined,
+                        }),
+                    children: [
+                        <MenuItem key="empty-placeholder" value="">
+                            <em>Select Task Type</em>
+                        </MenuItem>,
+                        ...taskTypes.map((type) => (
+                            <MenuItem key={type} value={type}>
+                                {type}
+                            </MenuItem>
+                        ))
+                    ],
+                }),
                 Cell: ({ cell }) => {
                     const value = cell.getValue()
                     const colors = {
@@ -699,17 +756,19 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             sx={{
                                 display: 'inline-block',
                                 px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
+                                height: 24,
+                                borderRadius: 10,
                                 bgcolor: colors[value] || palette.grey[500],
                                 color: 'white',
                                 fontSize: '0.75rem',
-                                fontWeight: 600,
                                 textAlign: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 textTransform: 'capitalize',
                             }}
                         >
-                            {taskTypes.find(t => t.value === value)?.label || value}
+                            {value}
                         </Box>
                     )
                 },
@@ -719,15 +778,42 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 header: 'Assigned To',
                 editVariant: 'select',
                 editSelectOptions: teamMembers.map(member => ({ value: member.id, label: member.name })),
-                muiEditTextFieldProps: {
+                muiEditTextFieldProps: ({ row, table }) => ({
                     select: true,
                     required: true,
                     error: !!validationErrors?.assigned_to,
                     helperText: validationErrors?.assigned_to,
-                },
+                    onChange: (e) => {
+                        row._valuesCache.assigned_to = e.target.value;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    SelectProps: {
+                        displayEmpty: true,
+                        renderValue: (selected) => {
+                            if (!selected) {
+                                return <em>Select a team member</em>;
+                            }
+                            const member = teamMembers.find(m => m.id === selected);
+                            return member ? member.name : '';
+                        },
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            assigned_to: undefined,
+                        }),
+                }),
                 Cell: ({ row }) => {
                     const member = teamMembers.find(m => m.id === row.original.assigned_to);
-                    return member ? member.name : (row.original.assigned_to_name || '-');
+                    return member ? member.name : '-';
                 },
             },
             {
@@ -752,6 +838,14 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         const newChecked = e.target.checked;
                         setChecked(newChecked);
                         row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
                     };
 
                     return (
@@ -765,22 +859,100 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     );
                 },
             },
+            // add update inventory checkbox here
+            {
+                accessorKey: 'update_inventory',
+                header: 'Inventory Qty',
+                size: 50,
+                Cell: ({ row }) => (
+                    <Checkbox
+                        checked={row.original.update_inventory === 1 ? true : false}
+                        disabled
+                        slotProps={{
+                            input: { 'aria-label': 'update inventory' },
+                        }}
+                    />
+                ),
+                Edit: ({ row, cell, table }) => {
+                    const [checked, setChecked] = React.useState(() => {
+                        const currentValue = cell.getValue();
+                        return currentValue === 1 ? true : false;
+                    });
+
+                    const handleChange = (e) => {
+                        const newChecked = e.target.checked;
+                        setChecked(newChecked);
+                        row._valuesCache[cell.column.id] = newChecked ? 1 : 0;
+
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            //console.log("Auto-sending task data to parent:", taskData);
+                            onTaskCreate(taskData);
+                        }
+                    };
+
+                    return (
+                        <Checkbox
+                            checked={checked}
+                            onChange={handleChange}
+                            slotProps={{
+                                input: { 'aria-label': 'update inventory' },
+                            }}
+                        />
+                    );
+                },
+            },
             {
                 accessorKey: 'status',
                 header: 'Status',
                 editVariant: 'select',
                 editSelectOptions: statusOpts.map(opt => opt.value),
-                muiEditTextFieldProps: {
+                muiEditTextFieldProps: ({ row, table }) => ({
                     select: true,
                     required: true,
                     error: !!validationErrors?.status,
                     helperText: validationErrors?.status,
-                    children: statusOpts.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                        </MenuItem>
-                    )),
-                },
+                    onChange: (e) => {
+                        row._valuesCache.status = e.target.value;
+                        if (create_tasks && onTaskCreate) {
+                            const taskData = {
+                                ...row._valuesCache,
+                                property_id: properties_id,
+                                inventory_id: inventory_id
+                            };
+                            onTaskCreate(taskData);
+                        }
+                    },
+                    SelectProps: {
+                        displayEmpty: true,
+                        renderValue: (selected) => {
+                            if (!selected) {
+                                return <em>Select</em>;
+                            }
+                            const status = statusOpts.find(s => s.value === selected);
+                            return status ? status.label : selected;
+                        },
+                    },
+                    onFocus: () =>
+                        setValidationErrors({
+                            ...validationErrors,
+                            status: undefined,
+                        }),
+                    children: [
+                        <MenuItem key="empty-placeholder" value="">
+                            <em>Select</em>
+                        </MenuItem>,
+                        ...statusOpts.map((status) => (
+                            <MenuItem key={status.value} value={status.value}>
+                                {status.label}
+                            </MenuItem>
+                        ))
+                    ],
+                }),
                 Cell: ({ cell }) => {
                     const value = cell.getValue()
                     const colors = {
@@ -795,13 +967,15 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             sx={{
                                 display: 'inline-block',
                                 px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
+                                height: 24,
+                                width: 'fit-content',
+                                borderRadius: 10,
                                 bgcolor: colors[value] || palette.grey[500],
                                 color: 'white',
                                 fontSize: '0.75rem',
-                                fontWeight: 600,
-                                textAlign: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 textTransform: 'capitalize',
                             }}
                         >
@@ -851,7 +1025,27 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 property_id: properties_id,
                 inventory_id: inventory_id
             }
-            const res = await createClientTask(taskData)
+
+            // Call appropriate API based on view mode
+            let res;
+            if (viewMode === 'activeTasks') {
+                // For active tasks, only send required fields
+                const activeTaskData = {
+                    title: taskData.title,
+                    description: taskData.description,
+                    task_type: taskData.task_type,
+                    inventory_id: taskData.inventory_id,
+                    assigned_to: taskData.assigned_to,
+                    scheduled_date: taskData.scheduled_date,
+                    status: taskData.status,
+                    is_photo_required: taskData.is_photo_required
+                };
+                res = await createClientActiveTask(activeTaskData);
+            } else {
+                // For task planner, send all fields
+                res = await createClientTask(taskData);
+            }
+
             showSnackbar(res.message || 'Task created successfully', 'success')
             await fetchInventoryById(inventoryId)
             table.setCreatingRow(null)
@@ -1043,26 +1237,26 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             sx={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: viewMode === 'taskPlanner' ? 'space-between' : 'flex-end',
+                                justifyContent: 'space-between',
                                 gap: 2,
                                 width: '100%',
                             }}>
-                            {viewMode === 'taskPlanner' && (
-                                <Button
-                                    variant="contained"
-                                    disableElevation
-                                    size='small'
-                                    onClick={() => {
-                                        table.setCreatingRow(true)
-                                    }}
-                                    sx={{
-                                        bgcolor: palette.primary.main,
-                                        "&:hover": { bgcolor: palette.secondary.main },
-                                    }}
-                                >
-                                    Add New Task
-                                </Button>
-                            )}
+                            <Button
+                                variant="contained"
+                                disableElevation
+                                size='small'
+                                onClick={() => {
+                                    table.setCreatingRow(true)
+                                }}
+                                sx={{
+                                    bgcolor: palette.primary.main,
+                                    "&:hover": { bgcolor: palette.secondary.main },
+                                    textTransform: "none",
+                                    borderRadius: 10,
+                                }}
+                            >
+                                Add New Task
+                            </Button>
 
                             <Select
                                 value={viewMode}
@@ -1092,7 +1286,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         elevation: 2,
                         sx: {
                             borderRadius: 2,
-                            boxShadow: '0px 2px 6px rgba(207, 223, 134, 0.99)',
+                            boxShadow: '0px 2px 6px rgba(105, 105, 101, 0.99)',
                         },
                     }}
                     muiTableHeadCellProps={{

@@ -22,7 +22,7 @@ export default function ProfileMenu() {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
 
-    console.log('ProfileMenu user:', user);
+    //console.log('ProfileMenu user:', user);
 
     const handleLogout = () => {
         setAnchorEl(null);

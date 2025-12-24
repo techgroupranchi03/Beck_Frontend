@@ -26,6 +26,18 @@ export const statusOpts = [
     { value: 'cancelled', label: 'Cancelled' },
     { value: 'completed', label: 'Completed' },
     { value: 'over_due', label: 'Overdue' },
+    { value: 'deleted', label: 'Deleted' },
+];
+
+export const taskStatusFilter = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'over_due', label: 'Overdue' },
+    { value: 'deleted', label: 'Deleted' },
+    { value: 'active', label: 'Active' },
+    { value: 'archived', label: 'Archived' },
 ];
 
 export const scheduleTypes = [
@@ -64,7 +76,7 @@ export const monthsOfYear = [
 // Generate dates 1-31 for monthly selection
 export const datesOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
 
- export const recurringTypes = [
+export const recurringTypes = [
     'daily',
     'weekly',
     'monthly',

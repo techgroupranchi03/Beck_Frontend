@@ -194,6 +194,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
             mt: 1,
             bgcolor: palette.primary.main,
             "&:hover": { bgcolor: palette.secondary.main },
+            borderRadius: 10,
           }}
           onClick={handleFilterApply}
         >
