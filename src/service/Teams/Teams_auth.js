@@ -11,7 +11,6 @@ export const teamsSendOtp = async (credentials) => {
             `${BASE_URL}/team/auth/login`,
             credentials
         );
-        //console.log('send OTP response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Teams OTP sending error:', error);
@@ -19,14 +18,12 @@ export const teamsSendOtp = async (credentials) => {
     }
 };
 
-// Teams verify OTP API
 export const verifyOtp = async (credentials) => {
     try {
         const response = await axios.post(
             `${BASE_URL}/team/auth/verify-otp`,
             credentials
         );
-    console.log('Teams OTP verification response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Teams OTP verification error:', error);
@@ -34,7 +31,6 @@ export const verifyOtp = async (credentials) => {
     }
 };
 
-// Teams logout API
 export const teamsLogout = async () => {
     const token = getTeamsToken();
     try {

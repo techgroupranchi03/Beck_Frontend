@@ -18,14 +18,12 @@ import Task_Accordian from './Task_Accordian';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
 import { categories } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
-import ViewToggle from '../../../resuable_components/ViewToggle';
 
 const All_Inventory = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
 
-  // Get data from context
   const {
     inventoryData,
     properties,
@@ -37,25 +35,17 @@ const All_Inventory = () => {
     deleteInventory,
   } = useInventoryContext();
 
-
-  //console.log("inventoryData:", inventoryData);
-
   const [openConfirm, setOpenConfirm] = useState(false);
   const [inventoryToDelete, setInventoryToDelete] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
   const [selectedUnit, setSelectedUnit] = useState({});
   const [create_tasks, setCreate_tasks] = useState(false);
   const [task, setTask] = useState(null);
-
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  //console.log("task:", task);
-
-  // handleImageChange
   const handleImageChange = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -65,24 +55,19 @@ const All_Inventory = () => {
     }
   };
 
-  // Clear image state
   const clearImageState = () => {
     setImageFile(null);
     setImagePreview(null);
   };
 
-  // Handle task creation from child component
   const handleTaskCreation = (taskData) => {
     setTask(taskData);
   };
 
-  // CREATE
   const handleCreateInventory = async ({ values, table }) => {
     try {
-      // Validate task fields if create_tasks is true
       if (create_tasks && task) {
         const taskErrors = {};
-
         if (!task.title) taskErrors.task_title = "Task title is required";
         if (!task.description) taskErrors.task_description = "Task description is required";
         if (!task.assigned_to) taskErrors.task_assigned_to = "Assigned to is required";
@@ -91,7 +76,6 @@ const All_Inventory = () => {
         if (!task.start_date) taskErrors.task_start_date = "Start date is required";
         if (!task.status) taskErrors.task_status = "Status is required";
 
-        // Validate repeat_on based on schedule_type
         if (['weekly', 'monthly', 'yearly'].includes(task.schedule_type)) {
           let repeatData = {};
           try {
@@ -100,7 +84,6 @@ const All_Inventory = () => {
           } catch (error) {
             taskErrors.repeat_on = "Invalid repeat data format";
           }
-
           if (task.schedule_type === 'weekly') {
             if (!repeatData.days || repeatData.days.length === 0) {
               taskErrors.repeat_on = "Please select at least one day for weekly schedule";
@@ -119,8 +102,6 @@ const All_Inventory = () => {
           }
         }
       }
-
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append('name', values.name);
       formData.append('category', values.category);
@@ -140,7 +121,7 @@ const All_Inventory = () => {
         formData.append('task_task_status', task.status);
         formData.append('task_task_type', task.task_type);
         // Use scheduled_date if available (from active task), otherwise use start_date (from task planner)
-        formData.append('task_start_date', task.scheduled_date || task.start_date || ''); 
+        formData.append('task_start_date', task.scheduled_date || task.start_date || '');
 
         // Parse repeat_on and send appropriate fields based on schedule_type
         if (['weekly', 'monthly', 'yearly'].includes(task.schedule_type) && task.repeat_on) {
@@ -173,7 +154,7 @@ const All_Inventory = () => {
 
       // console the formData entries for debugging
       for (let pair of formData.entries()) {
-        console.log(pair[0]+ ': ' + pair[1]);
+        console.log(pair[0] + ': ' + pair[1]);
       }
 
       const res = await createInventory(formData);
@@ -198,7 +179,6 @@ const All_Inventory = () => {
     }
   };
 
-  // UPDATE
   const handleSaveInventory = async ({ values, table, row }) => {
     try {
       // Create FormData for file upload
@@ -216,7 +196,7 @@ const All_Inventory = () => {
       }
       const res = await updateInventory(row.original.id, formData);
       console.log("Update response:", res);
-      showSnackbar(res.message , "success");
+      showSnackbar(res.message, "success");
       table.setEditingRow(null);
       clearImageState();
       setValidationErrors({});
@@ -235,7 +215,6 @@ const All_Inventory = () => {
     }
   };
 
-  // DELETE
   const openDeleteDialog = (row) => {
     setInventoryToDelete(row.original.id);
     setOpenConfirm(true);
@@ -252,6 +231,7 @@ const All_Inventory = () => {
         const res = await deleteInventory(inventoryToDelete);
         showSnackbar(res.message, "success");
       } catch (error) {
+        console.log("Delete error:", error);
         showSnackbar(error.message, "error");
         console.error("Error deleting inventory item:", error);
       }
@@ -260,14 +240,15 @@ const All_Inventory = () => {
     setInventoryToDelete(null);
   };
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => [
+
       {
         accessorKey: 'id',
         header: 'ID',
         enableHiding: true,
         enableEditing: false,
       },
+
       {
         accessorKey: 'inventory_image_url',
         header: 'Image',
@@ -363,6 +344,7 @@ const All_Inventory = () => {
           );
         },
       },
+
       {
         accessorKey: 'name',
         header: 'Item Name',
@@ -378,6 +360,7 @@ const All_Inventory = () => {
             }),
         },
       },
+
       {
         accessorKey: 'category',
         header: 'Category',
@@ -422,6 +405,7 @@ const All_Inventory = () => {
           </Box>
         ),
       },
+
       {
         accessorKey: 'property_id',
         header: 'Property',
@@ -461,6 +445,7 @@ const All_Inventory = () => {
         },
         Cell: ({ row }) => row.original.property_name || '-',
       },
+
       {
         accessorKey: 'located_at',
         header: 'Located At',
@@ -475,6 +460,7 @@ const All_Inventory = () => {
             }),
         },
       },
+
       {
         accessorKey: 'lower_limit',
         header: 'Lower Limit',
@@ -530,6 +516,7 @@ const All_Inventory = () => {
             }),
         }),
       },
+
       {
         accessorKey: 'quantity',
         header: 'Quantity',
@@ -587,12 +574,15 @@ const All_Inventory = () => {
           };
         },
       },
+
     ],
     [validationErrors, properties, categories, units, palette, imageFile, imagePreview]
   );
 
   return (
+
     <React.Fragment>
+
       <Container
         maxWidth={false}
         sx={{
@@ -639,6 +629,7 @@ const All_Inventory = () => {
             setCanScrollRight(canScrollRight);
           }} />
         </Box>
+
         <MaterialReactTable
           columns={columns}
           data={inventoryData}
@@ -703,7 +694,7 @@ const All_Inventory = () => {
                                 }
                               }}
                               // also disable when editing the row
-                              disabled={!hasNameAndCategory || isEditing }
+                              disabled={!hasNameAndCategory || isEditing}
                               size="small"
                               sx={{
                                 color: hasNameAndCategory ? palette.primary.main : palette.grey[400],
@@ -803,6 +794,7 @@ const All_Inventory = () => {
               />
             </Box>
           )}
+
           renderTopToolbarCustomActions={({ table }) => {
             return (
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -812,7 +804,7 @@ const All_Inventory = () => {
                   onClick={() => {
                     table.setCreatingRow(true);
                   }}
-                  startIcon={<Inventory2Rounded/>}
+                  startIcon={<Inventory2Rounded />}
                   sx={{
                     bgcolor: palette.primary.main,
                     "&:hover": { bgcolor: palette.secondary.main },
@@ -824,6 +816,7 @@ const All_Inventory = () => {
               </Box>
             );
           }}
+
           muiTopToolbarProps={{
             sx: {
               '& .MuiBox-root': {
@@ -835,6 +828,7 @@ const All_Inventory = () => {
               },
             }
           }}
+
           muiSearchTextFieldProps={{
             sx: {
               '& .MuiInputBase-root': {
@@ -842,6 +836,7 @@ const All_Inventory = () => {
               }
             }
           }}
+
           enableColumnFilters={false}
           enableSorting={false}
           enablePagination
@@ -854,6 +849,7 @@ const All_Inventory = () => {
               boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.13)',
             },
           }}
+
           muiTableHeadCellProps={{
             sx: {
               bgcolor: palette.primary.main,
@@ -861,6 +857,7 @@ const All_Inventory = () => {
               fontWeight: 600,
             },
           }}
+
           muiTableBodyRowProps={({ row, table }) => ({
             hover: true,
             sx: {
@@ -878,6 +875,7 @@ const All_Inventory = () => {
             },
           })}
         />
+
         <ConfirmationDialog
           open={openConfirm}
           onCancel={handleCancelDelete}
@@ -885,6 +883,7 @@ const All_Inventory = () => {
           title="Delete Inventory Item"
           message="Are you sure you want to delete this inventory item? This action cannot be undone."
         />
+        
       </Container>
     </React.Fragment>
   );

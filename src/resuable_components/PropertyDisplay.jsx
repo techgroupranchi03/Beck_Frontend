@@ -124,7 +124,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
                 }}
               >
                 <Avatar
-                  src={prop.image_url}
+                  src={prop.property_image_url}
                   alt={prop.name}
                   sx={{
                     width: 50,
@@ -133,7 +133,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
                     borderColor: 'divider',
                   }}
                 >
-                  {!prop.image_url && <Business />}
+                  {!prop.property_image_url && <Business />}
                 </Avatar>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography

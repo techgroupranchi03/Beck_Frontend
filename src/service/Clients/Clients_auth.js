@@ -11,7 +11,6 @@ export const clientSendOtp = async (credentials) => {
             `${BASE_URL}/client/auth/login`,
             credentials
         );
-        //console.log('send OTP response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client OTP sending error:', error);
@@ -19,7 +18,6 @@ export const clientSendOtp = async (credentials) => {
     }
 };
 
-// Client verify OTP API
 export const verfiyOtp = async (credentials) => {
     try {
         const response = await axios.post(
@@ -34,7 +32,6 @@ export const verfiyOtp = async (credentials) => {
     }
 };
 
-// client logout API
 export const clientLogout = async () => {
     const token = getClientToken();
     try {
@@ -52,3 +49,4 @@ export const clientLogout = async () => {
         return Promise.reject(error.response?.data || { message: 'Logout failed' });
     }
 };
+

@@ -13,9 +13,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
-    console.log('inventory in dialog:', inventory);
-
-    // get data form context
     const {
         properties,
         units,
@@ -25,10 +22,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         createInventory,
         updateInventory,
     } = useInventoryContext();
-
-    console.log("properties:", properties);
-
-    // Form state
     const [formData, setFormData] = useState({
         name: '',
         category: '',
@@ -38,13 +31,10 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         unit: '',
         quantity: '',
     });
-
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [validationErrors, setValidationErrors] = useState({});
     const [selectedUnit, setSelectedUnit] = useState('');
-
-    // Task form state
     const [createTasks, setCreateTasks] = useState(false);
     const [taskScheduleType, setTaskScheduleType] = useState('one_time');
     const [taskFormData, setTaskFormData] = useState({
@@ -63,9 +53,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     });
     const [repeatData, setRepeatData] = useState({});
 
-    console.log('taskScheduleType:', taskScheduleType);
-
-    // Update form data when inventory changes
     useEffect(() => {
         if (isEdit && inventory) {
             setFormData({
@@ -115,17 +102,11 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         setRepeatData({});
     }, [isEdit, inventory, open]);
 
-    //console.log('units:', units);
-
-
-
-    // Handle input changes
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
-        // Clear validation error for this field
         if (validationErrors[field]) {
             setValidationErrors(prev => ({
                 ...prev,
@@ -134,7 +115,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     };
 
-    // Handle image selection
     const handleImageChange = (event) => {
         const file = event.target.files[0];
         if (file) {
@@ -144,13 +124,11 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     };
 
-    // Clear image
     const clearImage = () => {
         setImageFile(null);
         setImagePreview(null);
     };
 
-    // Handle unit change
     const handleUnitChange = (value) => {
         setSelectedUnit(value);
         handleChange('unit', value);
@@ -159,13 +137,11 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     };
 
-    // Handle task form changes
     const handleTaskChange = (field, value) => {
         setTaskFormData(prev => ({
             ...prev,
             [field]: value
         }));
-        // Clear validation error for this field
         if (validationErrors[field]) {
             setValidationErrors(prev => ({
                 ...prev,
@@ -188,7 +164,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }));
     };
 
-    // Sync taskScheduleType with task_schedule_type
     useEffect(() => {
         if (taskScheduleType === 'one_time') {
             setTaskFormData(prev => ({
@@ -201,9 +176,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     }, [taskScheduleType, taskFormData.task_schedule_type]);
 
-    // Sync repeatData to taskFormData.task_repeat_on
     useEffect(() => {
-        if (['weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type)) {
+        if (['daily', 'weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type)) {
             setTaskFormData(prev => ({
                 ...prev,
                 task_repeat_on: JSON.stringify(repeatData)
@@ -213,7 +187,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
 
     const handleCreateUpdate = async () => {
         try {
-            // Create FormData
             const formDataToSend = new FormData();
             formDataToSend.append('name', formData.name);
             formDataToSend.append('category', formData.category);
@@ -250,21 +223,24 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 }
 
                 // Parse repeat_on and send appropriate fields based on schedule_type for recurring tasks
-                if (taskScheduleType === 'recurring' && ['weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type) && taskFormData.task_repeat_on) {
+                if (taskScheduleType === 'recurring' && ['daily', 'weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type) && taskFormData.task_repeat_on) {
                     try {
                         const repeatData = typeof taskFormData.task_repeat_on === 'string' ?
                             JSON.parse(taskFormData.task_repeat_on) : taskFormData.task_repeat_on;
 
-                        if (taskFormData.task_schedule_type === 'weekly') {
+                        if (taskFormData.task_schedule_type === 'daily') {
+                            // For daily: no additional fields needed
+                            // Daily tasks repeat every day automatically
+                        } else if (taskFormData.task_schedule_type === 'weekly') {
                             // For weekly: send repeat_days as array of days
                             formDataToSend.append('repeat_days', JSON.stringify(repeatData.days || []));
                         } else if (taskFormData.task_schedule_type === 'monthly') {
                             // For monthly: send repeat_date as array of dates
-                            formDataToSend.append('repeat_date', JSON.stringify(repeatData.date || []));
+                            formDataToSend.append('repeat_date', JSON.stringify(repeatData.dates || []));
                         } else if (taskFormData.task_schedule_type === 'yearly') {
-                            // For yearly: send repeat_month as array and repeat_date as single value
-                            formDataToSend.append('repeat_month', JSON.stringify(repeatData.month || []));
-                            formDataToSend.append('repeat_date', repeatData.date || '');
+                            // For yearly: send repeat_month as array and repeat_date as array
+                            formDataToSend.append('repeat_month', JSON.stringify(repeatData.months || []));
+                            formDataToSend.append('repeat_date', JSON.stringify(repeatData.dates || []));
                         }
                     } catch (error) {
                         console.error("Error parsing repeat_on:", error);
@@ -278,11 +254,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             if (isEdit) {
                 // Update existing inventory
                 res = await updateInventory(inventory.id, formDataToSend);
-                showSnackbar(res.message || 'Inventory updated successfully', 'success');
+                console.log('Update Inventory Response:', res);
+                showSnackbar(res.message, 'success');
             } else {
                 // Create new inventory
                 res = await createInventory(formDataToSend);
-                //console.log('Create Inventory Response:', res);
+                console.log('Create Inventory Response:', res);
                 showSnackbar(res.message, 'success');
             }
             onClose();
@@ -325,9 +302,10 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     <Close />
                 </IconButton>
             </DialogTitle>
+
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 1 }}>
-                    {/* inventory name */}
+           
                     <Grid size={{ xs: 12, }}>
                         <TextField
                             label="Inventory Name"
@@ -341,7 +319,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             required
                         />
                     </Grid>
-                    {/* inventory category */}
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth error={!!validationErrors?.category}>
                             <InputLabel id="category-label" size='small'>
@@ -369,7 +347,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             )}
                         </FormControl>
                     </Grid>
-                    {/* property */}
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size='small'
@@ -379,9 +357,9 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             renderOption={(props, option) => (
                                 <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
-                                    {(option.image_url) && (
+                                    {(option.property_image_url) && (
                                         <img
-                                            src={option.image_url}
+                                            src={option.property_image_url}
                                             alt={option.name || ''}
                                             style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
                                         />
@@ -402,7 +380,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             )}
                         />
                     </Grid>
-                    {/* located at */}
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Located At"
@@ -415,7 +393,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             fullWidth
                         />
                     </Grid>
-                    {/* lower limit */}
+                    
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Lower Limit"
@@ -430,7 +408,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             fullWidth
                         />
                     </Grid>
-                    {/* unit */}
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth error={!!validationErrors?.unit}>
                             <InputLabel id="unit-label" size='small'>
@@ -457,7 +435,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             )}
                         </FormControl>
                     </Grid>
-                    {/* quantity */}
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         {selectedUnit.toLowerCase() === 'container' ? (
                             <FormControl fullWidth error={!!validationErrors?.quantity}>
@@ -503,16 +481,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         )}
                     </Grid>
 
-                    {/* upload image also preview image with option to remove image "inventory_image" */}
                     <Grid size={{ xs: 12 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {/* <input
-                                accept="image/*"
-                                type="file"
-                                id="inventory-image-upload"
-                                style={{ display: 'none' }}
-                                onChange={handleImageChange}
-                            /> */}
                             {imagePreview && (
                                 <Box sx={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
                                     <Box
@@ -575,7 +545,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     </Grid>
                 </Grid>
 
-                {/* Task creation fields inside Accordion - Only show when creating new inventory */}
                 {!isEdit && (
                     <Accordion
                         sx={{ mt: 2 }}
@@ -588,7 +557,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         </AccordionSummary>
                         <AccordionDetails>
                             <Grid container spacing={2}>
-                                {/* Task Title */}
+                              
                                 <Grid size={{ xs: 12 }}>
                                     <TextField
                                         label="Task Title"
@@ -603,7 +572,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     />
                                 </Grid>
 
-                                {/* Task Description */}
                                 <Grid size={{ xs: 12 }}>
                                     <TextField
                                         label="Task Description"
@@ -619,7 +587,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     />
                                 </Grid>
 
-                                {/* Task Schedule Radio Buttons */}
                                 <Grid size={{ xs: 12 }} container spacing={2}>
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <FormControl component="fieldset">
@@ -671,7 +638,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     )}
                                 </Grid>
 
-                                {/* Task Type */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField
                                         select
@@ -692,7 +658,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </TextField>
                                 </Grid>
 
-                                {/* Assigned To */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField
                                         select
@@ -713,8 +678,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </TextField>
                                 </Grid>
 
-                                {/* Start Date - Show for recurring */}
-                                {/* {taskScheduleType === 'recurring' && ( */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField
                                         type="date"
@@ -732,7 +695,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 </Grid>
                                 {/* )} */}
 
-                                {/* Repeat On - Weekly */}
                                 {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'weekly' && (
                                     <Grid size={{ xs: 12 }}>
                                         <Autocomplete
@@ -740,10 +702,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             limitTags={3}
                                             size="small"
                                             options={daysOfWeek}
-                                            getOptionLabel={(option) => String(option)}
-                                            value={repeatData.days || []}
+                                            getOptionLabel={(option) => option.label}
+                                            value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
                                             onChange={(event, newValue) => {
-                                                setRepeatData({ days: newValue });
+                                                // Extract only the numeric values
+                                                const dayValues = newValue.map(day => day.value);
+                                                setRepeatData({ days: dayValues });
                                             }}
                                             renderInput={(params) => (
                                                 <TextField
@@ -755,11 +719,11 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                                     helperText={validationErrors?.task_repeat_on || 'Select days of the week'}
                                                 />
                                             )}
+                                            isOptionEqualToValue={(option, value) => option.value === value.value}
                                         />
                                     </Grid>
                                 )}
 
-                                {/* Repeat On - Monthly */}
                                 {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'monthly' && (
                                     <Grid size={{ xs: 12 }}>
                                         <Autocomplete
@@ -768,9 +732,9 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             size="small"
                                             options={datesOfMonth}
                                             getOptionLabel={(option) => String(option)}
-                                            value={repeatData.date || []}
+                                            value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
                                             onChange={(event, newValue) => {
-                                                setRepeatData({ date: newValue.sort((a, b) => a - b) });
+                                                setRepeatData({ dates: newValue.sort((a, b) => a - b) });
                                             }}
                                             renderInput={(params) => (
                                                 <TextField
@@ -786,41 +750,19 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </Grid>
                                 )}
 
-                                {/* Repeat On - Yearly */}
                                 {taskScheduleType === 'recurring' && taskFormData.task_schedule_type === 'yearly' && (
                                     <>
                                         <Grid size={{ xs: 12, sm: 6 }}>
-                                            <TextField
-                                                select
-                                                label="Date"
-                                                size="small"
-                                                value={repeatData.date || ''}
-                                                onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
-                                                fullWidth
-                                                required
-                                                error={!!validationErrors?.task_repeat_on}
-                                                helperText={validationErrors?.task_repeat_on}
-                                            >
-                                                <MenuItem value="">
-                                                    <em>Select Date</em>
-                                                </MenuItem>
-                                                {datesOfMonth.map((date) => (
-                                                    <MenuItem key={date} value={date}>
-                                                        {date}
-                                                    </MenuItem>
-                                                ))}
-                                            </TextField>
-                                        </Grid>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <Autocomplete
                                                 multiple
-                                                limitTags={2}
+                                                limitTags={3}
                                                 size="small"
                                                 options={monthsOfYear}
-                                                getOptionLabel={(option) => String(option)}
-                                                value={repeatData.month || []}
+                                                getOptionLabel={(option) => option.label}
+                                                value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
                                                 onChange={(event, newValue) => {
-                                                    setRepeatData({ ...repeatData, month: newValue });
+                                                    const monthValues = newValue.map(month => month.value);
+                                                    setRepeatData({ ...repeatData, months: monthValues });
                                                 }}
                                                 renderInput={(params) => (
                                                     <TextField
@@ -832,12 +774,35 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                                         helperText={validationErrors?.task_repeat_on || 'Select months of the year'}
                                                     />
                                                 )}
+                                                isOptionEqualToValue={(option, value) => option.value === value.value}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <Autocomplete
+                                                multiple
+                                                limitTags={3}
+                                                size="small"
+                                                options={datesOfMonth}
+                                                getOptionLabel={(option) => String(option)}
+                                                value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
+                                                onChange={(event, newValue) => {
+                                                    setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
+                                                }}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        label="Select Dates"
+                                                        placeholder="Choose dates"
+                                                        required
+                                                        error={!!validationErrors?.task_repeat_on}
+                                                        helperText={validationErrors?.task_repeat_on || 'Select dates (1-31)'}
+                                                    />
+                                                )}
                                             />
                                         </Grid>
                                     </>
                                 )}
 
-                                {/* Status - Show for one_time */}
                                 {taskScheduleType === 'one_time' && (
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
@@ -859,7 +824,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </Grid>
                                 )}
 
-                                {/* Checkboxes */}
                                 <Grid size={{ xs: 12 }} container spacing={2}>
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <FormControlLabel
@@ -886,11 +850,13 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 </Grid>
                             </Grid>
                         </AccordionDetails>
+
                     </Accordion>
                 )}
 
 
             </DialogContent>
+            
             <DialogActions sx={{ px: 2, py: 2 }}>
                 <Button
                     variant="text"
@@ -912,7 +878,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         '&:hover': { backgroundColor: palette.secondary.main },
                         borderRadius: 10,
                         px: 2,
-                        py: 1,
                     }}
                 >
                     {loading ? 'Saving...' : isEdit ? 'Update' : 'Create Inventory'}

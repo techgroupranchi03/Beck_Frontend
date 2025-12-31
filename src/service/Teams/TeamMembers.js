@@ -1,12 +1,10 @@
 import axios from "axios";
 import BASE_URL from "../../config";
 
-// get team token
 const getTeamToken = () => {
     return localStorage.getItem("team_token");
 };
 
-// get team members in teams service
 export const getTeamsTeamMembers = async (searchText = "", page = 1) => {
     const token = getTeamToken();
     try {
@@ -22,7 +20,6 @@ export const getTeamsTeamMembers = async (searchText = "", page = 1) => {
                 }
             }
         );
-        // console.log("Team members response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Team members fetching error:", error);
@@ -30,8 +27,6 @@ export const getTeamsTeamMembers = async (searchText = "", page = 1) => {
     }
 };
 
-
-// create team member in teams service
 export const createTeamsTeamMember = async (teamMemberData) => {
     const token = getTeamToken();
     try {
@@ -45,7 +40,6 @@ export const createTeamsTeamMember = async (teamMemberData) => {
                 },
             }
         );
-        //console.log("Create team member response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Create team member error:", error);
@@ -53,9 +47,7 @@ export const createTeamsTeamMember = async (teamMemberData) => {
     }
 };
 
-// update team member in teams service
 export const updateTeamsTeamMember = async (teamMemberId, teamMemberData) => {
-    // console.log("Updating team member ID:", teamMemberId, "with data:", teamMemberData);
     const token = getTeamToken();
     try {
         const response = await axios.put(
@@ -68,7 +60,6 @@ export const updateTeamsTeamMember = async (teamMemberId, teamMemberData) => {
                 },
             }
         );
-        //console.log("Update team member response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Update team member error:", error);
@@ -76,7 +67,6 @@ export const updateTeamsTeamMember = async (teamMemberId, teamMemberData) => {
     }
 };
 
-// delete team member in teams service
 export const deleteTeamsTeamMember = async (teamMemberId) => {
     const token = getTeamToken();
     try {
@@ -88,14 +78,13 @@ export const deleteTeamsTeamMember = async (teamMemberId) => {
                 },
             }
         );
-        //console.log("Delete team member response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Delete team member error:", error);
         return Promise.reject(error.response?.data || { message: "Deleting team member failed" });
     }
 };  
-// get roles method "GET" API
+
 export const getTeamsRoles = async () => {
     const token = getTeamToken();
     try {

@@ -36,7 +36,6 @@ export const adminLogout = async () => {
     }
 };
 
-// http://31.97.230.38:8080/api/clients method: get all clients
 export const getAllClients = async (filters = {}, searchText = "", page = 1) => {
     const token = getAdminToken();
     try {
@@ -49,14 +48,12 @@ export const getAllClients = async (filters = {}, searchText = "", page = 1) => 
                 },
             }
         );
-        console.log("getAllClients response:", response);
         return response.data;
     } catch (error) {
         return Promise.reject(error.response?.data || { message: 'Failed to fetch clients' });
     }
 };
 
-//http://31.97.230.38:8080/api/clients  method post : add new client
 export const addClient = async (clientData) => {
     const token = getAdminToken();
     try {
@@ -75,7 +72,6 @@ export const addClient = async (clientData) => {
     }
 };
 
-//http://31.97.230.38:8080/api/clients/1  
 export const getClientbyId = async (clientData) => {
     console.log("getClientbyId", clientData);
     const token = getAdminToken();
@@ -94,8 +90,6 @@ export const getClientbyId = async (clientData) => {
     }
 };
 
-
-// http://31.97.230.38:8080/api/clients/1 method put : update client by id
 export const editClient = async (clientData) => {
     const token = getAdminToken();
     try {
@@ -114,8 +108,6 @@ export const editClient = async (clientData) => {
     }
 };
 
-
-//http://31.97.230.38:8080/api/clients/1 METHOD DELETE : delete client by id
 export const deleteClient = async (clientData) => {
     const token = getAdminToken();
     try {

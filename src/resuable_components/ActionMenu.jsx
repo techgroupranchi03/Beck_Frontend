@@ -77,7 +77,7 @@ const ActionMenu = ({ onEdit, onDelete }) => {
 
                 <MenuItem onClick={handleDelete}>
                     <ListItemIcon>
-                        <DeleteIcon fontSize="small" />
+                        <DeleteIcon fontSize="small" color="error" />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>

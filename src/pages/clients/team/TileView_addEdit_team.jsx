@@ -24,14 +24,11 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
 
-    // Get data from context
     const {
         roles,
         createTeam,
         updateTeam,
     } = useTeamContext();
-
-   // console.log('teamMember in dialog:', teamMember , roles);
 
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -42,7 +39,6 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
         status: '',
     });
 
-    // Initialize form data when teamMember changes
     useEffect(() => {
         if (isEdit && teamMember) {
             setFormData({
@@ -95,7 +91,6 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             showSnackbar('Please fill all required fields', 'error');
             return;
         }
-
         setLoading(true);
         try {
             if (isEdit) {
@@ -122,6 +117,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
         }
     };
     return (
+
         <Dialog
             open={open}
             onClose={onClose}
@@ -143,7 +139,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             </DialogTitle>
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                    {/* Name */}
+                   
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Name"
@@ -156,8 +152,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             helperText={validationErrors.name}
                         />
                     </Grid>
-                    
-                    {/* Role */}
+                   
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
@@ -179,8 +174,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             )}
                         />
                     </Grid>
-                    
-                    {/* Phone number only 10 digits */}
+             
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Phone Number"
@@ -199,7 +193,6 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                         />
                     </Grid>
 
-                    {/* Status */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             select
@@ -219,9 +212,12 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             ))}
                         </TextField>
                     </Grid>
+
                 </Grid>
             </DialogContent>
+
             <DialogActions sx={{ px: 3, py: 2 }}>
+
                 <Button
                     variant='text'
                     size='medium'
@@ -231,6 +227,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                 >
                     Cancel
                 </Button>
+
                 <Button
                     variant='contained'
                     disableElevation
@@ -246,8 +243,10 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                 >
                     {loading ? 'Saving...' : (isEdit ? 'Update Team Member' : 'Add Team Member')}
                 </Button>
+
             </DialogActions>
         </Dialog>
+        
     )
 }
 

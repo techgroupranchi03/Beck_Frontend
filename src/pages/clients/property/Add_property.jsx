@@ -14,14 +14,23 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { CloudUpload } from "@mui/icons-material";
 import Slide from "@mui/material/Slide";
+import { createClientProperty, updateClientProperty } from "../../../service/Clients/Properties";
+import { createTeamProperty, updateTeamProperty } from "../../../service/Teams/Team_Properties";
+import { useSnackbar } from "../../../resuable_components/Snackbar";
+import { useAuth } from "../../../context/AuthContext";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = null }) => {
+const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData = null }) => {
     const theme = useTheme();
     const { palette } = theme;
+    const { showSnackbar } = useSnackbar();
+    const { user } = useAuth();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const isTeamMember = user?.role === 'team';
 
     //Form State
     const [formData, setFormData] = useState({
@@ -29,13 +38,8 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
         googleMapLink: "",
         address: "",
         image: "",
-        imageFile: null, 
+        imageFile: null,
     });
-
-    // console form data for debugging
-    useEffect(() => {
-        console.log('Form Data:', formData);
-    }, [formData]);
 
     // Error State
     const [errors, setErrors] = useState({
@@ -53,7 +57,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                 name: initialData.name ?? "",
                 googleMapLink: initialData.google_map_link ?? "",
                 address: initialData.address ?? "",
-                image: initialData.image_url ?? "",
+                image: initialData.property_image_url ?? "",
                 imageFile: null,
             });
             // Clear errors
@@ -83,14 +87,25 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
         }
     }, [open, initialData, mode]);
 
+    // Validate URL format
+    const isValidUrl = (urlString) => {
+        if (!urlString) return true;
+        try {
+            const url = new URL(urlString);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch (e) {
+            return false;
+        }
+    };
+
     const handleChange = (e) => {
         const { name, value, files } = e.target;
         // Handle file input
         if (name === "image" && files && files[0]) {
             setFormData((prev) => ({
                 ...prev,
-                image: URL.createObjectURL(files[0]), 
-                imageFile: files[0], 
+                image: URL.createObjectURL(files[0]),
+                imageFile: files[0],
             }));
             // Clear image error
             setErrors((prev) => ({ ...prev, image: "" }));
@@ -100,12 +115,122 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
             if (name === "name" || name === "address") {
                 setErrors((prev) => ({ ...prev, [name]: "" }));
             }
+            // Validate URL for googleMapLink
+            if (name === "googleMapLink") {
+                if (value && !isValidUrl(value)) {
+                    setErrors((prev) => ({ ...prev, googleMapLink: "Please enter a valid URL (e.g., https://beckholiday.homes/...)" }));
+                } else {
+                    setErrors((prev) => ({ ...prev, googleMapLink: "" }));
+                }
+            }
         }
     };
 
-    const handleCreate = async () => {
-        if (onSubmit) {
-            await onSubmit(formData, setErrors);
+    const handleSubmit = async () => {
+        // Validate required fields
+        const newErrors = {
+            name: "",
+            googleMapLink: "",
+            address: "",
+            image: "",
+        };
+
+        if (!formData.name.trim()) {
+            newErrors.name = "Property name is required";
+        }
+
+        if (!formData.address.trim()) {
+            newErrors.address = "Address is required";
+        }
+
+        if (!formData.image && mode === "create") {
+            newErrors.image = "Property image is required";
+        }
+
+        // Validate Google Map Link URL
+        if (formData.googleMapLink && !isValidUrl(formData.googleMapLink)) {
+            newErrors.googleMapLink = "Please enter a valid URL (e.g., https://beckholiday.homes/...)";
+        }
+
+        // If there are validation errors, set them and return
+        if (Object.values(newErrors).some(error => error !== "")) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Create FormData for file upload
+            const formDataToSend = new FormData();
+            formDataToSend.append('name', formData.name);
+            formDataToSend.append('address', formData.address);
+
+            // Add Google Map Link if provided
+            if (formData.googleMapLink) {
+                formDataToSend.append('google_map_link', formData.googleMapLink);
+            }
+
+            // Handle image file
+            if (formData.imageFile) {
+                formDataToSend.append('image', formData.imageFile);
+            }
+
+            if (mode === "edit" && initialData) {
+                // Update existing property
+                if (isTeamMember) {
+                    await updateTeamProperty(initialData.id, formDataToSend);
+                } else {
+                    await updateClientProperty(initialData.id, formDataToSend);
+                }
+                showSnackbar("Property updated successfully", "success");
+            } else {
+                // Create new property
+                if (isTeamMember) {
+                    await createTeamProperty(formDataToSend);
+                } else {
+                    await createClientProperty(formDataToSend);
+                }
+                showSnackbar("Property created successfully", "success");
+            }
+
+            // Call success callback to refresh list and close dialog
+            if (onSuccess) {
+                onSuccess();
+            }
+        } catch (error) {
+            console.error("Error saving property:", error);
+
+            // Map API errors to form fields
+            if (error.errors && Array.isArray(error.errors)) {
+                const apiErrors = {
+                    name: "",
+                    googleMapLink: "",
+                    address: "",
+                    image: "",
+                };
+
+                error.errors.forEach((err) => {
+                    if (err.name) {
+                        apiErrors.name = err.name;
+                    }
+                    if (err.address) {
+                        apiErrors.address = err.address;
+                    }
+                    if (err.image) {
+                        apiErrors.image = err.image;
+                    }
+                    if (err.google_map_link) {
+                        apiErrors.googleMapLink = err.google_map_link;
+                    }
+                });
+
+                setErrors(apiErrors);
+            } else {
+                showSnackbar(error.message || "Failed to save property", "error");
+            }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -155,7 +280,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                         />
                     </Grid>
 
-                     {/* add google map link (optional) field */}
+                    {/* add google map link (optional) field */}
                     <Grid size={{ xs: 12 }}>
                         <TextField
                             fullWidth
@@ -248,7 +373,11 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                                     }}
                                     size="small"
                                 >
-                                    <CloseIcon fontSize="small" />
+                                    {/* when i click on the close icon image should be removed from preview and form data */}
+                                    <CloseIcon
+                                        fontSize="small"
+                                        onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
+                                    />
                                 </IconButton>
                             </Box>
                         )}
@@ -277,8 +406,9 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                     <Button
                         variant="contained"
                         disableElevation
-                        onClick={handleCreate}
+                        onClick={handleSubmit}
                         size="medium"
+                        disabled={isSubmitting}
                         sx={{
                             textTransform: "none",
                             bgcolor: palette.primary.main,
@@ -287,7 +417,7 @@ const Add_property = ({ open, onClose, onSubmit, mode = "create", initialData = 
                             px: 3,
                         }}
                     >
-                        {mode === "edit" ? "Save changes" : "Create"}
+                        {isSubmitting ? "Saving..." : mode === "edit" ? "Save changes" : "Create"}
                     </Button>
                 </Box>
             </DialogContent>

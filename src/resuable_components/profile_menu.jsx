@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     Box,
     Button,
@@ -11,28 +11,76 @@ import {
     Stack,
     ListItemIcon,
     ListItemText,
+    Chip,
+    CircularProgress,
 } from "@mui/material";
-import { Logout } from "@mui/icons-material";
+import { Logout, Business, CheckCircle, Person } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getAvailableTeamsAccounts, switchTeamAccount } from "../service/Teams/SelectAccount.js";
 
 export default function ProfileMenu() {
     const theme = useTheme();
     const { user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = React.useState(null);
+    const [availableAccounts, setAvailableAccounts] = useState([]);
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+    const [switchingAccount, setSwitchingAccount] = useState(false);
     const open = Boolean(anchorEl);
 
     //console.log('ProfileMenu user:', user);
+
+    // Fetch available accounts for team members
+    useEffect(() => {
+        const fetchAvailableAccounts = async () => {
+            if (user?.role === 'team') {
+                setLoadingAccounts(true);
+                try {
+                    const response = await getAvailableTeamsAccounts();
+                    if (response.success) {
+                        setAvailableAccounts(response.data.available_clients || []);
+                    }
+                } catch (error) {
+                    console.error('Error fetching available accounts:', error);
+                } finally {
+                    setLoadingAccounts(false);
+                }
+            }
+        };
+
+        fetchAvailableAccounts();
+    }, [user?.role]);
 
     const handleLogout = () => {
         setAnchorEl(null);
         logout();
     };
+    
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
     };
+    
     const handleMenuClose = () => {
         setAnchorEl(null);
+    };
+
+    const handleSwitchAccount = async (clientId) => {
+        if (switchingAccount) return;
+        
+        setSwitchingAccount(true);
+        try {
+            const response = await switchTeamAccount(clientId);
+            if (response.success) {
+                // set token in localStorage
+                localStorage.setItem('team_token', response.data.token);
+                // Refresh the page to load the new account context
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error('Error switching account:', error);
+        } finally {
+            setSwitchingAccount(false);
+        }
     };
 
 
@@ -73,6 +121,7 @@ export default function ProfileMenu() {
                     bgcolor: theme.palette.primary.main,
                     color: theme.palette.custom.cream,
                     cursor: "pointer",
+                    mr: 1,
                     fontSize: 16,
                     fontWeight: 600,
                     display: 'flex',
@@ -163,6 +212,90 @@ export default function ProfileMenu() {
                 </MenuItem>
 
                 <Divider sx={{ my: 1 }} />
+
+                {/* Available Accounts Section (Only for team members) */}
+                {user?.role === 'team' && (
+                    <>
+                        <Box sx={{ px: 2, py: 1 }}>
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    fontWeight: 600,
+                                    color: theme.palette.text.secondary,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 0.5,
+                                }}
+                            >
+                                Available Accounts
+                            </Typography>
+                        </Box>
+
+                        {loadingAccounts ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                <CircularProgress size={20} />
+                            </Box>
+                        ) : availableAccounts.length > 0 ? (
+                            <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                {availableAccounts.map((account) => (
+                                    <MenuItem
+                                        key={account.team_member_id}
+                                        onClick={() => {
+                                            if (!account.is_current_client) {
+                                                handleSwitchAccount(account.client_id);
+                                            }
+                                        }}
+                                        disabled={!!account.is_current_client || switchingAccount}
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            py: 1.5,
+                                            px: 2,
+                                            bgcolor: account.is_current_client
+                                                ? theme.palette.action.selected
+                                                : 'transparent',
+                                            '&:hover': {
+                                                bgcolor: account.is_current_client
+                                                    ? theme.palette.action.selected
+                                                    : theme.palette.action.hover,
+                                            },
+                                        }}
+                                    >
+                                        <Stack direction="row" spacing={1} alignItems="center" width="100%">
+                                            <Person fontSize="small" sx={{ color: theme.palette.text.secondary }} />
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    {account.client_name}
+                                                </Typography>
+                                                <Typography
+                                                    variant="caption"
+                                                    color="text.secondary"
+                                                    sx={{ display: 'block' }}
+                                                >
+                                                    Role: {account.role}
+                                                </Typography>
+                                            </Box>
+                                            {!!account.is_current_client && (
+                                                <CheckCircle
+                                                    fontSize="small"
+                                                    sx={{ color: theme.palette.success.main }}
+                                                />
+                                            )}
+                                        </Stack>
+                                    </MenuItem>
+                                ))}
+                            </Box>
+                        ) : (
+                            <Box sx={{ px: 2, py: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    No accounts available
+                                </Typography>
+                            </Box>
+                        )}
+
+                        <Divider sx={{ my: 1 }} />
+                    </>
+                )}
 
                 {/* Logout */}
                 <MenuItem

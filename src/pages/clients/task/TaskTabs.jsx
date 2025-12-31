@@ -9,14 +9,13 @@ const TaskTabs = () => {
         return savedTab ? Number(savedTab) : 0;
     });
 
-
     const handleChange = (event, newValue) => {
         setValue(newValue);
         localStorage.setItem('taskTabIndex', newValue);
     };
 
-
     return (
+
         <Container
             maxWidth={false}
 
@@ -36,7 +35,9 @@ const TaskTabs = () => {
                 {value === 0 && <TaskPlanner />}
                 {value === 1 && <ActiveTask />}
             </Box>
+
         </Container>
+        
     )
 }
 

@@ -6,10 +6,7 @@ import { useInventoryData } from './useInventoryData.js';
 import { useViewMode } from '../../../context/ViewModeContext.jsx';
 import ViewToggle from '../../../resuable_components/ViewToggle.jsx';
 
-// Create context for sharing inventory data across components
 export const InventoryContext = createContext(null);
-
-// Custom hook to use inventory context
 export const useInventoryContext = () => {
   const context = useContext(InventoryContext);
   if (!context) {
@@ -20,22 +17,19 @@ export const useInventoryContext = () => {
 
 const InventoryManagement = () => {
   const { viewMode } = useViewMode();
-  
-  // Initialize shared inventory data
   const inventoryData = useInventoryData();
 
   return (
+
     <InventoryContext.Provider value={inventoryData}>
       <Box>
-        {/* View Toggle Button */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <ViewToggle />
+          <ViewToggle showCenterView={true} />
         </Box>
-        
-        {/* Conditional Rendering based on view mode */}
-        {viewMode === 'tile' ? <Tile_View_Inventory /> : <All_Inventory />}
+        {viewMode === 'table' ? <All_Inventory /> : <Tile_View_Inventory />}
       </Box>
     </InventoryContext.Provider>
+    
   )
 }
 

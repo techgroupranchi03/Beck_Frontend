@@ -31,11 +31,13 @@ import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import TileView_addEdit_team from "./TileView_addEdit_team";
 import NavigateToTask from "./NavigateToTask";
 import CardSkeleton from "../../../resuable_components/CardSkeleton";
+import { useViewMode } from "../../../context/ViewModeContext";
 
 const Tile_View_Team = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
+  const { viewMode } = useViewMode();
 
   const statusColors = {
     active: "#4CAF50",
@@ -43,7 +45,6 @@ const Tile_View_Team = () => {
     pending: "#FF9800",
   };
 
-  // Get data from context
   const {
     teamData,
     loading,
@@ -61,15 +62,9 @@ const Tile_View_Team = () => {
   const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
-
   const observerTarget = useRef(null);
-
-  //console.log('deleteResponse', deleteResponse);
-
-
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -77,7 +72,6 @@ const Tile_View_Team = () => {
   };
 
   const handleEdit = (member) => {
-    //console.log("Editing member:", member);
     setSelectedMember(member);
     setOpenAddEditDialog(true);
     setAnchorEl(null);
@@ -108,12 +102,10 @@ const Tile_View_Team = () => {
     setMemberToDelete(null);
   };
 
-  // reset page when search text changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchText]);
 
-  // handle search
   const handleSearch = async (text) => {
     setSearchText(text);
     try {
@@ -123,7 +115,6 @@ const Tile_View_Team = () => {
     }
   };
 
-  // Infinite scroll - load more team members
   const loadMoreTeamMembers = useCallback(async () => {
     if (isLoadingMore || loading || !teamPagination.hasNextPage) {
       return;
@@ -142,7 +133,6 @@ const Tile_View_Team = () => {
     }
   }, [teamPagination, isLoadingMore, loading, currentPage, searchText, fetchTeamMembers, showSnackbar]);
 
-  // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -181,8 +171,8 @@ const Tile_View_Team = () => {
   };
 
   return (
-    <Container maxWidth="mx" sx={{ mt: 2, px: 0, }}>
-      {/* add team mebers button with search icon */}
+    <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? {xs: 2, sm: 3, md: 4} : 0 }}>
+
       <Stack direction="row" display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Button
           variant="contained"
@@ -234,7 +224,6 @@ const Tile_View_Team = () => {
         />
       )}
 
-
       {teamData.length === 0 && !loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <Typography variant="body2" color="text.secondary">
@@ -242,18 +231,19 @@ const Tile_View_Team = () => {
           </Typography>
         </Box>
       )}
+
       <Grid container spacing={2}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, width: '100%' }}>
             {Array.from({ length: 6 }).map((_, index) => (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+              <Grid size={ viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
                 <CardSkeleton />
               </Grid>
             ))}
           </Box>
         ) : (
           teamData.map((member) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={member.id}>
+            <Grid size={ viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={member.id}>
               <Card
                 sx={{
                   mb: 2,
@@ -357,7 +347,6 @@ const Tile_View_Team = () => {
         )}
       </Grid>
 
-      {/* Loading indicator for infinite scroll */}
       {isLoadingMore && (
         <Grid container spacing={2} sx={{ mt: 2 }}>
           {Array.from({ length: 6 }).map((_, index) => (
@@ -368,10 +357,8 @@ const Tile_View_Team = () => {
         </Grid>
       )}
 
-      {/* Intersection observer target */}
       <div ref={observerTarget} style={{ height: '20px' }} />
 
-      {/* pagination info */}
       {teamPagination.totalPages > 9 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
@@ -380,7 +367,6 @@ const Tile_View_Team = () => {
         </Box>
       )}
 
-      {/* Menu for Edit and Delete */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -446,8 +432,6 @@ const Tile_View_Team = () => {
         teamMember={selectedMember}
       />
 
-
-      {/* add snackbar to navigate to task module when we try to delete the task first say you need to reassign the task */}
       <NavigateToTask
         open={openNavigateDialog}
         onClose={handleCloseNavigateDialog}

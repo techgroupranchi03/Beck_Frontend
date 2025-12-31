@@ -27,7 +27,6 @@ import {
     Icon
 } from "@mui/material";
 import {
-    Alarm,
     Business,
     CalendarMonth,
     Delete,
@@ -38,11 +37,11 @@ import {
     Search,
     Clear,
     SearchOff,
-    Inventory,
     InventoryOutlined,
-    PhotoCameraBackOutlined,
-    Update,
-    PhotoCamera
+    Task,
+    Close,
+    AssignmentTurnedIn,
+    CameraAlt
 } from "@mui/icons-material";
 import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
 import ImageViewer from "../../../resuable_components/ImageViewer.jsx";
@@ -56,6 +55,9 @@ import CardSkeleton from "../../../resuable_components/CardSkeleton.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import IconLabel from "../../../resuable_components/IconLabel.jsx";
 import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog.jsx";
+import { taskStatusFilter } from "../../../constant.js";
+import { formatSchedule } from "../../../utils/scheduleFormatter.js";
+import { useViewMode } from "../../../context/ViewModeContext.jsx";
 
 export const Tile_View_task = () => {
     const theme = useTheme();
@@ -64,6 +66,7 @@ export const Tile_View_task = () => {
     const observerTarget = useRef(null);
     const { user } = useAuth();
     const location = useLocation();
+    const { viewMode } = useViewMode();
     const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [openImage, setOpenImage] = useState(false);
@@ -78,28 +81,21 @@ export const Tile_View_task = () => {
     const [openConfirm, setOpenConfirm] = useState(false);
     const isFetchingRef = useRef(false);
 
-    //console.log('filters applied:', filters);
-
-
-    //console.log('selectedTask for delete:', selectedTask);
-
-    // get Data from context
     const {
         allTasksData,
         deleteOneTimeTask,
         deleteRecurringTask,
         loading,
         fetchAllTasks,
-        allTaskPagination
+        allTaskPagination,
+        teamMembers,
+        properties
     } = useTaskContext();
 
-    //console.log('allTasksData:', allTasksData);
-    // reset page when filters or search text changes
     useEffect(() => {
         setCurrentPage(1);
     }, [filters, searchText]);
 
-    // normalize tasks: merge active and recurring arrays when provided separately
     const tasksToRender = useMemo(() => {
         if (Array.isArray(allTasksData)) return allTasksData;
         if (allTasksData && (allTasksData.active_tasks || allTasksData.recurring_tasks)) {
@@ -108,7 +104,6 @@ export const Tile_View_task = () => {
         return [];
     }, [allTasksData]);
 
-    // infinite scroll observer
     const loadMoreTasks = useCallback(async () => {
         if (!allTaskPagination?.hasNextPage || isLoadingMore || loading || isFetchingRef.current) return;
 
@@ -157,11 +152,13 @@ export const Tile_View_task = () => {
         setOpenAddEditDialog(true);
         setAnchorEl(null);
     };
+
     const openDeleteDialog = (task) => {
         setSelectedTask(task);
         setOpenConfirm(true);
         setAnchorEl(null);
     };
+
     const handleCancelDelete = () => {
         setOpenConfirm(false);
         setSelectedTask(null);
@@ -185,7 +182,6 @@ export const Tile_View_task = () => {
         }
     };
 
-
     const handleFilterToggle = () => {
         setIsFilterVisible((prev) => !prev);
     };
@@ -206,7 +202,54 @@ export const Tile_View_task = () => {
         }
     };
 
-    // handle navigation state for filters
+    const handleRemoveFilter = async (filterKey) => {
+        const updatedFilters = { ...filters };
+        updatedFilters[filterKey] = [];
+        await handleApplyFilters(updatedFilters);
+    };
+
+    const getFilterLabel = (key, value) => {
+        if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+        switch (key) {
+            case 'assigned_to':
+                if (Array.isArray(value)) {
+                    const names = value.map(id => {
+                        const member = teamMembers.find(m => m.id === id);
+                        return member ? member.name : null;
+                    }).filter(Boolean);
+                    return names.length > 0 ? `Assigned: ${names.join(', ')}` : null;
+                } else {
+                    const member = teamMembers.find(m => m.id === value);
+                    return member ? `Assigned: ${member.name}` : null;
+                }
+            case 'status':
+                if (Array.isArray(value)) {
+                    const labels = value.map(val => {
+                        const status = taskStatusFilter.find(s => s.value === val);
+                        return status ? status.label : null;
+                    }).filter(Boolean);
+                    return labels.length > 0 ? `Status: ${labels.join(', ')}` : null;
+                } else {
+                    const status = taskStatusFilter.find(s => s.value === value);
+                    return status ? `Status: ${status.label}` : null;
+                }
+            case 'property_id':
+                if (Array.isArray(value)) {
+                    const names = value.map(id => {
+                        const property = properties.find(p => p.id === id);
+                        return property ? property.name : null;
+                    }).filter(Boolean);
+                    return names.length > 0 ? `Property: ${names.join(', ')}` : null;
+                } else {
+                    const property = properties.find(p => p.id === value);
+                    return property ? `Property: ${property.name}` : null;
+                }
+            default:
+                return null;
+        }
+    };
+
     useEffect(() => {
         if (location.state?.assignedTo) {
             const navFilters = {
@@ -239,8 +282,8 @@ export const Tile_View_task = () => {
     };
 
     return (
-        <Container maxWidth="mx" sx={{ mt: 2, px: 0 }}>
-            {/* ---------- Header + Filter ---------- */}
+        <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
+           
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 {/* Create New Task Button when in Task Planner View */}
                 <Button
@@ -265,7 +308,10 @@ export const Tile_View_task = () => {
                     <IconButton
                         onClick={handleFilterToggle}
                         sx={{
-                            bgcolor: Object.keys(filters).some((key) => filters[key])
+                            bgcolor: Object.keys(filters).some((key) => {
+                                const val = filters[key];
+                                return Array.isArray(val) ? val.length > 0 : val;
+                            })
                                 ? palette.secondary.main
                                 : "transparent",
                         }}
@@ -282,6 +328,31 @@ export const Tile_View_task = () => {
                     </IconButton>
                 </Stack>
             </Box>
+
+            {Object.keys(filters).some((key) => {
+                const val = filters[key];
+                return Array.isArray(val) ? val.length > 0 : val;
+            }) && (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" mb={2} gap={1}>
+                        {Object.keys(filters).map((key) => {
+                            const label = getFilterLabel(key, filters[key]);
+                            if (!label) return null;
+                            return (
+                                <Chip
+                                    key={key}
+                                    label={label}
+                                    onDelete={() => handleRemoveFilter(key)}
+                                    deleteIcon={<Close />}
+                                    size="small"
+                                    sx={{
+                                        bgcolor: palette.custom.cream,
+                                        color: palette.text.primary,
+                                    }}
+                                />
+                            );
+                        })}
+                    </Stack>
+                )}
 
             {isSearchVisible && (
                 <TextField
@@ -304,7 +375,6 @@ export const Tile_View_task = () => {
                 />
             )}
 
-            {/* TaskFilter Drawer */}
             <TaskFilter
                 open={isFilterVisible}
                 onClose={handleFilterToggle}
@@ -314,7 +384,6 @@ export const Tile_View_task = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            {/* ---------- Task Grid ---------- */}
             {tasksToRender.length === 0 && !loading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                     <Typography variant="body2" color="text.secondary">
@@ -322,16 +391,17 @@ export const Tile_View_task = () => {
                     </Typography>
                 </Box>
             )}
+
             <Grid container spacing={2}>
                 {loading ? (
                     Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                        <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
                             <CardSkeleton />
                         </Grid>
                     ))
                 ) : (
                     tasksToRender.map((task) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={task.id}>
+                        <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={task.id}>
                             <Card
                                 elevation={0}
                                 sx={{
@@ -339,13 +409,12 @@ export const Tile_View_task = () => {
                                     elevation: 0,
                                     border: `1px solid ${palette.divider}`,
                                     bgcolor: palette.background.paper,
-                                    pb: 1,
 
                                 }}
                             >
 
                                 <CardHeader
-                                    sx={{ pb: 0 }}
+                                    sx={{ pb: 0.5 }}
                                     title={
                                         <Typography variant="h6" color="text.primary">
                                             {task.title}
@@ -365,78 +434,110 @@ export const Tile_View_task = () => {
                                 />
 
                                 <CardContent sx={{ pt: 0 }}>
-                                    {/* Description */}
-                                    <ViewMoreText text={task.description} limit={60} />
-                                    {task.schedule_type && task.schedule_type !== 'one_time' && (
-                                        <Stack direction="row" alignItems="center" flexWrap="wrap" mb={1} mt={1} spacing={1}>
-                                            {task.repeat_on?.days && task.repeat_on.days.length > 0 && (
-                                                <>
-                                                    {task.repeat_on.days.map((day, idx) => (
-                                                        <Chip
-                                                            key={idx}
-                                                            label={day}
-                                                            size="small"
-                                                            variant="contained"
-                                                            sx={{
-                                                                height: 22,
-                                                                // fontSize: '0.8rem',
-                                                                px: 0.5,
-                                                                '&:hover': {
-                                                                    bgcolor: palette.primary.main,
-                                                                    color: palette.primary.contrastText,
-                                                                }
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </>
-                                            )}
-                                        </Stack>
-                                    )}
 
+                                    {/* Schedule Information */}
+                                    {(() => {
+                                        const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                                        if (!scheduleInfo) return null;
 
-                                    {/* Task Type + Status */}
-                                    <Stack
-                                        spacing={1}
-                                        mb={2}
-                                        mt={1}
-                                        direction="row"
-                                        justifyContent="space-between"
-                                    >
-                                        <Tooltip placement="top" arrow title="Task Type">
-                                            <Chip
-                                                sx={{
-                                                    px: 1.5,
-                                                    borderRadius: 5,
-                                                    bgcolor: palette.taskType?.[task.task_type] || palette.grey[500],
-                                                    color: 'white',
-                                                }}
-                                                label={task.task_type.replace('_', ' ')}
-                                                size="small"
-                                            />
-                                        </Tooltip>
-                                        <Tooltip placement="top" arrow title="Task Status">
-                                            <Chip
-                                                label={task.status.replace('_', ' ')}
-                                                size="small"
-                                                sx={{
-                                                    bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                    color: 'white',
-                                                    px: 1.5,
-                                                    borderRadius: 5,
+                                        return (
+                                            <Stack
+                                                direction="row"
+                                                spacing={1}
+                                                flexWrap="wrap"
+                                                alignItems="center"
+                                                justifyContent="space-between"
+                                                mb={1}
+                                            >
+                                                <Stack
+                                                    direction="row"
+                                                    spacing={0.2}
+                                                    alignItems="center"
+                                                >
+                                                    <Box
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            color: palette.primary.main,
+                                                        }}
+                                                    >
+                                                        <scheduleInfo.icon fontSize="small" />
+                                                    </Box>
 
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    </Stack>
+                                                    <Typography
+                                                        variant="body2"
 
-                                    <Stack direction="row" flexWrap="wrap" gap={1}>
-                                        {(task.scheduled_date || task.start_date) && (
+                                                        sx={{
+                                                            whiteSpace: 'normal',
+                                                            bgcolor: palette.background.customPaper,
+                                                            color: palette.text.secondary,
+                                                            px: 1,
+                                                            borderRadius: 1,
+                                                            fontSize: '0.875rem',
+                                                        }}
+                                                    >
+                                                        {scheduleInfo.description}
+                                                    </Typography>
+                                                </Stack>
+
+                                                {/* add status chip here */}
+                                                <Tooltip placement="top" arrow title="Task Status">
+                                                    <Chip
+                                                        label={task.status.replace('_', ' ')}
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                            color: 'white',
+                                                            px: 1.5,
+                                                            borderRadius: 5,
+
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            </Stack>
+                                        );
+                                    })()}
+                                    {/* Task Type + Status shouldd not be show for weekly/monthly/yearly tasks */}
+
+                                    {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
+                                        <Stack
+                                            spacing={1}
+                                            mb={1}
+                                            mt={1}
+                                            direction="row"
+                                            justifyContent="space-between"
+                                        >
                                             <IconLabel
                                                 icon={CalendarMonth}
-                                                label={formatDate(task.scheduled_date || task.start_date)}
+                                                label={
+                                                    task.scheduled_date || task.start_date
+                                                        ? formatDate(task.scheduled_date || task.start_date)
+                                                        : "N/A"
+                                                }
                                             />
 
-                                        )}
+                                            <Tooltip placement="top" arrow title="Task Status">
+                                                <Chip
+                                                    label={task.status.replace('_', ' ')}
+                                                    size="small"
+                                                    sx={{
+                                                        bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                        color: 'white',
+                                                        px: 1.5,
+                                                        borderRadius: 5,
+
+                                                    }}
+                                                />
+                                            </Tooltip>
+                                        </Stack>
+                                    )}
+                                    {/* Description */}
+                                    <ViewMoreText text={task.description} limit={60} />
+                                    <Stack direction="row" flexWrap="wrap" gap={1} mt={1} >
+                                        <IconLabel
+                                            icon={Task}
+                                            label={task.task_type.replace('_', ' ')}
+                                        />
 
                                         <IconLabel
                                             icon={Person}
@@ -464,44 +565,74 @@ export const Tile_View_task = () => {
                                         )
                                         }
                                     </Stack>
-                                    <Stack direction="row" spacing={1} mt={2} alignItems="center">
-                                        {!!task.is_photo_required && (
-                                            <PhotoCamera sx={{ color: palette.text.secondary }} />
+                                    <Stack direction="row" spacing={1} mt={0.5} alignItems="center"
+                                        justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}>
+
+                                        {/* Last Executed Date */}
+                                        {task.last_task?.scheduled_date && (
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    color: palette.primary.main,
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                Last Executed On: {formatDate(task.last_task.scheduled_date)}
+                                            </Typography>
                                         )}
-                                         {!!task.update_inventory && (
-                                            <Update sx={{ color: palette.text.secondary }} />
-                                        )}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            {!!task.is_photo_required && task.completion_image_urls && (
+                                                <Chip
+                                                    sx={{
+                                                        px: 0.5,
+                                                        height: 30,
+                                                        '& .MuiChip-label': {
+                                                            p: 0.5,
+                                                        },
+                                                    }}
+                                                    icon={<CameraAlt />}
+                                                    label={
+                                                        Array.isArray(task.completion_image_urls) &&
+                                                            task.completion_image_urls.length > 0 ? (
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
+                                                                {task.completion_image_urls.map((url, index) => (
+                                                                    <Avatar
+                                                                        key={index}
+                                                                        src={url}
+                                                                        variant="rounded"
+                                                                        onClick={() => {
+                                                                            setSelectedImage(url);
+                                                                            setOpenImage(true);
+                                                                        }}
+                                                                        sx={{
+                                                                            width: 25,
+                                                                            height: 25,
+                                                                            borderRadius: 10,
+                                                                            cursor: 'pointer',
+                                                                            border: `1px solid ${palette.divider}`,
+                                                                            '&:hover': { opacity: 0.8 },
+                                                                        }}
+                                                                    />
+                                                                ))}
+                                                            </Box>
+                                                        ) : null
+                                                    }
+                                                />
+                                            )}
+
+                                            {!!task.is_photo_required && !task.completion_image_urls && (
+                                                <Tooltip title="Photo Required" placement="top" arrow>
+                                                    <CameraAlt color="action" sx={{ fontSize: 25 }} />
+                                                </Tooltip>
+                                            )}
+                                            {!!task.update_inventory && (
+                                                <Tooltip title="Inventory Update" placement="top" arrow>
+                                                    <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
+                                                </Tooltip>
+                                            )}
+                                        </Box>
+
                                     </Stack>
-
-
-                                    {/* <Divider sx={{ my: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">
-                                        Images
-                                    </Typography>
-                                </Divider> */}
-
-                                    {/* <Stack direction="row" spacing={1} sx={{ overflowX: "auto", display: "flex", justifyContent: "center" }}>
-                                    {task.images.map((img, idx) => (
-                                        <Box
-                                            key={idx}
-                                            component="img"
-                                            src={img}
-                                            alt={`task-${task.id}-${idx}`}
-                                            onClick={() => {
-                                                setSelectedImage(img);
-                                                setOpenImage(true);
-                                            }}
-
-                                            sx={{
-                                                width: 70,
-                                                height: 70,
-                                                borderRadius: 2,
-                                                objectFit: "cover",
-                                                border: `1px solid ${palette.divider}`,
-                                            }}
-                                        />
-                                    ))}
-                                </Stack> */}
                                 </CardContent>
                             </Card>
                         </Grid>
@@ -509,25 +640,22 @@ export const Tile_View_task = () => {
                 )}
             </Grid>
 
-            {/* observer target for infinite scroll */}
             <div ref={observerTarget} style={{ height: '10px' }}></div>
+
             {isLoadingMore && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                     <CircularProgress size={24} />
                 </Box>
             )}
-            {/* pagination Info */}
+
             {allTaskPagination && tasksToRender.length > 8 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                         Page {allTaskPagination.page} of {allTaskPagination.totalPages}  • Total: {allTaskPagination.total}
                     </Typography>
-                    {/* You can add pagination controls here if needed */}
                 </Box>
             )}
 
-
-            {/* EDIT AND DELETE ICON BUTTON  */}
             <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
@@ -594,7 +722,6 @@ export const Tile_View_task = () => {
                 image={selectedImage}
             />
 
-            {/* Add/Edit Task Dialog */}
             <TileView_AddEdit_Dialog
                 open={openAddEditDialog}
                 onClose={handleCloseDialog}

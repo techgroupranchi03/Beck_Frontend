@@ -36,32 +36,21 @@ import {
     Search,
     SearchOff,
     MoreVert,
-    Category,
-    HomeWork,
-    Inventory,
     Edit,
     Delete,
     ExpandMore,
     Add,
-    RadioButtonUnchecked,
-    CheckCircle,
     AccessTime,
-    LocationOn,
-    LocationOnOutlined,
     CategoryOutlined,
     InventoryOutlined,
     HomeWorkOutlined,
-    Assignment,
-    Schedule,
-    ScheduleOutlined,
-    Alarm,
     Person,
-    CalendarMonthOutlined,
-    Camera,
-    CameraAltOutlined,
     Business,
-    PhotoCamera,
-    Update
+    CalendarMonth,
+    Task,
+    Close,
+    AssignmentTurnedIn,
+    CameraAlt
 } from '@mui/icons-material';
 import InventoryFilter from './InventoryFilter';
 import { useInventoryContext } from './InventoryManagement';
@@ -74,10 +63,15 @@ import CardSkeleton from '../../../resuable_components/CardSkeleton';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import IconLabel from '../../../resuable_components/IconLabel';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
+import ImageViewer from '../../../resuable_components/ImageViewer';
+import formatSchedule from '../../../utils/scheduleFormatter';
+import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
+import { useViewMode } from '../../../context/ViewModeContext';
 
 const Tile_View_Inventory = () => {
     const theme = useTheme();
     const { palette } = theme;
+    const { viewMode } = useViewMode();
     const { showSnackbar } = useSnackbar();
     const [filters, setFilters] = useState({});
     const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -93,43 +87,125 @@ const Tile_View_Inventory = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [openConfirm, setOpenConfirm] = useState(false);
-
+    const [taskAnchorEl, setTaskAnchorEl] = useState(null);
+    const [openTaskConfirm, setOpenTaskConfirm] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [openImage, setOpenImage] = useState(false);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
     const observerTarget = useRef(null);
 
-
-
-    // get Data from context 
     const {
         inventoryData,
         loading,
         fetchInventoryItems,
         inventoryPagination,
         deleteInventory,
+        deleteOneTimeTask,
+        deleteRecurringTask,
+        properties,
+        units,
     } = useInventoryContext();
-
-    //console.log("Inventory Data in Tile View:", inventoryData);
 
     const handleFilterToggle = () => {
         setIsFilterVisible((prev) => !prev);
     };
 
-    // handle edit task planner
-    const handleEditTaskPlanner = (task) => {
-        setSelectedTask(task);
-        setOpenTaskDialog(true);
+    const handleRemoveFilter = async (filterKey) => {
+        const updatedFilters = { ...filters };
+        if (filterKey === 'category' || filterKey === 'property_id') {
+            updatedFilters[filterKey] = [];
+        } else {
+            delete updatedFilters[filterKey];
+        }
+        await handleApplyFilters(updatedFilters);
     };
 
-    const handleEditActiveTask = (task) => {
-        setSelectedTask(task);
-        setOpenTaskDialog(true);
+    const getFilterLabel = (key, value) => {
+        if (!value || (Array.isArray(value) && value.length === 0)) return null;
+
+        switch (key) {
+            case 'category':
+                if (Array.isArray(value)) {
+                    const labels = value.map(cat => cat.charAt(0).toUpperCase() + cat.slice(1));
+                    return labels.length > 0 ? `Category: ${labels.join(', ')}` : null;
+                } else {
+                    return `Category: ${value.charAt(0).toUpperCase() + value.slice(1)}`;
+                }
+            case 'property_id':
+                if (Array.isArray(value)) {
+                    const names = value.map(id => {
+                        const property = properties.find(p => p.id === id);
+                        return property ? property.name : null;
+                    }).filter(Boolean);
+                    return names.length > 0 ? `Property: ${names.join(', ')}` : null;
+                } else {
+                    const property = properties.find(p => p.id === value);
+                    return property ? `Property: ${property.name}` : null;
+                }
+            case 'unit':
+                const unitLabel = units.find(u => u.value === value);
+                return unitLabel ? `Unit: ${unitLabel.label}` : null;
+            case 'quantity':
+                return `Quantity: ${value}`;
+            case 'lower_limit':
+                return `Lower Limit: ${value}`;
+            case 'located_at':
+                return `Located At: ${value}`;
+            default:
+                return null;
+        }
     };
 
-    const handleEdit = (inventory) => {
+    const handleTaskMenuOpen = (event, task) => {
+        setSelectedTask(task);
+        setTaskAnchorEl(event.currentTarget);
+    };
+
+    const handleTaskEdit = () => {
+        if (selectedTask.taskSource === 'planner') {
+            setOpenTaskDialog(true);
+        } else {
+            setOpenTaskDialog(true);
+        }
+        setTaskAnchorEl(null);
+    };
+
+    const openTaskDeleteDialog = () => {
+        setOpenTaskConfirm(true);
+        setTaskAnchorEl(null);
+    };
+
+    const handleCancelTaskDelete = () => {
+        setOpenTaskConfirm(false);
+        setSelectedTask(null);
+    };
+
+    const handleConfirmTaskDelete = async () => {
+        if (selectedTask) {
+            try {
+                if (selectedTask.schedule_type && selectedTask.schedule_type !== 'one_time') {
+                    const res = await deleteRecurringTask(selectedTask.id);
+                    showSnackbar(res.message || 'Task deleted successfully', 'success');
+                } else {
+                    const res = await deleteOneTimeTask(selectedTask.id);
+                    showSnackbar(res.message || 'Task deleted successfully', 'success');
+                }
+            } catch (error) {
+                showSnackbar(error.message || 'Failed to delete task', 'error');
+                console.error('Error deleting task:', error);
+            }
+        }
+        setOpenTaskConfirm(false);
+        setSelectedTask(null);
+    };
+
+    const handleEditEnventory = (inventory) => {
         setSelectedItem(inventory);
         setOpenAddEditDialog(true);
-        //  console.log("Edit item:", inventory);
         setAnchorEl(null);
     };
+
     const handleCloseDialog = () => {
         setOpenAddEditDialog(false);
         setSelectedItem(null);
@@ -193,12 +269,10 @@ const Tile_View_Inventory = () => {
         }
     };
 
-    // reset page when filters or search text changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filters, searchText]);
+    }, [filters, searchText]); 
 
-    // Infinite scroll - load more inventory items
     const loadMoreInventoryItems = useCallback(async () => {
         if (isLoadingMore || loading || !inventoryPagination.hasNextPage) {
             return;
@@ -217,7 +291,7 @@ const Tile_View_Inventory = () => {
         }
     }, [inventoryPagination, isLoadingMore, loading, currentPage, filters, searchText, fetchInventoryItems, showSnackbar]);
 
-    // Intersection Observer for infinite scroll
+
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -241,7 +315,51 @@ const Tile_View_Inventory = () => {
     }, [loadMoreInventoryItems, inventoryPagination, isLoadingMore, loading]);
 
     return (
-        <Container maxWidth="mx" sx={{ mt: 2, px: 0 }}>
+        <Container maxWidth={viewMode === 'center' ? "md" : "mx"} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
+           
+            <Box
+                sx={{
+                    mb: 2,
+                    position: 'relative',
+                    display: 'block',
+                    visibility: 'visible',
+                    '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: { xs: '30px', md: '60px' },
+                        background: theme.customGradients.right,
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                        opacity: canScrollLeft ? 1 : 0,
+                        transition: 'opacity 0.3s ease',
+                    },
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: { xs: '30px', md: '60px' },
+                        background: theme.customGradients.left,
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                        opacity: canScrollRight ? 1 : 0,
+                        transition: 'opacity 0.3s ease',
+                    },
+                }}
+            >
+                <PropertyDisplay
+                    property={properties}
+                    onScrollStateChange={({ canScrollLeft, canScrollRight }) => {
+                        setCanScrollLeft(canScrollLeft);
+                        setCanScrollRight(canScrollRight);
+                    }}
+                />
+            </Box>
+
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Button
                     variant="contained"
@@ -260,11 +378,15 @@ const Tile_View_Inventory = () => {
                 >
                     Add Inventory
                 </Button>
+
                 <Stack direction="row" spacing={1}>
                     <IconButton
                         onClick={handleFilterToggle}
                         sx={{
-                            bgcolor: Object.keys(filters).some((key) => filters[key])
+                            bgcolor: Object.keys(filters).some((key) => {
+                                const val = filters[key];
+                                return Array.isArray(val) ? val.length > 0 : val;
+                            })
                                 ? palette.secondary.main
                                 : "transparent",
                         }}
@@ -283,6 +405,31 @@ const Tile_View_Inventory = () => {
                     {/* <ViewToggle /> */}
                 </Stack>
             </Box>
+
+            {Object.keys(filters).some((key) => {
+                const val = filters[key];
+                return Array.isArray(val) ? val.length > 0 : val;
+            }) && (
+                    <Stack direction="row" spacing={1} flexWrap="wrap" mb={2} gap={1}>
+                        {Object.keys(filters).map((key) => {
+                            const label = getFilterLabel(key, filters[key]);
+                            if (!label) return null;
+                            return (
+                                <Chip
+                                    key={key}
+                                    label={label}
+                                    onDelete={() => handleRemoveFilter(key)}
+                                    deleteIcon={<Close />}
+                                    size="small"
+                                    sx={{
+                                        bgcolor: palette.custom.cream,
+                                        color: palette.text.primary,
+                                    }}
+                                />
+                            );
+                        })}
+                    </Stack>
+                )}
 
             {isSearchVisible && (
                 <TextField
@@ -316,13 +463,13 @@ const Tile_View_Inventory = () => {
             <Grid container spacing={2}>
                 {loading ? (
                     Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                        <Grid size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
                             <CardSkeleton />
                         </Grid>
                     ))
                 ) : (inventoryData.map((item) => (
                     <Grid
-                        size={{ xs: 12, sm: 6, md: 4 }}
+                        size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }}
                         item key={item.id}
                     >
                         <Card
@@ -432,36 +579,39 @@ const Tile_View_Inventory = () => {
                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                         {expandedCards[item.id] ? 'Hide Tasks' : 'Show Tasks'}
                                     </Typography>
-                                    <ExpandMore
-                                        fontSize="small"
-                                        sx={{
-                                            transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)',
-                                            transition: 'transform 0.3s'
-                                        }}
-                                    />
+                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                        {/* add task button is here it show when the Collapse is open */}
+                                        {expandedCards[item.id] && (
+                                            <Button
+                                                size="small"
+                                                startIcon={<Add />}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedInventoryId(item.id);
+                                                    setSelectedTask(null);
+                                                    setOpenTaskDialog(true);
+                                                }}
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    color: palette.primary.main,
+                                                    fontSize: '0.75rem'
+                                                }}
+                                            >
+                                                Add task
+                                            </Button>
+                                        )}
+                                        <ExpandMore
+                                            fontSize="medium"
+                                            sx={{
+                                                transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.3s'
+                                            }}
+                                        />
+                                    </Stack>
                                 </Stack>
                             </Box>
 
                             <Collapse in={expandedCards[item.id]} timeout="auto" unmountOnExit>
-
-                                <Stack direction="row" alignItems="center" justifyContent="flex-start" py={1} px={1} >
-                                    <Button
-                                        size="small"
-                                        startIcon={<Add />}
-                                        onClick={() => {
-                                            setSelectedInventoryId(item.id);
-                                            setSelectedTask(null);
-                                            setOpenTaskDialog(true);
-                                        }}
-                                        sx={{
-                                            textTransform: 'none',
-                                            color: palette.primary.main,
-                                            fontSize: '0.75rem'
-                                        }}
-                                    >
-                                        Add task
-                                    </Button>
-                                </Stack>
                                 {/* make scrollable area for tasks if more than 1 tasks */}
                                 <Box sx={{
                                     maxHeight: 250,
@@ -490,15 +640,9 @@ const Tile_View_Inventory = () => {
                                                             <IconButton
                                                                 size="small"
                                                                 sx={{ position: 'absolute', top: 8, right: 8 }}
-                                                                onClick={() => {
-                                                                    if (task.taskSource === 'planner') {
-                                                                        handleEditTaskPlanner(task);
-                                                                    } else {
-                                                                        handleEditActiveTask(task);
-                                                                    }
-                                                                }}
+                                                                onClick={(e) => handleTaskMenuOpen(e, task)}
                                                             >
-                                                                <Edit fontSize="small" />
+                                                                <MoreVert fontSize="small" />
                                                             </IconButton>
 
                                                             <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -508,78 +652,115 @@ const Tile_View_Inventory = () => {
                                                                         {task.title}
                                                                     </Typography>
 
-                                                                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                                        <ViewMoreText text={task.description} limit={40} />
-                                                                    </Typography>
-
                                                                     {/* Repeat Days for Recurring Tasks */}
-                                                                    {task.schedule_type && task.schedule_type !== 'one_time' && (
-                                                                        <Stack direction="row" alignItems="center" flexWrap="wrap" mb={1} mt={1} spacing={1}>
-                                                                            {task.repeat_on?.days && task.repeat_on.days.length > 0 && (
-                                                                                <>
-                                                                                    {task.repeat_on.days.map((day, idx) => (
-                                                                                        <Chip
-                                                                                            key={idx}
-                                                                                            label={day}
-                                                                                            size="small"
-                                                                                            variant="contained"
-                                                                                            sx={{
-                                                                                                height: 22,
-                                                                                                px: 0.5,
-                                                                                                '&:hover': {
-                                                                                                    bgcolor: palette.primary.main,
-                                                                                                    color: palette.primary.contrastText,
-                                                                                                }
-                                                                                            }}
-                                                                                        />
-                                                                                    ))}
-                                                                                </>
+                                                                    {(() => {
+                                                                        const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                                                                        if (!scheduleInfo) return null;
+                                                                        return (
+                                                                            <Stack
+                                                                                direction="row"
+                                                                                spacing={1}
+                                                                                flexWrap="wrap"
+                                                                                alignItems="center"
+                                                                                justifyContent="space-between"
+                                                                                mb={1}
+                                                                            >
+                                                                                <Stack
+                                                                                    direction="row"
+                                                                                    spacing={0.2}
+                                                                                    alignItems="center"
+                                                                                >
+                                                                                    <Box
+                                                                                        sx={{
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            color: palette.primary.main,
+                                                                                        }}
+                                                                                    >
+                                                                                        <scheduleInfo.icon fontSize="small" />
+                                                                                    </Box>
+
+                                                                                    <Typography
+                                                                                        variant="body2"
+
+                                                                                        sx={{
+                                                                                            whiteSpace: 'normal',
+                                                                                            bgcolor: palette.background.customPaper,
+                                                                                            color: palette.text.secondary,
+                                                                                            px: 1,
+                                                                                            borderRadius: 1,
+                                                                                            fontSize: '0.875rem',
+                                                                                        }}
+                                                                                    >
+                                                                                        {scheduleInfo.description}
+                                                                                    </Typography>
+                                                                                </Stack>
+
+                                                                                {/* add status chip here */}
+                                                                                <Tooltip placement="top" arrow title="Task Status">
+                                                                                    <Chip
+                                                                                        label={task.status.replace('_', ' ')}
+                                                                                        size="small"
+                                                                                        sx={{
+                                                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                                                            color: 'white',
+                                                                                            px: 1.5,
+                                                                                            borderRadius: 5,
+
+                                                                                        }}
+                                                                                    />
+                                                                                </Tooltip>
+                                                                            </Stack>
+                                                                        )
+                                                                    })()}
+
+
+
+                                                                    {/* Task Type & Status */}
+                                                                    {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
+                                                                        <Stack
+                                                                            spacing={1}
+                                                                            mb={1}
+                                                                            mt={1}
+                                                                            direction="row"
+                                                                            justifyContent="space-between"
+                                                                        >
+
+                                                                            <IconLabel
+                                                                                icon={CalendarMonth}
+                                                                                label={
+                                                                                    task.scheduled_date || task.start_date
+                                                                                        ? formatDate(task.scheduled_date || task.start_date)
+                                                                                        : "N/A"
+                                                                                }
+                                                                            />
+
+                                                                            {task.status && (
+                                                                                <Tooltip placement="top" arrow title="Task Status">
+                                                                                    <Chip
+                                                                                        label={task.status.replace('_', ' ')}
+                                                                                        size="small"
+                                                                                        sx={{
+                                                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                                                            color: 'white',
+                                                                                            px: 1.5,
+                                                                                            borderRadius: 5,
+                                                                                        }}
+                                                                                    />
+                                                                                </Tooltip>
                                                                             )}
                                                                         </Stack>
                                                                     )}
+                                                                    {/* Task Description */}
+                                                                        <ViewMoreText text={task.description} limit={40} />
+                                                                   
 
-                                                                    {/* Task Type & Status */}
-                                                                    <Stack
-                                                                        spacing={1}
-                                                                        mb={1}
-                                                                        mt={1}
-                                                                        direction="row"
-                                                                        justifyContent="space-between"
-                                                                    >
-                                                                        <Tooltip placement="top" arrow title="Task Type">
-                                                                            <Chip
-                                                                                sx={{
-                                                                                    px: 1.5,
-                                                                                    borderRadius: 5,
-                                                                                    bgcolor: palette.taskType?.[task.task_type] || palette.grey[500],
-                                                                                    color: 'white',
-                                                                                }}
-                                                                                label={task.task_type?.replace('_', ' ') || 'N/A'}
-                                                                                size="small"
-                                                                            />
-                                                                        </Tooltip>
-                                                                        {task.status && (
-                                                                            <Tooltip placement="top" arrow title="Task Status">
-                                                                                <Chip
-                                                                                    label={task.status.replace('_', ' ')}
-                                                                                    size="small"
-                                                                                    sx={{
-                                                                                        bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                                                        color: 'white',
-                                                                                        px: 1.5,
-                                                                                        borderRadius: 5,
-                                                                                    }}
-                                                                                />
-                                                                            </Tooltip>
-                                                                        )}
-                                                                    </Stack>
-
-                                                                    {/* Task Metadata */}
+                                                                    {/* Task chips */}
                                                                     <Stack direction="row" gap={1} flexWrap="wrap" mb={1}>
                                                                         {task.taskSource === 'planner' ? (
                                                                             <>
-                                                                                {task.start_date && (
-                                                                                    <IconLabel icon={CalendarMonthOutlined} label={formatDate(task.start_date)} />
+                                                                                {task.task_type && (
+                                                                                    <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
                                                                                 )}
                                                                                 {task.assigned_to_name && (
                                                                                     <IconLabel icon={Person} label={task.assigned_to_name} />
@@ -587,8 +768,8 @@ const Tile_View_Inventory = () => {
                                                                             </>
                                                                         ) : (
                                                                             <>
-                                                                                {task.scheduled_date && (
-                                                                                    <IconLabel icon={CalendarMonthOutlined} label={formatDate(task.scheduled_date)} />
+                                                                                {task.task_type && (
+                                                                                    <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
                                                                                 )}
                                                                                 {task.assigned_to_name && (
                                                                                     <IconLabel icon={Person} label={task.assigned_to_name} />
@@ -598,13 +779,69 @@ const Tile_View_Inventory = () => {
                                                                     </Stack>
 
                                                                     {/* Icons for Photo Required & Update Inventory */}
-                                                                    <Stack direction="row" spacing={1} mt={1} alignItems="center">
-                                                                        {!!task.is_photo_required && (
-                                                                            <PhotoCamera sx={{ color: palette.text.secondary }} />
+                                                                    <Stack direction="row" spacing={1} mt={1} alignItems="center"
+                                                                        justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}
+                                                                    >
+                                                                        {task.last_task?.scheduled_date && (
+                                                                            <Typography variant="body2"
+                                                                                sx={{
+                                                                                    color: palette.primary.main,
+                                                                                    fontWeight: 500
+                                                                                }}>
+                                                                                Last Executed On: {formatDate(task.last_task.scheduled_date)}
+                                                                            </Typography>
                                                                         )}
-                                                                        {!!task.update_inventory && (
-                                                                            <Update sx={{ color: palette.text.secondary }} />
-                                                                        )}
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                            {!!task.is_photo_required && task.completion_image_urls && (
+                                                                                <Chip
+                                                                                    sx={{
+                                                                                        px: 0.5,
+                                                                                        height: 30,
+                                                                                        '& .MuiChip-label': {
+                                                                                            p: 0.5,
+                                                                                        },
+                                                                                    }}
+                                                                                    icon={<CameraAlt />}
+                                                                                    label={
+                                                                                        Array.isArray(task.completion_image_urls) &&
+                                                                                            task.completion_image_urls.length > 0 ? (
+                                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
+                                                                                                {task.completion_image_urls.map((url, index) => (
+                                                                                                    <Avatar
+                                                                                                        key={index}
+                                                                                                        src={url}
+                                                                                                        variant="rounded"
+                                                                                                        onClick={() => {
+                                                                                                            setSelectedImage(url);
+                                                                                                            setOpenImage(true);
+                                                                                                        }}
+                                                                                                        sx={{
+                                                                                                            width: 25,
+                                                                                                            height: 25,
+                                                                                                            borderRadius: 10,
+                                                                                                            cursor: 'pointer',
+                                                                                                            border: `1px solid ${palette.divider}`,
+                                                                                                            '&:hover': { opacity: 0.8 },
+                                                                                                        }}
+                                                                                                    />
+                                                                                                ))}
+                                                                                            </Box>
+                                                                                        ) : null
+                                                                                    }
+                                                                                />
+                                                                            )}
+
+                                                                            {!!task.is_photo_required && !task.completion_image_urls && (
+                                                                                <Tooltip title="Photo Required" placement="top" arrow>
+                                                                                    <CameraAlt color="action" sx={{ fontSize: 25 }} />
+                                                                                </Tooltip>
+                                                                            )}
+                                                                            {!!task.update_inventory && (
+                                                                                <Tooltip title="Inventory Update" placement="top" arrow>
+                                                                                    <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
+                                                                                </Tooltip>
+                                                                            )}
+                                                                        </Box>
                                                                     </Stack>
                                                                 </Box>
                                                             </Stack>
@@ -645,10 +882,8 @@ const Tile_View_Inventory = () => {
                 </Grid>
             )}
 
-            {/* Intersection observer target */}
             <div ref={observerTarget} style={{ height: '20px' }} />
 
-            {/* pagination info */}
             {inventoryData.length > 9 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, mb: 2 }}>
                     <Typography variant="body2" color="text.secondary">
@@ -658,14 +893,13 @@ const Tile_View_Inventory = () => {
             )}
 
             <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={() => setAnchorEl(null)}
+                anchorEl={taskAnchorEl}
+                open={Boolean(taskAnchorEl)}
+                onClose={() => setTaskAnchorEl(null)}
                 PaperProps={{
-                    elevation: 2,
+                    elevation: 1,
                     sx: {
-                        borderRadius: 2,
-                        p: 1,
+                        borderRadius: 1,
                         overflow: "visible",
                         mt: 1,
                         "&::before": {
@@ -694,7 +928,57 @@ const Tile_View_Inventory = () => {
                     horizontal: 'right',
                 }}
             >
-                <MenuItem onClick={() => handleEdit(selectedItem)} dense>
+                <MenuItem onClick={handleTaskEdit} dense>
+                    <ListItemIcon>
+                        <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+                    </ListItemIcon>
+                    <ListItemText>Edit</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={openTaskDeleteDialog} dense>
+                    <ListItemIcon>
+                        <Delete fontSize="small" sx={{ color: palette.error.main }} />
+                    </ListItemIcon>
+                    <ListItemText>Delete</ListItemText>
+                </MenuItem>
+            </Menu>
+
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={() => setAnchorEl(null)}
+                PaperProps={{
+                    elevation: 1,
+                    sx: {
+                        borderRadius: 1,
+                        overflow: "visible",
+                        mt: 1,
+                        "&::before": {
+                            content: '""',
+                            display: "block",
+                            position: "absolute",
+                            top: 0,
+                            right: 12,
+                            width: 12,
+                            height: 12,
+                            bgcolor: theme.palette.background.paper,
+                            transform: "translateY(-50%) rotate(45deg)",
+                            zIndex: 0,
+                            boxShadow: theme.palette.mode === "light"
+                                ? "0px -1px 1px rgba(0,0,0,0.1)"
+                                : "0px -1px 1px rgba(255,255,255,0.1)",
+                        },
+                    },
+                }}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                }}
+            >
+                <MenuItem onClick={() => handleEditEnventory(selectedItem)} dense>
                     <ListItemIcon>
                         <Edit fontSize="small" sx={{ color: palette.primary.main }} />
                     </ListItemIcon>
@@ -733,6 +1017,20 @@ const Tile_View_Inventory = () => {
                 onDelete={handleConfirmDelete}
                 title="Delete Inventory Item"
                 message="Are you sure you want to delete this inventory item? This action cannot be undone."
+            />
+
+            <ConfirmationDialog
+                open={openTaskConfirm}
+                onCancel={handleCancelTaskDelete}
+                onDelete={handleConfirmTaskDelete}
+                title="Delete Task"
+                message="Are you sure you want to delete this task? This action cannot be undone."
+            />
+
+            <ImageViewer
+                open={openImage}
+                onClose={() => setOpenImage(false)}
+                image={selectedImage}
             />
         </Container>
     );

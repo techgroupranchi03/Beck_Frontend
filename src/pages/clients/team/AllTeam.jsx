@@ -18,7 +18,6 @@ const AllTeam = () => {
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
 
-  // Get data from context
   const {
     teamData,
     roles,
@@ -28,14 +27,11 @@ const AllTeam = () => {
     deleteTeam
   } = useTeamContext();
 
-  // Navigate Dialog Handlers
   const handleCloseNavigateDialog = () => {
     setOpenNavigateDialog(false);
     setDeleteResponse(null);
   };
 
-
-  // CREATE 
   const handleCreateTeamMember = async ({ values, table }) => {
     try {
       const res = await createTeam(values);
@@ -74,7 +70,6 @@ const AllTeam = () => {
     }
   };
 
-  // UPDATE 
   const handleSaveTeamMember = async ({ values, table, row }) => {
     try {
       const res = await updateTeam(row.original.id, values);
@@ -113,7 +108,6 @@ const AllTeam = () => {
     }
   };
 
-  // DELETE 
   const openDeleteDialog = (row) => {
     setTeamMemberToDelete(row.original.id);
     setOpenConfirm(true);
@@ -142,6 +136,7 @@ const AllTeam = () => {
     setOpenConfirm(false);
     setTeamMemberToDelete(null);
   };
+
   const columns = useMemo(
     () => [
       {

@@ -15,36 +15,33 @@ import { categories } from "../../../constant";
 import { useInventoryContext } from "./InventoryManagement";
 
 const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
-  const [category, setCategory] = useState("");
-  const [propertyId, setPropertyId] = useState("");
+  const [category, setCategory] = useState([]);
+  const [propertyId, setPropertyId] = useState([]);
   const [unit, setUnit] = useState("");
   const [quantity, setQuantity] = useState("");
   const [lowerLimit, setLowerLimit] = useState("");
   const [locatedAt, setLocatedAt] = useState("");
   const [isFilter, setIsFilter] = useState(false);
-  // Get data from context
   const { properties, units, containerOptions } = useInventoryContext();
-
   const theme = useTheme();
   const { palette } = theme;
 
   const handleFilterApply = () => {
     const filters = {};
-    if (category) filters.category = category;
-    if (propertyId) filters.property_id = propertyId;
+    if (category.length > 0) filters.category = category;
+    if (propertyId.length > 0) filters.property_id = propertyId;
     if (unit) filters.unit = unit;
     if (quantity) filters.quantity = quantity;
     if (lowerLimit) filters.lower_limit = lowerLimit;
     if (locatedAt) filters.located_at = locatedAt;
-
     setIsFilter(Object.keys(filters).length > 0);
     onApplyFilters(filters);
     onClose();
   };
 
   const handleClearFilters = () => {
-    setCategory("");
-    setPropertyId("");
+    setCategory([]);
+    setPropertyId([]);
     setUnit("");
     setQuantity("");
     setLowerLimit("");
@@ -54,6 +51,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
   };
 
   return (
+
     <Drawer
       anchor="right"
       open={open}
@@ -63,6 +61,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
       }}
     >
       <Box>
+
         <Stack
           spacing={2}
           direction="row"
@@ -84,41 +83,51 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
             </Button>
           )}
         </Stack>
-        {/* Property Filter */}
-        <FormControl fullWidth>
-          <TextField
-            select
-            label="Property"
-            size="small"
-            sx={{ mb: 3 }}
-            value={propertyId}
-            onChange={(event) => setPropertyId(event.target.value)}
-          >
-            {properties.map((property) => (
-              <MenuItem key={property.id} value={property.id} dense>
-                {property.name}
-              </MenuItem>
-            ))}
-          </TextField>
-        </FormControl>
-        {/* Category Filter */}
-        <FormControl fullWidth>
-          <TextField
-            select
-            label="Category"
-            size="small"
-            sx={{ mb: 3 }}
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-          >
-            {categories.map((cat) => (
-              <MenuItem key={cat} value={cat} dense>
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </MenuItem>
-            ))}
-          </TextField>
-        </FormControl>
-        {/* Unit Filter */}
+   
+        <Autocomplete
+          size="small"
+          multiple
+          limitTags={2}
+          value={propertyId.map(id => properties.find(p => p.id === id)).filter(Boolean)}
+          onChange={(event, newValue) => {
+            setPropertyId(newValue.map(v => v.id));
+          }}
+          options={properties}
+          getOptionLabel={(option) => option.name || ""}
+          renderOption={(props, option) => (
+            <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+              {option.property_image_url && (
+                <img
+                  src={option.property_image_url}
+                  alt={option.name || ''}
+                  style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                />
+              )}
+            </li>
+          )}
+          renderInput={(params) => (
+            <TextField {...params} label="Property" placeholder="Select properties" />
+          )}
+          sx={{ mb: 3 }}
+        />
+
+        <Autocomplete
+          size="small"
+          multiple
+          limitTags={2}
+          value={category}
+          onChange={(event, newValue) => {
+            setCategory(newValue);
+          }}
+          options={categories}
+          getOptionLabel={(option) => option.charAt(0).toUpperCase() + option.slice(1)}
+          renderInput={(params) => (
+            <TextField {...params} label="Category" placeholder="Select categories" />
+          )}
+          sx={{ mb: 3 }}
+        />
+   
         <FormControl fullWidth>
           <TextField
             select
@@ -136,7 +145,6 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
           </TextField>
         </FormControl>
 
-        {/* quantity Filter based on selected unit and mapped containerOptions */}
         {unit.toLowerCase() === "container" ? (
           <FormControl fullWidth>
             <TextField
@@ -166,7 +174,6 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
           />
         )}
 
-        {/* Lower Limit Filter */}
         <TextField
           label="Enter Lower Limit"
           type="number"
@@ -176,7 +183,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
           fullWidth
           sx={{ mb: 3 }}
         />
-        {/* Located At Filter */}
+      
         <TextField
           label="Located At"
           size="small"
@@ -185,6 +192,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
           fullWidth
           sx={{ mb: 3 }}
         />
+
         <Button
           variant="contained"
           disableElevation
@@ -200,6 +208,7 @@ const InventoryFilter = ({ open, onClose, onApplyFilters }) => {
         >
           Apply Filters
         </Button>
+        
       </Box>
     </Drawer>
   );

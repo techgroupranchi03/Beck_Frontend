@@ -5,11 +5,9 @@ const getClientToken = () => {
     return localStorage.getItem('client_token');
 };
 
-// get all task method "GET" API
 export const getClientTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getClientToken();
     try {
-        // Build query parameters from filters
         const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
@@ -26,7 +24,6 @@ export const getClientTasks = async (filters = {}, searchText = "", page = 1) =>
                 params: params,
             }
         );
-        // console.log('Client tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client tasks fetching error:', error);
@@ -34,10 +31,9 @@ export const getClientTasks = async (filters = {}, searchText = "", page = 1) =>
     }
 };
 
-// create task method "POST" API
 export const createClientTask = async (taskData) => {
     const token = getClientToken();
-    //console.log('Creating task with data:', taskData);
+    console.log('Creating task with data:', taskData);
     try {
         const response = await axios.post(
             `${BASE_URL}/client/tasks-planner`,
@@ -55,10 +51,8 @@ export const createClientTask = async (taskData) => {
     }
 };
 
-// create active task method "POST" API
 export const createClientActiveTask = async (taskData) => {
     const token = getClientToken();
-    //console.log('Creating active task with data:', taskData);
     try {
         const response = await axios.post(
             `${BASE_URL}/client/tasks-instances`,
@@ -76,9 +70,7 @@ export const createClientActiveTask = async (taskData) => {
     }
 };
 
-// update task method "PUT" API
 export const updateTaskPlanner = async (taskId, taskData) => {
-    // console.log('Updating task with ID:', taskId, 'Data:', taskData);
     const token = getClientToken();
     try {
         const response = await axios.put(
@@ -97,7 +89,6 @@ export const updateTaskPlanner = async (taskId, taskData) => {
     }
 };
 
-// update active task method "PUT" API
 export const updateActiveTask = async (taskId, taskData) => {
     const token = getClientToken();
     try {
@@ -117,7 +108,6 @@ export const updateActiveTask = async (taskId, taskData) => {
     }
 };
 
-// delete task based on the one time and recurring method "DELETE" API
 export const deleteOneTime = async (taskId) => {
     const token = getClientToken();
     try {
@@ -136,7 +126,6 @@ export const deleteOneTime = async (taskId) => {
     }
 };
 
-// delete recurring task 
 export const deleteRecurring = async (taskId) => {
     const token = getClientToken();
     try {
@@ -155,15 +144,9 @@ export const deleteRecurring = async (taskId) => {
     }
 };
 
-
-
-
-
-// get active tasks method "GET" API
 export const getClientActiveTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getClientToken();
     try {
-        // Build query parameters from filters
         const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
@@ -180,7 +163,6 @@ export const getClientActiveTasks = async (filters = {}, searchText = "", page =
                 params: params,
             }
         );
-        // console.log('Client active tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Client active tasks fetching error:', error);
@@ -188,8 +170,6 @@ export const getClientActiveTasks = async (filters = {}, searchText = "", page =
     }
 };
 
-
-// Active task staus update method "PUT" API
 export const updateClientActiveTaskStatus = async (taskInstanceId, status) => {
     const token = getClientToken();
     try {
@@ -209,7 +189,6 @@ export const updateClientActiveTaskStatus = async (taskInstanceId, status) => {
     }
 }
 
-// get teammber in task methods "GET" API
 export const getTaskTeamMembers = async () => {
     const token = getClientToken();
     try {
@@ -228,14 +207,6 @@ export const getTaskTeamMembers = async () => {
     }
 };
 
-
-
-
-
-
-// new api added
-
-// get inventory by property id method "GET" API
 export const getInventoryByPropertyId = async (propertyId) => {
     const token = getClientToken();
     try {
@@ -254,8 +225,6 @@ export const getInventoryByPropertyId = async (propertyId) => {
     }
 };
 
-
-// get all task 
 export const getAllClientTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getClientToken();
     try {
@@ -274,9 +243,31 @@ export const getAllClientTasks = async (filters = {}, searchText = "", page = 1)
                 params: params,
             }
         );
+        console.log('All Client tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('All client tasks fetching error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching all tasks failed' });
+    }
+};
+
+export const updateClientTaskStatusCompleted = async (taskId, formData) => {
+
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/tasks-instances/${taskId}`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task completion status update error:', error);
+        return Promise.reject(error.response?.data)
     }
 };

@@ -27,13 +27,12 @@ const TeamManagement = () => {
     return (
         <TeamContext.Provider value={teamData}>
             <Box>
-                {/* View Toggle Button */}
+
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                    <ViewToggle />
+                    <ViewToggle showCenterView={true} />
                 </Box>
                 
-                {/* Conditional Rendering based on view mode */}
-                {viewMode === 'tile' ? <Tile_View_Team /> : <AllTeam />}
+                {viewMode === 'table' ? <AllTeam /> : <Tile_View_Team />}
             </Box>
         </TeamContext.Provider>
     );

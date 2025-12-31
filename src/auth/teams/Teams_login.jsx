@@ -264,21 +264,21 @@ const Teams_login = () => {
                 )}
 
                 {/* Logo and App Name */}
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3, mt: step !== 1 ? 3 : 0 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 1, mt: step !== 1 ? 2 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
                         alt="Beck HolidayHomes Logo"
                         sx={{ width: 64, height: 64, mb: 1 }}
                     />
                     <Typography
-                        variant="h4"
+                        variant="h5"
                         fontWeight="bold"
                         sx={{ color: theme.palette.text.primary }}
                     >
                         Beck HolidayHomes
                     </Typography>
                     <Typography
-                        variant="h6"
+                        variant="body1"
                         sx={{ color: theme.palette.text.secondary }}
                     >
                         {step === 1 ? 'Team Login' : step === 1.5 ? 'Select Your Account' : 'Enter Your OTP code here'}
@@ -343,8 +343,8 @@ const Teams_login = () => {
                 ) : step === 1.5 ? (
                     <>
                         {/* Account Selection Step */}
-                        <Box sx={{ mt: 2, mb: 2 }}>
-                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 2, fontWeight: 'bold' }}>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 2,  }}>
                             
                                {accountMessage || "Multiple accounts found. Please select one to continue."}
                             </Typography>

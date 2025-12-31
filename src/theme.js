@@ -45,10 +45,12 @@ export const lightTheme = createTheme({
       creme: palette.cream,
       default: "#f9f9f9",
       paper: "#ffffff",
+      customPaper: "#ada8a828",
     },
     text: {
-      primary: palette.dark,
+      primary: "#000000",
       secondary: "#555555",
+      customtext: "#ffffff",
     },
     custom: {
       cream: palette.cream,
@@ -117,11 +119,13 @@ export const darkTheme = createTheme({
       creme: "#fef7c5",
       default: "#1a1a1a",
       paper: "#3c3c3c",
+      customPaper: "#e9dfdf18",
 
     },
     text: {
       primary: "#ffffff",
       secondary: "#b0b0b0",
+      customtext: "#ffffff",
     },
     custom: {
       cream: palette.cream,

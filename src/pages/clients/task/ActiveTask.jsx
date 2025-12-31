@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { Box, Chip, MenuItem, useTheme, Checkbox, Tooltip, IconButton, Button, Autocomplete, TextField, Icon } from '@mui/material'
+import { Box, Chip, MenuItem, useTheme, Checkbox, Tooltip, IconButton, Button, Autocomplete, TextField, Icon, Avatar } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
 import { Delete, Edit as EditIcon } from '@mui/icons-material'
 import { formatDate } from '../../../utils/dateFormat';
@@ -7,18 +7,20 @@ import { statusOpts, taskTypes } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import ViewMoreText from '../../../resuable_components/ViewMore';
-import { all } from 'axios';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
+import ImageViewer from '../../../resuable_components/ImageViewer';
+import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
 
 const ActiveTask = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
+  const [showcompletionDialog, setShowCompletionDialog] = useState(false);
+  const [pendingTask, setPendingTask] = useState(null);
 
-  // Get data from context
   const {
     allTasksData,
-   deleteOneTimeTask,
+    deleteOneTimeTask,
     loading,
     inventoryItems,
     properties,
@@ -26,18 +28,19 @@ const ActiveTask = () => {
     createActiveTask,
     updateActiveTaskData,
     fetchInventoryByProperty,
+    updateTaskCompletionStatus,
   } = useTaskContext();
-
-  console.log("All Tasks Data:", allTasksData);
-  // console.log("Active Tasks Data:", activeTasksData);
-  // console.log("teamMembers in ActiveTask:", teamMembers);
 
   const [validationErrors, setValidationErrors] = useState({});
   const [inventoryOptionsMap, setInventoryOptionsMap] = useState({});
   const [openConfirm, setOpenConfirm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [openImage, setOpenImage] = useState(false);
+  const [tableRef, setTableRef] = useState(null);
 
   const columns = useMemo(() => [
+
     {
       accessorKey: 'title',
       header: 'Title',
@@ -53,6 +56,7 @@ const ActiveTask = () => {
           }),
       },
     },
+
     {
       accessorKey: 'description',
       header: 'Description',
@@ -72,61 +76,69 @@ const ActiveTask = () => {
       Cell: ({ cell }) =>
         <ViewMoreText text={cell.getValue() || '-'} maxLength={20} />
     },
+
     {
       accessorKey: 'property_id',
       header: 'Property',
       size: 180,
-      editVariant: 'select',
-      editSelectOptions: properties.map(prop => ({ value: prop.id, label: prop.name })),
-      muiEditTextFieldProps: ({ row }) => ({
-        select: true,
-        required: true,
-        error: !!validationErrors?.property_id,
-        helperText: validationErrors?.property_id,
-        SelectProps: {
-          displayEmpty: true,
-          renderValue: (selected) => {
-            if (!selected) {
-              return <em>Select Property</em>;
-            }
-            const property = properties.find(p => p.id === selected);
-            return property ? property.name : selected;
-          },
-        },
-        onFocus: () =>
-          setValidationErrors({
-            ...validationErrors,
-            property_id: undefined,
-          }),
-        onChange: (e) => {
-          const value = e.target.value;
-          if (row && row._valuesCache) row._valuesCache['property_id'] = value;
-          if (!value) {
-            setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
-          } else {
-            if (fetchInventoryByProperty) {
-              fetchInventoryByProperty(value)
-                .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: data || [] })))
-                .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: [] })));
-            } else {
-              // fallback to all inventory
-              setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
-            }
-          }
-        },
-        children: [
-          <MenuItem key="empty-placeholder" value="">
-            <em>Select Property</em>
-          </MenuItem>,
-          ...properties.map((prop) => (
-            <MenuItem key={prop.id} value={prop.id}>
-              {prop.name}
-            </MenuItem>
-          ))
-        ],
-      }),
       Cell: ({ row }) => row.original.property_name || '-',
+      Edit: ({ row, cell }) => {
+        return (
+          <Autocomplete
+            size="small"
+            options={properties}
+            getOptionLabel={(option) => option.name ? String(option.name) : ''}
+            value={properties.find((prop) => prop.id === cell.getValue()) || null}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                {(option.image_url) && (
+                  <img
+                    src={option.image_url}
+                    alt={option.name || ''}
+                    style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                  />
+                )}
+              </li>
+            )}
+            onChange={(_, newValue) => {
+              const value = newValue ? newValue.id : '';
+              row._valuesCache[cell.column.id] = value;
+              if (!value) {
+                setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+              } else {
+                if (fetchInventoryByProperty) {
+                  fetchInventoryByProperty(value)
+                    .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: data || [] })))
+                    .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: [] })));
+                } else {
+                  setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+                }
+              }
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select Property"
+                required
+                error={!!validationErrors.property_id}
+                helperText={validationErrors.property_id}
+                onFocus={() =>
+                  setValidationErrors({
+                    ...validationErrors,
+                    property_id: undefined,
+                  })
+                }
+              />
+            )}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            clearOnEscape
+            fullWidth
+          />
+        );
+      },
     },
+
     {
       accessorKey: 'inventory_id',
       header: 'Inventory',
@@ -165,6 +177,10 @@ const ActiveTask = () => {
             )}
             onChange={(_, newValue) => {
               row._valuesCache[cell.column.id] = newValue ? newValue.id : '';
+              // Auto-select property based on inventory's property_id
+              if (newValue && newValue.property_id) {
+                row._valuesCache['property_id'] = newValue.property_id;
+              }
             }}
             renderInput={(params) => (
               <TextField {...params} label="Select Inventory" required error={!!validationErrors?.inventory_id} helperText={validationErrors?.inventory_id} />
@@ -176,6 +192,7 @@ const ActiveTask = () => {
         );
       },
     },
+
     {
       accessorKey: 'scheduled_date',
       header: 'Schedule Date',
@@ -196,6 +213,7 @@ const ActiveTask = () => {
       }),
       Cell: ({ cell }) => formatDate(cell.getValue()),
     },
+
     {
       accessorKey: 'task_type',
       header: 'Task Type',
@@ -255,6 +273,7 @@ const ActiveTask = () => {
         )
       },
     },
+
     {
       id: 'assigned_to',
       accessorKey: teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
@@ -296,19 +315,50 @@ const ActiveTask = () => {
         return member ? member.name : (row.original.assigned_to_name || '-');
       }
     },
+
     {
       accessorKey: 'is_photo_required',
       header: 'Photo',
       size: 100,
-      Cell: ({ row }) => (
-        <Checkbox
-          checked={row.original.is_photo_required === 1 ? true : false}
-          disabled
-          slotProps={{
-            input: { 'aria-label': 'photo required' },
-          }}
-        />
-      ),
+      Cell: ({ row }) => {
+        const hasImages = Array.isArray(row.original.completion_image_urls) && row.original.completion_image_urls.length > 0;
+
+        if (row.original.is_photo_required === 1 && hasImages) {
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {row.original.completion_image_urls.map((url, index) => (
+                <Avatar
+                  key={index}
+                  src={url}
+                  variant="rounded"
+                  onClick={() => {
+                    setSelectedImage(url);
+                    setOpenImage(true);
+                  }}
+                  sx={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    border: `1px solid ${palette.divider}`,
+                    '&:hover': { opacity: 0.8 },
+                  }}
+                />
+              ))}
+            </Box>
+          );
+        }
+
+        return (
+          <Checkbox
+            checked={row.original.is_photo_required === 1 ? true : false}
+            disabled
+            slotProps={{
+              input: { 'aria-label': 'photo required' },
+            }}
+          />
+        );
+      },
       Edit: ({ row, cell, table }) => {
         const [checked, setChecked] = useState(() => {
           const currentValue = cell.getValue();
@@ -329,9 +379,14 @@ const ActiveTask = () => {
               input: { 'aria-label': 'photo required' },
             }}
           />
+
+        
+
+
         );
       },
     },
+
     {
       accessorKey: 'update_inventory',
       header: 'Qty',
@@ -368,6 +423,7 @@ const ActiveTask = () => {
         );
       },
     },
+
     {
       accessorKey: 'status',
       header: 'Status',
@@ -428,13 +484,13 @@ const ActiveTask = () => {
         )
       },
     },
+
   ], [validationErrors, inventoryItems, teamMembers, taskTypes, statusOpts, palette, inventoryOptionsMap, fetchInventoryByProperty]);
 
-  // CREATE action
   const handleCreateTask = async ({ values, table }) => {
     try {
       const res = await createActiveTask(values)
-      showSnackbar(res.message || 'Task created successfully', 'success')
+      showSnackbar(res.message, 'success')
       table.setCreatingRow(false)
       setValidationErrors({})
     } catch (error) {
@@ -447,18 +503,25 @@ const ActiveTask = () => {
         })
         setValidationErrors(apiErrors)
       }
-      showSnackbar(error.message || 'Failed to create task', 'error')
+      showSnackbar(error.message, 'error')
       console.error('Error creating task:', error)
     }
   }
-  // UPDATE action
+
   const handleSaveTask = async ({ values, table, row }) => {
     try {
       const res = await updateActiveTaskData(row.original.id, values)
-      showSnackbar(res.message || 'Task updated successfully', 'success')
+      showSnackbar(res.message, 'success')
       table.setEditingRow(null)
       setValidationErrors({})
     } catch (error) {
+      if (error.message === 'Completion photo is required for this task') {
+        setPendingTask(row.original);
+        setTableRef(table);
+        setShowCompletionDialog(true);
+        table.setEditingRow(null); // Close editing mode
+        return;
+      }
       if (error.errors && Array.isArray(error.errors)) {
         const apiErrors = {}
         error.errors.forEach((err) => {
@@ -468,28 +531,35 @@ const ActiveTask = () => {
         })
         setValidationErrors(apiErrors)
       }
-      showSnackbar(error.message || 'Failed to update task', 'error')
+      showSnackbar(error.message, 'error')
       console.error('Error updating task:', error)
     }
   }
 
-  // DELETE action
   const handleDelete = async () => {
     if (!taskToDelete) return;
-
     try {
       const res = await deleteOneTimeTask(taskToDelete.id);
-      showSnackbar(res.message || 'Task deleted successfully', 'success');
+      showSnackbar(res.message, 'success');
       setOpenConfirm(false);
       setTaskToDelete(null);
     } catch (error) {
-      showSnackbar(error.message || 'Failed to delete task', 'error');
+      showSnackbar(error.message, 'error');
       console.error('Error deleting task:', error);
     }
   };
+
+  const handleCompletionDialogClose = () => {
+    setShowCompletionDialog(false);
+    setPendingTask(null);
+  };
+
   return (
+
     <React.Fragment>
+
       <Box>
+
         <MaterialReactTable
           columns={columns}
           data={allTasksData?.active_tasks || []}
@@ -568,6 +638,7 @@ const ActiveTask = () => {
             },
           }}
         />
+        
       </Box>
 
       <ConfirmationDialog
@@ -576,6 +647,19 @@ const ActiveTask = () => {
         onDelete={handleDelete}
         title="Delete Task"
         message="Are you sure you want to delete this task? This action cannot be undone."
+      />
+
+      <ImageViewer
+        open={openImage}
+        onClose={() => setOpenImage(false)}
+        image={selectedImage}
+      />
+
+      <TaskCompletionDialog
+        open={showcompletionDialog}
+        onClose={handleCompletionDialogClose}
+        task={pendingTask}
+        updateTaskCompletionStatus={updateTaskCompletionStatus}
       />
 
     </React.Fragment>

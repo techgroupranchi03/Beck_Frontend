@@ -11,13 +11,15 @@ import {
     getInventoryByPropertyId,
     getAllClientTasks,
     deleteOneTime,
-    deleteRecurring
+    deleteRecurring,
+    updateClientTaskStatusCompleted
 } from '../../../service/Clients/Task';
 import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
 import { getTeamMembers } from '../../../service/Clients/Team';
 import { useAuth } from '../../../context/AuthContext';
-import { createTeamTask, getActiveTasks, getPlannerTasks, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamTask } from '../../../service/Teams/Team_Task';
+import { createTeamActiveTask, createTeamTask, deleteTeamOneTimeTask, deleteTeamRecurringTask, getActiveTasks, getAllTeamTasks, getPlannerTasks, getTeamInventoryByPropertyId, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
+import { getTeamProperties } from '../../../service/Teams/Team_Properties';
 
 export const useTaskData = () => {
     const { user } = useAuth();
@@ -32,23 +34,19 @@ export const useTaskData = () => {
     const [error, setError] = useState(null);
     const [taskPlannerPagination, setTaskPlannerPagination] = useState({});
     const [activeTasksPagination, setActiveTasksPagination] = useState({});
-
-    // check user role
     const isTeamUser = user?.role === 'team';
-    //console.log("Is Team User:", isTeamUser);
-
-
-    // add new api for get all task 
 
     const fetchAllTasks = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
+
         try {
             if (!append) {
                 setLoading(true);
             }
-            const res = await getAllClientTasks(filters, searchText, page);
+            const res = isTeamUser
+                ? await getAllTeamTasks(filters, searchText, page)
+                : await getAllClientTasks(filters, searchText, page);
             if (append) {
                 setAllTasksData((prev) => {
-                    // Handle if prev is an object with active_tasks and recurring_tasks
                     if (prev && (prev.active_tasks || prev.recurring_tasks)) {
                         const newData = res.data || {};
                         return {
@@ -56,13 +54,12 @@ export const useTaskData = () => {
                             recurring_tasks: [...(prev.recurring_tasks || []), ...(newData.recurring_tasks || [])]
                         };
                     }
-                    // Default: just return new data
                     return res.data || [];
                 });
             } else {
                 setAllTasksData(res.data || []);
             }
-            // set pagination data 
+
             setAllTaskPagination({
                 hasNextPage: res.hasNextPage || false,
                 hasPreviousPage: res.hasPreviousPage || false,
@@ -80,7 +77,6 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Task Planner tasks
     const fetchTaskPlannerData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
 
@@ -113,7 +109,6 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Active Tasks
     const fetchActiveTasksData = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
             if (!append) {
@@ -146,10 +141,11 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Properties
     const fetchProperties = useCallback(async (page = 1) => {
         try {
-            const res = await getClientProperties(page);
+            const res = isTeamUser
+                ? await getTeamProperties(page)
+                : await getClientProperties(page);
             setProperties(res.data || []);
             return res.data;
         } catch (err) {
@@ -159,7 +155,6 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Inventory Items
     const fetchInventoryItems = useCallback(async () => {
         try {
             // const res = await getInventoryItems();
@@ -168,6 +163,7 @@ export const useTaskData = () => {
                 : await getInventoryItems();
             // console.log("Fetched Inventory Items Response:", res);
             setInventoryItems(res.data || []);
+            // console.log("Inventory Items Set:", res.data || []);
             return res.data;
         } catch (err) {
             console.error('Error fetching inventory:', err);
@@ -176,10 +172,11 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Inventory Items by property ( new added )
     const fetchInventoryByProperty = useCallback(async (propertyId) => {
         try {
-            const res = await getInventoryByPropertyId(propertyId);
+            const res = isTeamUser
+                ? await getTeamInventoryByPropertyId(propertyId)
+                : await getInventoryByPropertyId(propertyId);
             return res.data || [];
         } catch (err) {
             console.error('Error fetching inventory by property:', err);
@@ -188,7 +185,6 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch Team Members
     const fetchTeamMembers = useCallback(async () => {
         try {
             // const res = await getTaskTeamMembers();
@@ -206,7 +202,6 @@ export const useTaskData = () => {
         }
     }, []);
 
-    // Fetch all data in parallel
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -227,40 +222,24 @@ export const useTaskData = () => {
         }
     }, [fetchTaskPlannerData, fetchActiveTasksData, fetchProperties, fetchInventoryItems, fetchTeamMembers, fetchInventoryByProperty, fetchAllTasks]);
 
-    // Initial data fetch
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
 
-    // ==================== TASK PLANNER OPERATIONS ====================
-
-    // Create new task
     const createTask = async (values) => {
         try {
-            // const res = await createClientTask(values);
             const res = isTeamUser
                 ? await createTeamTask(values)
                 : await createClientTask(values);
-            //console.log("Created Task Response:", res);
-
-            // Determine if task should go to Task Planner or Active Tasks
-            // Task Planner: recurring tasks (weekly, monthly, yearly)
-            // Active Tasks: one_time tasks (these create task instances immediately)
             const isRecurringTask = ['daily', 'weekly', 'monthly', 'yearly'].includes(values.schedule_type);
-
             if (isRecurringTask) {
-                // Add to Task Planner for recurring tasks
                 setTaskPlannerData((prev) => [res.data, ...prev]);
             } else {
-                // For one_time tasks, refresh both lists
-                // The backend creates task instances for one_time tasks
                 await Promise.all([
                     fetchTaskPlannerData(),
                     fetchActiveTasksData()
                 ]);
             }
-
-            // Update allTasksData
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return [res.data, ...prev];
@@ -288,17 +267,12 @@ export const useTaskData = () => {
         }
     };
 
-
-    // create active task directly
     const createActiveTask = async (values) => {
         try {
-            const res = await createClientActiveTask(values);
-            //console.log("Created Active Task Response:", res);
-
-            // Add to Active Tasks list
+            const res = isTeamUser
+                ? await createTeamActiveTask(values)
+                : await createClientActiveTask(values);
             setActiveTasksData((prev) => [res.data, ...prev]);
-
-            // Update allTasksData
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return [res.data, ...prev];
@@ -311,7 +285,6 @@ export const useTaskData = () => {
                 }
                 return prev;
             });
-
             return res;
         } catch (err) {
             console.error('Error creating active task:', err);
@@ -319,27 +292,19 @@ export const useTaskData = () => {
         }
     };
 
-    // Update existing task planner
     const updateTaskPlannerData = async (id, values) => {
         try {
-            //const res = await updateTaskPlanner(id, values);
             const res = isTeamUser
-                ? await updateTeamTask(id, values)
+                ? await updateTeamsTaskPlanner(id, values)
                 : await updateTaskPlanner(id, values);
-
-            // If inventory_id changed, update inventory_name as well
             const updatedValues = { ...values };
             if (values.inventory_id !== undefined) {
                 const inventory = inventoryItems.find(item => item.id === values.inventory_id);
                 updatedValues.inventory_name = inventory ? inventory.name : null;
             }
-
-            // Update in taskPlannerData if it exists there
             setTaskPlannerData((prev) =>
                 prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task))
             );
-
-            // Update in allTasksData
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task));
@@ -354,7 +319,6 @@ export const useTaskData = () => {
                 }
                 return prev;
             });
-
             return res;
         } catch (err) {
             console.error('Error updating task planner:', err);
@@ -362,27 +326,19 @@ export const useTaskData = () => {
         }
     };
 
-    // Update active task (task instance)
     const updateActiveTaskData = async (id, values) => {
         try {
-            // const res = await updateActiveTask(id, values);
             const res = isTeamUser
-                ? await updateTeamTask(id, values)
+                ? await updateTeamsActiveTask(id, values)
                 : await updateActiveTask(id, values);
-
-            // If inventory_id changed, update inventory_name as well
             const updatedValues = { ...values };
             if (values.inventory_id !== undefined) {
                 const inventory = inventoryItems.find(item => item.id === values.inventory_id);
                 updatedValues.inventory_name = inventory ? inventory.name : null;
             }
-
-            // Update in activeTasksData
             setActiveTasksData((prev) =>
                 prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task))
             );
-
-            // Update in allTasksData
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return prev.map((task) => (task.id === id ? { ...task, ...updatedValues } : task));
@@ -397,19 +353,20 @@ export const useTaskData = () => {
                 }
                 return prev;
             });
-
             return res;
+
         } catch (err) {
             console.error('Error updating active task:', err);
             throw err;
         }
     };
 
-    // delete one time and recurring task both
     const deleteOneTimeTask = async (id) => {
         try {
-            const res = await deleteOneTime(id);
-            // Update allTasksData by removing the deleted task
+            const res = isTeamUser
+                ? await deleteTeamOneTimeTask(id)
+                : await deleteOneTime(id);
+
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return prev.filter((task) => task.id !== id);
@@ -421,6 +378,7 @@ export const useTaskData = () => {
                     };
                 }
                 return prev;
+
             });
             return res;
         } catch (err) {
@@ -429,11 +387,11 @@ export const useTaskData = () => {
         }
     };
 
-    // delete recurring task
     const deleteRecurringTask = async (id) => {
         try {
-            const res = await deleteRecurring(id);
-            // Update allTasksData by removing the deleted task
+            const res = isTeamUser
+                ? await deleteTeamRecurringTask(id)
+                : await deleteRecurring(id);
             setAllTasksData((prev) => {
                 if (Array.isArray(prev)) {
                     return prev.filter((task) => task.id !== id);
@@ -453,9 +411,19 @@ export const useTaskData = () => {
         }
     };
 
-    // ==================== ACTIVE TASKS OPERATIONS ====================
+    const updateTaskCompletionStatus = async (taskId, formData) => {
+        console.log("Updating Task Completion Status for Task ID:", taskId);
+        try {
+            const res =  isTeamUser
+                ? await updateTeamTaskStatusCompleted(taskId, formData)
+                : await updateClientTaskStatusCompleted(taskId, formData);
+            return res;
+        } catch (err) {
+            console.error('Error updating task completion status:', err);
+            throw err;
+        }
+    };
 
-    // Update active task status
     const updateActiveTaskStatus = async (taskInstanceId, newStatus) => {
         try {
             const res = await updateClientActiveTaskStatus(taskInstanceId, newStatus);
@@ -471,7 +439,6 @@ export const useTaskData = () => {
         }
     };
 
-    // Refresh active tasks only
     const refreshActiveTasks = async () => {
         try {
             await fetchActiveTasksData();
@@ -480,7 +447,6 @@ export const useTaskData = () => {
         }
     };
 
-    // Refresh task planner only
     const refreshTaskPlanner = async () => {
         try {
             await fetchTaskPlannerData();
@@ -490,7 +456,7 @@ export const useTaskData = () => {
     };
 
     return {
-        // Data States
+
         allTasksData,
         taskPlannerData,
         activeTasksData,
@@ -505,14 +471,14 @@ export const useTaskData = () => {
         taskPlannerPagination,
         activeTasksPagination,
 
-
-
         // Task Planner Operations
         createTask,
         createActiveTask,
         updateTaskPlannerData,
         refreshTaskPlanner,
 
+        // completed status update
+        updateTaskCompletionStatus,
         deleteOneTimeTask,
         deleteRecurringTask,
 

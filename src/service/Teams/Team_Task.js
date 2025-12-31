@@ -4,19 +4,37 @@ import BASE_URL from '../../config';
 const getTeamToken = () => {
     return localStorage.getItem('team_token');
 };
-
-// get active task method "GET" API
-export const getActiveTasks = async (filters = {}, searchText = "", page = 1) => {
+export const getAllTeamTasks = async (filters = {}, searchText = "", page = 1) => {
     const token = getTeamToken();
-
-    console.log("token:", token);
     try {
-
-        // Build query parameters from filters
         const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
-        if (filters.task_type) params.task_type = filters.task_type;
+        if (filters.property_id) params.property_id = filters.property_id;
+        if (searchText) params.search = searchText;
+        const response = await axios.get(
+            `${BASE_URL}/team/all-tasks`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                params: params,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team all tasks fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'All tasks fetching failed' });
+    }
+};
+
+export const getActiveTasks = async (filters = {}, searchText = "", page = 1) => {
+    const token = getTeamToken();
+    try {
+        const params = { page };
+        if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.status) params.status = filters.status;
+        if (filters.property_id) params.property_id = filters.property_id;
         if (searchText) params.search = searchText;
         const response = await axios.get(
             `${BASE_URL}/team/active-tasks`,
@@ -27,7 +45,6 @@ export const getActiveTasks = async (filters = {}, searchText = "", page = 1) =>
                 params: params,
             }
         );
-        console.log('Active Tasks Response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Team active tasks fetching error:', error);
@@ -35,16 +52,13 @@ export const getActiveTasks = async (filters = {}, searchText = "", page = 1) =>
     }
 };
 
-
-// get planner tasks method "GET" API
 export const getPlannerTasks = async (filters = {}, searchText = "", page = 1,) => {
     const token = getTeamToken();
     try {
-        // Build query parameters from filters
         const params = { page };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
-        if (filters.task_type) params.task_type = filters.task_type;
+        if (filters.property_id) params.property_id = filters.property_id;
         if (searchText) params.search = searchText;
         const response = await axios.get(
             `${BASE_URL}/team/tasks-planner`,
@@ -55,7 +69,6 @@ export const getPlannerTasks = async (filters = {}, searchText = "", page = 1,) 
                 params: params,
             }
         );
-        console.log('Planner Tasks Response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Team planner tasks fetching error:', error);
@@ -63,13 +76,11 @@ export const getPlannerTasks = async (filters = {}, searchText = "", page = 1,) 
     }
 }
 
-
-// update task method "PUT" API
-export const updateTeamTask = async (taskId, taskData) => {
+export const updateTeamsTaskPlanner = async (taskId, taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/team/tasks/${taskId}`,
+            `${BASE_URL}/team/tasks-planner/${taskId}`,
             taskData,
             {
                 headers: {
@@ -84,8 +95,25 @@ export const updateTeamTask = async (taskId, taskData) => {
     }
 }
 
+export const updateTeamsActiveTask = async (taskId, taskData) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/team/active-tasks/${taskId}`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team active task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Active task update failed' });
+    }
+};
 
-// create task method "post" API
 export const createTeamTask = async (taskData) => {
     const token = getTeamToken();
     try {
@@ -105,7 +133,25 @@ export const createTeamTask = async (taskData) => {
     }
 };
 
-// get team members method "GET" API
+export const createTeamActiveTask = async (taskData) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/team/active-tasks`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team active task creation error:', error);
+        return Promise.reject(error.response?.data || { message: 'Active task creation failed' });
+    }
+};
+
 export const getTeamsTeamMembers = async () => {
     const token = getTeamToken();
     try {
@@ -117,8 +163,6 @@ export const getTeamsTeamMembers = async () => {
                 },
             }
         );
-
-        console.log('Team Members Response:', response.data);
         return response.data;
     } catch (error) {
         console.error('Team members fetching error:', error);
@@ -126,13 +170,29 @@ export const getTeamsTeamMembers = async () => {
     }
 };
 
+export const getTeamInventoryByPropertyId = async (propertyId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/team/inventory/property/${propertyId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team inventory fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching inventory failed' });
+    }
+};
 
-// get Inventory items method "GET" API
 export const getTeamsInventoryItems = async () => {
     const token = getTeamToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/team/inventory-items`,
+            `${BASE_URL}/team/inventory`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -143,5 +203,61 @@ export const getTeamsInventoryItems = async () => {
     } catch (error) {
         console.error('Team inventory items fetching error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching inventory items failed' });
+    }
+};
+
+export const deleteTeamOneTimeTask = async (taskId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.delete(
+            `${BASE_URL}/team/active-tasks/${taskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team one-time task deletion error:', error);
+        return Promise.reject(error.response?.data || { message: 'One-time task deletion failed' });
+    }
+};
+
+export const deleteTeamRecurringTask = async (taskId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.delete(
+            `${BASE_URL}/team/tasks-planner/${taskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team recurring task deletion error:', error);
+        return Promise.reject(error.response?.data || { message: 'Recurring task deletion failed' });
+    }
+};
+
+export const updateTeamTaskStatusCompleted = async (taskId, formData) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/team/active-tasks/${taskId}`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task status update error:', error);
+        return Promise.reject(error.response?.data);
     }
 };

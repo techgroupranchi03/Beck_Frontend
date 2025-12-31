@@ -7,10 +7,9 @@ const ImageViewer = ({ open, onClose, image }) => {
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="lg"
+            maxWidth="sm"
             PaperProps={{
                 sx: {
-                    backgroundColor: "rgba(0,0,0,0.85)",
                     boxShadow: "none",
                     position: "relative",
                 },
@@ -19,7 +18,7 @@ const ImageViewer = ({ open, onClose, image }) => {
             {/* Close Button */}
             <IconButton
                 onClick={onClose}
-                size="medium"
+                size="small"
                 sx={{
                     position: "absolute",
                     top: 10,
@@ -39,8 +38,9 @@ const ImageViewer = ({ open, onClose, image }) => {
                 src={image}
                 alt="Preview"
                 sx={{
-                    maxHeight: "90vh",
-                    maxWidth: "90vw",
+                    width: "100%",
+                    maxWidth: { xs: "480px", md: "1000px" },
+                    height: "auto",
                     borderRadius: 2,
                     display: "block",
                     margin: "auto",

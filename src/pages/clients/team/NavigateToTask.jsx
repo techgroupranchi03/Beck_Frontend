@@ -31,7 +31,6 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
 
   const handleNavigateToTasks = () => {
     if (navigation && navigation.to) {
-      // Navigate to tasks with the filter applied
       navigate(navigation.to, {
         state: {
           assignedTo: details.memberId

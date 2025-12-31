@@ -12,12 +12,20 @@ import {
     createClientTask,
     createClientActiveTask,
     updateTaskPlanner,
-    updateActiveTask
+    updateActiveTask,
+    deleteOneTime,
+    deleteRecurring,
+    updateClientActiveTaskStatus
 } from '../../../service/Clients/Task';
 import { getTeamMembers } from '../../../service/Clients/Team';
+import { useAuth } from '../../../context/AuthContext';
+import { createTeamInventoryItem, deleteTeamInventoryItem, getTeamInventoryById, getTeamInventoryFieldOptions, getTeamInventoryItems, updateTeamInventoryItem } from '../../../service/Teams/Team_Inventory';
+import { getTeamProperties } from '../../../service/Teams/Team_Properties';
+import { createTeamActiveTask, createTeamTask, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, deleteTeamOneTimeTask, deleteTeamRecurringTask, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
 
 export const useInventoryData = () => {
-    const [inventoryData, setInventoryData] = useState([]);
+    const { user } = useAuth();
+    const [inventoryData, setInventoryData] = useState([])
     const [properties, setProperties] = useState([]);
     const [units, setUnits] = useState([]);
     const [containerOptions, setContainerOptions] = useState([]);
@@ -25,14 +33,16 @@ export const useInventoryData = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [inventoryPagination, setInventoryPagination] = useState({});
+    const isTeamUser = user?.role === 'team';
 
-    // Fetch inventory items
     const fetchInventoryItems = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
         try {
             if (!append) {
                 setLoading(true);
             }
-            const res = await getInventoryItems(filters, searchText, page);
+            const res = isTeamUser
+                ? await getTeamInventoryItems(filters, searchText, page)
+                : await getInventoryItems(filters, searchText, page);
             if (append) {
                 setInventoryData((prev) => [...prev, ...(res.data || [])]);
             } else {
@@ -55,10 +65,11 @@ export const useInventoryData = () => {
         }
     }, []);
 
-    // Fetch properties
     const fetchProperties = useCallback(async (page = 1) => {
         try {
-            const res = await getClientProperties(page);
+            const res = isTeamUser
+                ? await getTeamProperties(page)
+                : await getClientProperties(page);
             setProperties(res.data || []);
             return res.data;
         } catch (err) {
@@ -68,10 +79,11 @@ export const useInventoryData = () => {
         }
     }, []);
 
-    // Fetch units and quantities
     const fetchUnitsAndQuantities = useCallback(async () => {
         try {
-            const res = await getUnitsAndQuantities();
+            const res = isTeamUser
+                ? await getTeamInventoryFieldOptions()
+                : await getUnitsAndQuantities();
             setUnits(res.data.units || []);
             setContainerOptions([...res.data.quantity?.containerOptions || []].reverse());
             return res.data;
@@ -82,10 +94,11 @@ export const useInventoryData = () => {
         }
     }, []);
 
-    // Fetch team members
     const fetchTeamMembers = useCallback(async () => {
         try {
-            const res = await getTeamMembers();
+            const res = isTeamUser
+                ? await getTeamsTeamMembers()
+                : await getTeamMembers();
             setTeamMembers(res.data || []);
             return res.data;
         } catch (err) {
@@ -95,7 +108,6 @@ export const useInventoryData = () => {
         }
     }, []);
 
-    // Fetch all data in parallel
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -113,30 +125,21 @@ export const useInventoryData = () => {
         }
     }, [fetchInventoryItems, fetchProperties, fetchUnitsAndQuantities, fetchTeamMembers]);
 
-    // Initial data fetch
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
 
-    // -------------------- INVENTORY OPERATIONS --------------------
-
-    // Create new inventory item
     const createInventory = async (formData) => {
-        console.log("Creating inventory with data:", formData);
         try {
-            const res = await createInventoryItem(formData);
-           // console.log('Create response:', res);
-
-            // Handle different response structures
+            const res = isTeamUser
+                ? await createTeamInventoryItem(formData)
+                : await createInventoryItem(formData);
             const newItem = res.data?.data || res.data;
-
             if (newItem && newItem.id) {
-                // Add new item to the beginning of the list
                 setInventoryData((prev) => [newItem, ...prev]);
             } else {
                 await fetchInventoryItems();
             }
-
             return res.data;
         } catch (err) {
             console.error('Error creating inventory item:', err);
@@ -144,16 +147,13 @@ export const useInventoryData = () => {
         }
     };
 
-    // Update existing inventory item
     const updateInventory = async (id, formData) => {
         try {
-            const res = await updateInventoryItem(id, formData);
-            console.log('Update response:', res);
-
-            // Handle different response structures
+            const res = isTeamUser
+                ? await updateTeamInventoryItem(id, formData)
+                : await updateInventoryItem(id, formData);
             const updatedItem = res.data?.data || res.data;
             if (updatedItem && updatedItem.id) {
-                // Update the item in the list
                 setInventoryData((prev) =>
                     prev.map((item) => (item.id === id ? updatedItem : item))
                 );
@@ -168,10 +168,11 @@ export const useInventoryData = () => {
         }
     };
 
-    // Delete inventory item
     const deleteInventory = async (id) => {
         try {
-            const res = await deleteInventoryItem(id);
+            const res = isTeamUser
+                ? await deleteTeamInventoryItem(id)
+                : await deleteInventoryItem(id);
             setInventoryData((prev) => prev.filter((item) => item.id !== id));
             return res.data;
         } catch (err) {
@@ -180,10 +181,11 @@ export const useInventoryData = () => {
         }
     };
 
-    // Get inventory by ID
     const getInventoryDetails = async (id) => {
         try {
-            const res = await getInventoryById(id);
+            const res = isTeamUser
+                ? await getTeamInventoryById(id)
+                : await getInventoryById(id);
             return res.data;
         } catch (err) {
             console.error('Error fetching inventory details:', err);
@@ -191,17 +193,12 @@ export const useInventoryData = () => {
         }
     };
 
-    // -------------------------------- task OPERATIONS --------------------------------
-
-    // Create new task
     const createTask = async (values) => {
         try {
-            const res = await createClientTask(values);
-           // console.log("Created Task Response:", res);
-
-            // After creating task, refresh inventory to get updated task lists
+            const res = isTeamUser
+                ? await createTeamTask(values)
+                : await createClientTask(values);
             await fetchInventoryItems();
-
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
@@ -209,13 +206,11 @@ export const useInventoryData = () => {
         }
     };
 
-    // create new active task
     const createActiveTask = async (values) => {
         try {
-            const res = await createClientActiveTask(values);
-           // console.log("Created Active Task Response:", res);
-
-            // After creating active task, refresh inventory to get updated task lists
+            const res = isTeamUser
+                ? await createTeamActiveTask(values)
+                : await createClientActiveTask(values);
             await fetchInventoryItems();
 
             return res;
@@ -225,13 +220,20 @@ export const useInventoryData = () => {
         }
     };
 
-    // Update task planner
     const updateTaskPlannerData = async (id, values) => {
         try {
-            const res = await updateTaskPlanner(id, values);
-
-            // Refresh inventory to get updated task data
-            await fetchInventoryItems();
+            const res = isTeamUser
+                ? await updateTeamsTaskPlanner(id, values)
+                : await updateTaskPlanner(id, values);
+            const updatedTask = res.data?.data || res.data;
+            setInventoryData(prevData =>
+                prevData.map(item => ({
+                    ...item,
+                    task_planner: (item.task_planner || []).map(task =>
+                        task.id === id ? { ...task, ...updatedTask } : task
+                    )
+                }))
+            );
 
             return res;
         } catch (err) {
@@ -240,17 +242,86 @@ export const useInventoryData = () => {
         }
     };
 
-    // Update active task (task instance)
     const updateActiveTaskData = async (id, values) => {
         try {
-            const res = await updateActiveTask(id, values);
-
-            // Refresh inventory to get updated task data
-            await fetchInventoryItems();
+            const res = isTeamUser
+                ? await updateTeamsActiveTask(id, values)
+                : await updateActiveTask(id, values);
+            const updatedTask = res.data?.data || res.data;
+            setInventoryData(prevData =>
+                prevData.map(item => ({
+                    ...item,
+                    task_instances: (item.task_instances || []).map(task =>
+                        task.id === id ? { ...task, ...updatedTask } : task
+                    )
+                }))
+            );
 
             return res;
         } catch (err) {
             console.error('Error updating active task:', err);
+            throw err;
+        }
+    };
+
+    const deleteOneTimeTask = async (id) => {
+        try {
+            const res = isTeamUser
+                ? await deleteTeamOneTimeTask(id)
+                : await deleteOneTime(id);
+            setInventoryData(prevData =>
+                prevData.map(item => ({
+                    ...item,
+                    task_instances: (item.task_instances || []).filter(task => task.id !== id)
+                }))
+            );
+
+            return res;
+        } catch (err) {
+            console.error('Error deleting one-time task:', err);
+            throw err;
+        }
+    };
+
+    const deleteRecurringTask = async (id) => {
+        try {
+            const res = isTeamUser
+                ? await deleteTeamRecurringTask(id)
+                : await deleteRecurring(id);
+
+            // Update inventory data locally by removing the deleted task
+            setInventoryData(prevData =>
+                prevData.map(item => ({
+                    ...item,
+                    task_planner: (item.task_planner || []).filter(task => task.id !== id)
+                }))
+            );
+
+            return res;
+        } catch (err) {
+            console.error('Error deleting recurring task:', err);
+            throw err;
+        }
+    };
+
+    const updateTaskCompletionStatus = async (id, values) => {
+        try {
+            const res = isTeamUser
+                ? await updateTeamTaskStatusCompleted(id, values)
+                : await updateClientActiveTaskStatus(id, values);
+            const updatedTask = res.data?.data || res.data;
+            setInventoryData(prevData =>
+                prevData.map(item => ({
+                    ...item,
+                    task_instances: (item.task_instances || []).map(task =>
+                        task.id === id ? { ...task, ...updatedTask } : task
+                    )
+                }))
+            );
+
+            return res;
+        } catch (err) {
+            console.error('Error updating task completion status:', err);
             throw err;
         }
     };
@@ -286,6 +357,11 @@ export const useInventoryData = () => {
         createActiveTask,
         updateTaskPlannerData,
         updateActiveTaskData,
+        deleteOneTimeTask,
+        deleteRecurringTask,
+
+        // update task completion status
+        updateTaskCompletionStatus,
 
         // State setters (for manual updates if needed)
         setInventoryData,

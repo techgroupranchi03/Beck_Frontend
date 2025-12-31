@@ -3,13 +3,12 @@ import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Autocom
 import { MaterialReactTable } from 'material-react-table'
 import { Delete, Edit as EditIcon } from '@mui/icons-material'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
-import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant'
+import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant'
 import { formatDate } from '../../../utils/dateFormat'
 import { useTaskContext } from './TaskManagement'
 import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog.jsx'
-
-
+import { formatSchedule } from '../../../utils/scheduleFormatter.js'
 
 const TaskPlanner = () => {
     const theme = useTheme()
@@ -17,9 +16,9 @@ const TaskPlanner = () => {
     const { showSnackbar } = useSnackbar();
     const [openConfirm, setOpenConfirm] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState(null);
+    const [validationErrors, setValidationErrors] = useState({});
+    const [inventoryOptionsMap, setInventoryOptionsMap] = useState({});
 
-
-    // Get shared data from context
     const {
         allTasksData,
         deleteRecurringTask,
@@ -32,16 +31,9 @@ const TaskPlanner = () => {
         fetchInventoryByProperty,
     } = useTaskContext();
 
-    const [validationErrors, setValidationErrors] = useState({});
-    console.log('allTasksData in TaskPlanner:', allTasksData);
 
-    // Map of rowId -> inventory options for that row (used when editing/creating rows)
-    const [inventoryOptionsMap, setInventoryOptionsMap] = useState({});
+    const columns = useMemo( () => [
 
-    console.log('inventoryOptionsMap:', inventoryOptionsMap);
-
-    const columns = useMemo(
-        () => [
             {
                 accessorKey: 'title',
                 header: 'Title',
@@ -57,6 +49,7 @@ const TaskPlanner = () => {
                         }),
                 },
             },
+
             {
                 accessorKey: 'description',
                 header: 'Description',
@@ -77,64 +70,72 @@ const TaskPlanner = () => {
                     <ViewMoreText text={cell.getValue() || '-'} maxCharacter={20} />
                 ),
             },
+
             {
                 accessorKey: 'property_id',
                 header: 'Property',
                 size: 180,
-                editVariant: 'select',
-                editSelectOptions: properties.map(item => ({ value: item.id, label: item.name })),
-                muiEditTextFieldProps: ({ row }) => ({
-                    select: true,
-                    required: true,
-                    error: !!validationErrors?.property_id,
-                    helperText: validationErrors?.property_id,
-                    SelectProps: {
-                        displayEmpty: true,
-                        renderValue: (selected) => {
-                            if (!selected) {
-                                return <em>Select Property</em>;
-                            }
-                            const property = properties.find(p => p.id === selected);
-
-                            return property ? property.name : selected;
-                        },
-                    },
-                    onFocus: () =>
-                        setValidationErrors({
-                            ...validationErrors,
-                            property_id: undefined,
-                        }),
-                    onChange: (e) => {
-                        const value = e.target.value;
-                        if (row && row._valuesCache) row._valuesCache['property_id'] = value;
-                        if (!value) {
-                            setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
-                        } else {
-                            if (fetchInventoryByProperty) {
-                                fetchInventoryByProperty(value)
-                                    .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: data || [] })))
-                                    .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: [] })));
-                            } else {
-                                setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
-                            }
-                        }
-                    },
-                    children: [
-                        <MenuItem key="empty-placeholder" value="">
-                            <em>Select Property</em>
-                        </MenuItem>,
-                        ...properties.map((prop) => (
-                            <MenuItem key={prop.id} value={prop.id}>
-                                {prop.name}
-                            </MenuItem>
-                        )),
-                    ],
-                }),
                 Cell: ({ row }) => {
                     const property = properties.find(p => p.id === row.original.property_id);
                     return property ? property.name : '-';
                 },
+                Edit: ({ row, cell }) => {
+                    return (
+                        <Autocomplete
+                            size="small"
+                            options={properties}
+                            getOptionLabel={(option) => option.name ? String(option.name) : ''}
+                            value={properties.find((prop) => prop.id === cell.getValue()) || null}
+                            renderOption={(props, option) => (
+                                <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                    {(option.image_url) && (
+                                        <img
+                                            src={option.image_url}
+                                            alt={option.name || ''}
+                                            style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                        />
+                                    )}
+                                </li>
+                            )}
+                            onChange={(_, newValue) => {
+                                const value = newValue ? newValue.id : '';
+                                row._valuesCache[cell.column.id] = value;
+                                if (!value) {
+                                    setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+                                } else {
+                                    if (fetchInventoryByProperty) {
+                                        fetchInventoryByProperty(value)
+                                            .then((data) => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: data || [] })))
+                                            .catch(() => setInventoryOptionsMap(prev => ({ ...prev, [row.id]: [] })));
+                                    } else {
+                                        setInventoryOptionsMap(prev => ({ ...prev, [row.id]: inventoryItems || [] }));
+                                    }
+                                }
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Select Property"
+                                    required
+                                    error={!!validationErrors.property_id}
+                                    helperText={validationErrors.property_id}
+                                    onFocus={() =>
+                                        setValidationErrors({
+                                            ...validationErrors,
+                                            property_id: undefined,
+                                        })
+                                    }
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            clearOnEscape
+                            fullWidth
+                        />
+                    );
+                },
             },
+
             {
                 accessorKey: 'inventory_id',
                 header: 'Inventory',
@@ -181,6 +182,10 @@ const TaskPlanner = () => {
                             onChange={(_, newValue) => {
                                 // store selected id in the row cache so MRT will pick it up
                                 row._valuesCache[cell.column.id] = newValue ? newValue.id : '';
+                                // Auto-select property based on inventory's property_id
+                                if (newValue && newValue.property_id) {
+                                    row._valuesCache['property_id'] = newValue.property_id;
+                                }
                             }}
                             renderInput={(params) => (
                                 <TextField
@@ -198,6 +203,7 @@ const TaskPlanner = () => {
                     );
                 },
             },
+
             {
                 accessorKey: 'schedule_type',
                 header: 'Schedule Type',
@@ -243,6 +249,7 @@ const TaskPlanner = () => {
                     </Box>
                 ),
             },
+
             {
                 accessorKey: 'repeat_on',
                 header: 'Repeat On',
@@ -274,19 +281,40 @@ const TaskPlanner = () => {
 
                     try {
                         const data = typeof repeatOn === 'string' ? JSON.parse(repeatOn) : repeatOn;
+                        const scheduleInfo = formatSchedule(scheduleType, data);
 
-                        if (scheduleType === 'weekly') {
-                            return data.days?.join(', ') || '-';
-                        } else if (scheduleType === 'monthly') {
-                            return data.date?.join(', ') || '-';
-                        } else if (scheduleType === 'yearly') {
-                            return `${data.date || '-'} ${data.month?.join(', ') || '-'}`;
+                        if (!scheduleInfo) {
+                            return '-';
                         }
+
+                        return (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        fontWeight: 600,
+                                        color: palette.primary.main,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        fontSize: '0.875rem'
+                                    }}
+                                >
+                                    {typeof scheduleInfo.icon === 'string' && <span>{scheduleInfo.icon}</span>}
+                                    {scheduleInfo.label && <span>{scheduleInfo.label}</span>}
+                                </Typography>
+                                <Typography 
+                                    variant="body2" 
+                                    color="text.secondary"
+                                    sx={{ fontSize: '0.75rem' }}
+                                >
+                                    {scheduleInfo.description}
+                                </Typography>
+                            </Box>
+                        );
                     } catch (error) {
                         return '-';
                     }
-
-                    return '-';
                 },
                 Edit: ({ row, cell, table }) => {
                     const scheduleType = row._valuesCache?.schedule_type;
@@ -314,9 +342,12 @@ const TaskPlanner = () => {
                                 multiple
                                 limitTags={2}
                                 options={daysOfWeek}
-                                value={repeatData.days || []}
+                                getOptionLabel={(option) => option.label}
+                                value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
                                 onChange={(event, newValue) => {
-                                    setRepeatData({ days: newValue });
+                                    // Extract only the numeric values
+                                    const dayValues = newValue.map(day => day.value);
+                                    setRepeatData({ days: dayValues });
                                 }}
                                 renderInput={(params) => (
                                     <TextField
@@ -327,6 +358,7 @@ const TaskPlanner = () => {
                                         helperText={validationErrors?.repeat_on || 'Select days of the week'}
                                     />
                                 )}
+                                isOptionEqualToValue={(option, value) => option.value === value.value}
                                 sx={{ minWidth: 250 }}
                             />
                         );
@@ -338,9 +370,10 @@ const TaskPlanner = () => {
                             <Autocomplete
                                 multiple
                                 options={datesOfMonth}
-                                value={repeatData.date || []}
+                                getOptionLabel={(option) => String(option)}
+                                value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
                                 onChange={(event, newValue) => {
-                                    setRepeatData({ date: newValue.sort((a, b) => a - b) });
+                                    setRepeatData({ dates: newValue.sort((a, b) => a - b) });
                                 }}
                                 renderInput={(params) => (
                                     <TextField
@@ -356,34 +389,19 @@ const TaskPlanner = () => {
                         );
                     }
 
-                    // Yearly: Date dropdown + Autocomplete for months
+                    // Yearly: Months + Dates as arrays
                     if (scheduleType === 'yearly') {
                         return (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <TextField
-                                    select
-                                    label="Date"
-                                    value={repeatData.date || ''}
-                                    onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
-                                    fullWidth
-
-                                >
-                                    <MenuItem value="">
-                                        <em>Select Date</em>
-                                    </MenuItem>
-                                    {datesOfMonth.map((date) => (
-                                        <MenuItem key={date} value={date}>
-                                            {date}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-
                                 <Autocomplete
                                     multiple
+                                    limitTags={3}
                                     options={monthsOfYear}
-                                    value={repeatData.month || []}
+                                    getOptionLabel={(option) => option.label}
+                                    value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
                                     onChange={(event, newValue) => {
-                                        setRepeatData({ ...repeatData, month: newValue });
+                                        const monthValues = newValue.map(month => month.value);
+                                        setRepeatData({ ...repeatData, months: monthValues });
                                     }}
                                     renderInput={(params) => (
                                         <TextField
@@ -394,6 +412,27 @@ const TaskPlanner = () => {
                                             helperText={validationErrors?.repeat_on || 'Select months of the year'}
                                         />
                                     )}
+                                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                                />
+
+                                <Autocomplete
+                                    multiple
+                                    limitTags={3}
+                                    options={datesOfMonth}
+                                    getOptionLabel={(option) => String(option)}
+                                    value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
+                                    onChange={(event, newValue) => {
+                                        setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Dates"
+                                            placeholder="Choose dates"
+                                            error={!!validationErrors?.repeat_on}
+                                            helperText={validationErrors?.repeat_on || 'Select dates (1-31)'}
+                                        />
+                                    )}
                                 />
                             </Box>
                         );
@@ -402,6 +441,7 @@ const TaskPlanner = () => {
                     return null;
                 },
             },
+
             {
                 accessorKey: 'start_date',
                 header: 'Start Date',
@@ -423,6 +463,7 @@ const TaskPlanner = () => {
                 }),
                 Cell: ({ cell }) => formatDate(cell.getValue()),
             },
+
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
@@ -459,14 +500,13 @@ const TaskPlanner = () => {
                                 display: 'inline-block',
                                 px: 1.5,
                                 py: 0.5,
-                                borderRadius: 1,
+                                borderRadius: 10,
                                 bgcolor: palette.taskType?.[value] || palette.grey[500],
                                 color: 'white',
                                 fontSize: '0.75rem',
                                 fontWeight: 600,
                                 textAlign: 'center',
                                 textTransform: 'capitalize',
-                                borderRadius: 10,
                             }}
                         >
                             {value}
@@ -474,6 +514,7 @@ const TaskPlanner = () => {
                     )
                 },
             },
+
             {
                 id: 'assigned_to',
                 accessorKey: teamMembers && teamMembers.length > 0 ? 'assigned_to' : 'assigned_to_name',
@@ -514,6 +555,7 @@ const TaskPlanner = () => {
                 }
 
             },
+
             {
                 accessorKey: 'is_photo_required',
                 header: 'Photo',
@@ -550,6 +592,7 @@ const TaskPlanner = () => {
                     );
                 },
             },
+
             {
                 accessorKey: 'update_inventory',
                 header: 'Qty',
@@ -586,8 +629,11 @@ const TaskPlanner = () => {
                     );
                 },
             }
+
         ],
+
         [validationErrors, properties, inventoryItems, teamMembers, taskTypes, scheduleTypes, statusOpts, palette, fetchInventoryByProperty, inventoryOptionsMap]
+
     )
 
     // Add these helper functions before the return statement
@@ -617,7 +663,6 @@ const TaskPlanner = () => {
         }
     };
 
-    // CREATE action
     const handleCreateTask = async ({ values, table }) => {
         try {
             const res = await createTask(values)
@@ -639,7 +684,6 @@ const TaskPlanner = () => {
         }
     }
 
-    // UPDATE action
     const handleSaveTask = async ({ values, table, row }) => {
         try {
             const res = await updateTaskPlannerData(row.original.id, values)
@@ -661,7 +705,6 @@ const TaskPlanner = () => {
         }
     }
 
-    // DELETE action
     const handleDelete = async () => {
         if (!taskToDelete) return;
 
@@ -677,8 +720,11 @@ const TaskPlanner = () => {
     };
 
     return (
+
         <React.Fragment>
+
             <Box>
+
                 <MaterialReactTable
                     columns={columns}
                     data={allTasksData?.recurring_tasks || []}
@@ -690,7 +736,6 @@ const TaskPlanner = () => {
                     enableEditing
                     enableRowActions
                     positionActionsColumn="last"
-
                     displayColumnDefOptions={{
                         'mrt-row-actions': {
                             header: 'Actions',
@@ -762,8 +807,8 @@ const TaskPlanner = () => {
                             fontWeight: 600,
                         },
                     }}
-
                 />
+                
             </Box>
 
             <ConfirmationDialog

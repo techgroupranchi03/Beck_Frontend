@@ -2,9 +2,10 @@ import React from 'react';
 import { ToggleButton, ToggleButtonGroup, Tooltip, Box } from '@mui/material';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import TableRowsIcon from '@mui/icons-material/TableRows';
+import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import { useViewMode } from '../context/ViewModeContext';
 
-const ViewToggle = () => {
+const ViewToggle = ({ showCenterView = false }) => {
     const { viewMode, setViewMode, isMobile } = useViewMode();
 
     const handleViewChange = (event, newView) => {
@@ -37,6 +38,13 @@ const ViewToggle = () => {
                         <ViewModuleIcon fontSize='small' />
                     </Tooltip>
                 </ToggleButton>
+                {showCenterView && (
+                    <ToggleButton value="center" aria-label="center view">
+                        <Tooltip title="Center View">
+                            <ViewAgendaIcon fontSize='small' />
+                        </Tooltip>
+                    </ToggleButton>
+                )}
             </ToggleButtonGroup>
         </Box>
     );

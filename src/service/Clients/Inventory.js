@@ -1,12 +1,10 @@
 import axios from "axios";
 import BASE_URL from "../../config";
 
-// get client token
 const getClientToken = () => {
     return localStorage.getItem("client_token");
 };
 
-// get units and quantity 
 export const getUnitsAndQuantities = async () => {
     const token = getClientToken();
     try {
@@ -26,11 +24,9 @@ export const getUnitsAndQuantities = async () => {
     }
 };
 
-// get inventory items
 export const getInventoryItems = async (filters = {}, searchText = "" , page = 1) => {
     const token = getClientToken();
     try {
-        // Build query parameters from filters
         const params = { page };
         if (filters.category) params.category = filters.category;
         if (filters.property_id) params.property_id = filters.property_id;
@@ -49,7 +45,6 @@ export const getInventoryItems = async (filters = {}, searchText = "" , page = 1
                 params: params,
             }
         );
-        //console.log("Inventory items response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Inventory items fetching error:", error);
@@ -57,9 +52,7 @@ export const getInventoryItems = async (filters = {}, searchText = "" , page = 1
     }
 };
 
-// create inventory item
 export const createInventoryItem = async (data) => {
-   // console.log("Creating inventory item with data:", data);
     const token = getClientToken();
     try {
         const response = await axios.post(
@@ -72,7 +65,6 @@ export const createInventoryItem = async (data) => {
                 },
             }
         );
-        //console.log("Create inventory response:", response.data);
         return response;
     } catch (error) {
         console.error("Create inventory error:", error);
@@ -80,7 +72,6 @@ export const createInventoryItem = async (data) => {
     }
 };
 
-// update inventory item
 export const updateInventoryItem = async (id, data) => {
     const token = getClientToken();
     try {
@@ -94,7 +85,6 @@ export const updateInventoryItem = async (id, data) => {
                 },
             }
         );
-        //console.log("Update inventory response:", response.data);
         return response.data;
     } catch (error) {
         console.error("Update inventory error:", error);
@@ -102,9 +92,7 @@ export const updateInventoryItem = async (id, data) => {
     }
 };
 
-// get inventory by id 
 export const getInventoryById = async (id) => {
-    //console.log("Fetching inventory item with ID:", id);
     const token = getClientToken();
     try {
         const response = await axios.get(
@@ -122,7 +110,6 @@ export const getInventoryById = async (id) => {
     }
 };
 
-// delete inventory item
 export const deleteInventoryItem = async (id) => {
     const token = getClientToken();
     try {
@@ -134,10 +121,9 @@ export const deleteInventoryItem = async (id) => {
                 },
             }
         );
-        //console.log("Delete inventory response:", response.data);
         return response.data;
     } catch (error) {
-        console.error("Delete inventory error:", error);
-        return Promise.reject(error.response?.data || { message: "Deleting inventory item failed" });
+        console.log("Delete inventory error:", error);
+        return Promise.reject(error.response?.data);
     }
 };

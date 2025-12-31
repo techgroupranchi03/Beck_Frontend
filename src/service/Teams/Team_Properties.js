@@ -1,15 +1,15 @@
 import axios from 'axios';
-import BASE_URL from '../../config.js';
+import BASE_URL from '../../config';
 
-const getClientToken = () => {
-    return localStorage.getItem('client_token');
+const getTeamToken = () => {
+    return localStorage.getItem('team_token');
 };
 
-export const getClientProperties = async (page) => {
-    const token = getClientToken();
+export const getTeamProperties = async (page) => {
+    const token = getTeamToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/client/properties?page=${page}`,
+            `${BASE_URL}/team/properties?page=${page}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -18,16 +18,16 @@ export const getClientProperties = async (page) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Client properties fetching error:', error);
+        console.error('Team properties fetching error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching properties failed' });
     }
-}
+};
 
-export const createClientProperty = async (propertyData) => {
-    const token = getClientToken();
+export const createTeamProperty = async (propertyData) => {
+    const token = getTeamToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/properties`,
+            `${BASE_URL}/team/properties`,
             propertyData,
             {
                 headers: {
@@ -38,36 +38,35 @@ export const createClientProperty = async (propertyData) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Create property error:', error);
+        console.error('Create team property error:', error);
         return Promise.reject(error.response?.data || { message: 'Creating property failed' });
     }
 };
 
-export const updateClientProperty = async (propertyId, propertyData) => {
-    const token = getClientToken();
+export const updateTeamProperty = async (propertyId, propertyData) => {
+    const token = getTeamToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/properties/${propertyId}`,
+            `${BASE_URL}/team/properties/${propertyId}`,
             propertyData,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
                 },
             }
         );
         return response.data;
     } catch (error) {
-        console.error('Update property error:', error);
+        console.error('Update team property error:', error);
         return Promise.reject(error.response?.data || { message: 'Updating property failed' });
     }
 };
 
-export const deleteClientProperty = async (propertyId) => {
-    const token = getClientToken();
+export const deleteTeamProperty = async (propertyId) => {
+    const token = getTeamToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/client/properties/${propertyId}`,
+            `${BASE_URL}/team/properties/${propertyId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -76,7 +75,9 @@ export const deleteClientProperty = async (propertyId) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Delete property error:', error);
+        console.error('Delete team property error:', error);
         return Promise.reject(error.response?.data || { message: 'Deleting property failed' });
     }
 };
+
+

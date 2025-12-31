@@ -17,11 +17,8 @@ export const useTeamData = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [teamPagination, setTeamPagination] = useState({});
-
-    // check user role 
     const isTeamUser = user?.role === 'team';
 
-    // Fetch team members
     const fetchTeamMembers = useCallback(async (searchText = "", page = 1, append = false) => {
         try {
             if (!append) {
@@ -44,7 +41,7 @@ export const useTeamData = () => {
                 totalPages: res.totalPages || 1,
             })
 
-            console.log("Fetched Team Members:", res);
+           // console.log("Fetched Team Members:", res);
 
             return res.data;
         } catch (err) {
@@ -56,7 +53,6 @@ export const useTeamData = () => {
         }
     }, []);
 
-    // Fetch roles
     const fetchRoles = useCallback(async () => {
         try {
             // const res = await getRoles();
@@ -64,7 +60,7 @@ export const useTeamData = () => {
                 ? await getTeamsRoles()
                 : await getRoles();
             setRoles(res.data || []);
-            console.log("Fetched Roles:", res);
+           // console.log("Fetched Roles:", res);
             return res.data;
         } catch (err) {
             console.error('Error fetching roles:', err);
@@ -73,7 +69,6 @@ export const useTeamData = () => {
         }
     }, []);
 
-    // Fetch all data in parallel
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -89,14 +84,10 @@ export const useTeamData = () => {
         }
     }, [fetchTeamMembers, fetchRoles]);
 
-    // Initial data fetch
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
 
-    // ==================== TEAM OPERATIONS ====================
-
-    // Create new team member
     const createTeam = async (values) => {
         try {
             //const res = await createTeamMember(values);
@@ -113,7 +104,6 @@ export const useTeamData = () => {
         }
     };
 
-    // Update existing team member
     const updateTeam = async (id, values) => {
         try {
             // const res = await updateTeamMember(id, values);
@@ -132,7 +122,6 @@ export const useTeamData = () => {
         }
     };
 
-    // Delete team member
     const deleteTeam = async (id) => {
         try {
             //const res = await deleteTeamMember(id);
@@ -147,7 +136,6 @@ export const useTeamData = () => {
         }
     };
 
-    // Refresh team data
     const refreshTeamData = async () => {
         try {
             await fetchTeamMembers();
@@ -157,15 +145,13 @@ export const useTeamData = () => {
     };
 
     return {
-        // Data States
+
         teamData,
         roles,
         loading,
         error,
-
-        // Pagination Data
         teamPagination,
-
+        
         // Team Operations
         createTeam,
         updateTeam,

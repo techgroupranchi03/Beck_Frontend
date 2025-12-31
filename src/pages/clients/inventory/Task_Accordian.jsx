@@ -1,15 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Select, Autocomplete, TextField, Chip } from '@mui/material'
+import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Select, Autocomplete, TextField, Chip, Avatar, Typography } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
-import { Edit as EditIcon, Close as CloseIcon, Save as SaveIcon } from '@mui/icons-material'
+import { Edit as EditIcon, Close as CloseIcon, Save as SaveIcon, Delete as DeleteIcon } from '@mui/icons-material'
 import { getInventoryById } from '../../../service/Clients/Inventory'
 import { getTeamMembers } from '../../../service/Clients/Team'
-import { createClientTask, updateTaskPlanner, updateActiveTask, createClientActiveTask } from '../../../service/Clients/Task'
+import { createClientTask, updateTaskPlanner, updateActiveTask, createClientActiveTask, deleteOneTime, deleteRecurring, updateClientTaskStatusCompleted } from '../../../service/Clients/Task'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { formatDate } from '../../../utils/dateFormat'
+import { useAuth } from '../../../context/AuthContext'
+import { createTeamActiveTask, createTeamTask, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, deleteTeamOneTimeTask, deleteTeamRecurringTask, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task'
+import { getTeamInventoryById } from '../../../service/Teams/Team_Inventory'
+import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
+import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog'
+import ImageViewer from '../../../resuable_components/ImageViewer'
+import ViewMoreText from '../../../resuable_components/ViewMore'
+import formatSchedule from '../../../utils/scheduleFormatter'
 
 const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
+    const { user } = useAuth();
     const theme = useTheme()
     const { palette } = theme
     const { showSnackbar } = useSnackbar();
@@ -21,20 +30,18 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
     const [properties_id, setProperties_id] = useState("");
     const [inventory_id, setInventory_id] = useState("");
     const [viewMode, setViewMode] = useState('taskPlanner');
-
-    console.log("create_tasks", create_tasks);
-    console.log("onTaskCreate", onTaskCreate);
-
+    const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [showcompletionDialog, setShowcompletionDialog] = useState(false);
+    const [pendingTask, setPendingTask] = useState(null);
+    const [tableRef, setTableRef] = useState(null);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [openImage, setOpenImage] = useState(false);
+    const isTeamUser = user?.role === 'team';
     const handleViewChange = (event) => {
         setViewMode(event.target.value);
     };
 
-    // console.log("create_tasks", create_tasks);
-    // console.log("newtaskData", newtaskData);
-    // console.log("taskPlanner", taskPlanner);
-    // console.log("activeTasks", activeTasks);
-
-    // Get the current data based on view mode
     const getCurrentData = () => {
         switch (viewMode) {
             case 'taskPlanner':
@@ -46,10 +53,11 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     };
 
-    // get inventory by id 
     const fetchInventoryById = async (id) => {
         try {
-            const res = await getInventoryById(id);
+            const res = isTeamUser
+                ? await getTeamInventoryById(id)
+                : await getInventoryById(id);
             console.log("Fetched inventory data:", res.data);
             setActiveTasks(res.data.task_instances || []);
             setTaskPlanner(res.data.tasks_planner || []);
@@ -61,24 +69,25 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     };
 
-    // get team members
+
     const fetchTeamMembers = async () => {
         try {
-            const res = await getTeamMembers();
+            const res = isTeamUser
+                ? await getTeamsTeamMembers()
+                : await getTeamMembers();
             setTeamMembers(res.data || []);
         } catch (error) {
             console.error('Error fetching team members:', error);
         }
     };
 
-
     useEffect(() => {
         fetchInventoryById(inventoryId);
         fetchTeamMembers();
     }, [inventoryId]);
 
-    const TaskPlannercolumns = useMemo(
-        () => [
+    const TaskPlannercolumns = useMemo(() => [
+
             {
                 accessorKey: 'title',
                 header: 'Title',
@@ -109,6 +118,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         }),
                 }),
             },
+
             {
                 accessorKey: 'description',
                 header: 'Description',
@@ -138,7 +148,11 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             description: undefined,
                         }),
                 }),
+                Cell: ({ cell }) => (
+                    <ViewMoreText text={cell.getValue()} maxLength={20} />
+                ),
             },
+
             {
                 accessorKey: 'schedule_type',
                 header: 'Schedule Type',
@@ -197,6 +211,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     </Box>
                 ),
             },
+
             {
                 accessorKey: 'repeat_on',
                 header: 'Repeat On',
@@ -228,14 +243,36 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
 
                     try {
                         const data = typeof repeatOn === 'string' ? JSON.parse(repeatOn) : repeatOn;
+                        const scheduleInfo = formatSchedule(scheduleType, data);
 
-                        if (scheduleType === 'weekly') {
-                            return data.days?.join(', ') || '-';
-                        } else if (scheduleType === 'monthly') {
-                            return data.date?.join(', ') || '-';
-                        } else if (scheduleType === 'yearly') {
-                            return `${data.date || '-'} ${data.month?.join(', ') || '-'}`;
+                        if (!scheduleInfo) {
+                            return '-';
                         }
+                        return (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Typography
+                                    variant="body2"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: palette.primary.main,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        fontSize: '0.875rem'
+                                    }}
+                                >
+                                    <span>{scheduleInfo.icon}</span>
+                                    {/* {scheduleInfo.label} */}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ fontSize: '0.75rem' }}
+                                >
+                                    {scheduleInfo.description}
+                                </Typography>
+                            </Box>
+                        );
                     } catch (error) {
                         return '-';
                     }
@@ -268,9 +305,12 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 multiple
                                 limitTags={2}
                                 options={daysOfWeek}
-                                value={repeatData.days || []}
+                                getOptionLabel={(option) => option.label}
+                                value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
                                 onChange={(event, newValue) => {
-                                    setRepeatData({ days: newValue });
+                                    // Extract only the numeric values
+                                    const dayValues = newValue.map(day => day.value);
+                                    setRepeatData({ days: dayValues });
                                 }}
                                 renderInput={(params) => (
                                     <TextField
@@ -281,6 +321,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                         helperText={validationErrors?.repeat_on || 'Select days of the week'}
                                     />
                                 )}
+                                isOptionEqualToValue={(option, value) => option.value === value.value}
                                 sx={{ minWidth: 250 }}
                             />
                         );
@@ -292,9 +333,10 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             <Autocomplete
                                 multiple
                                 options={datesOfMonth}
-                                value={repeatData.date || []}
+                                getOptionLabel={(option) => String(option)}
+                                value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
                                 onChange={(event, newValue) => {
-                                    setRepeatData({ date: newValue.sort((a, b) => a - b) });
+                                    setRepeatData({ dates: newValue.sort((a, b) => a - b) });
                                 }}
                                 renderInput={(params) => (
                                     <TextField
@@ -310,33 +352,19 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         );
                     }
 
-                    // Yearly: Date dropdown + Autocomplete for months
+                    // Yearly: Months + Dates as arrays
                     if (scheduleType === 'yearly') {
                         return (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <TextField
-                                    select
-                                    label="Date"
-                                    value={repeatData.date || ''}
-                                    onChange={(e) => setRepeatData({ ...repeatData, date: parseInt(e.target.value) })}
-                                    fullWidth
-                                >
-                                    <MenuItem value="">
-                                        <em>Select Date</em>
-                                    </MenuItem>
-                                    {datesOfMonth.map((date) => (
-                                        <MenuItem key={date} value={date}>
-                                            {date}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-
                                 <Autocomplete
                                     multiple
+                                    limitTags={3}
                                     options={monthsOfYear}
-                                    value={repeatData.month || []}
+                                    getOptionLabel={(option) => option.label}
+                                    value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
                                     onChange={(event, newValue) => {
-                                        setRepeatData({ ...repeatData, month: newValue });
+                                        const monthValues = newValue.map(month => month.value);
+                                        setRepeatData({ ...repeatData, months: monthValues });
                                     }}
                                     renderInput={(params) => (
                                         <TextField
@@ -347,6 +375,27 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                             helperText={validationErrors?.repeat_on || 'Select months of the year'}
                                         />
                                     )}
+                                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                                />
+
+                                <Autocomplete
+                                    multiple
+                                    limitTags={3}
+                                    options={datesOfMonth}
+                                    getOptionLabel={(option) => String(option)}
+                                    value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
+                                    onChange={(event, newValue) => {
+                                        setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Dates"
+                                            placeholder="Choose dates"
+                                            error={!!validationErrors?.repeat_on}
+                                            helperText={validationErrors?.repeat_on || 'Select dates (1-31)'}
+                                        />
+                                    )}
                                 />
                             </Box>
                         );
@@ -355,6 +404,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     return null;
                 },
             },
+
             {
                 accessorKey: 'start_date',
                 header: 'Start Date',
@@ -388,6 +438,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 }),
                 Cell: ({ cell }) => formatDate(cell.getValue()),
             },
+
             {
                 accessorKey: 'task_type',
                 header: 'Task Type',
@@ -458,6 +509,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     )
                 },
             },
+
             {
                 accessorKey: 'assigned_to',
                 header: 'Assigned To',
@@ -503,6 +555,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     return member ? member.name : '-';
                 },
             },
+
             {
                 accessorKey: 'is_photo_required',
                 header: 'Photo',
@@ -550,7 +603,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 },
             },
 
-            // add update inventory  checkbox here
             {
                 accessorKey: 'update_inventory',
                 header: 'Inventory Qty',
@@ -581,7 +633,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                 property_id: properties_id,
                                 inventory_id: inventory_id
                             };
-                            //console.log("Auto-sending task data to parent:", taskData);
                             onTaskCreate(taskData);
                         }
                     };
@@ -602,8 +653,8 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         [validationErrors, teamMembers, taskTypes, scheduleTypes, recurringTypes, statusOpts, palette, create_tasks, onTaskCreate, properties_id, inventory_id]
     )
 
-    const ActiveTaskcolumns = useMemo(
-        () => [
+    const ActiveTaskcolumns = useMemo(() => [
+
             {
                 accessorKey: 'title',
                 header: 'Title',
@@ -613,9 +664,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     error: !!validationErrors?.title,
                     helperText: validationErrors?.title,
                     onChange: (e) => {
-                        // Update the cached value
                         row._valuesCache.title = e.target.value;
-                        // If create_tasks is true, automatically send data to parent
                         if (create_tasks && onTaskCreate) {
                             const taskData = {
                                 ...row._valuesCache,
@@ -632,6 +681,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         }),
                 }),
             },
+
             {
                 accessorKey: 'description',
                 header: 'Description',
@@ -658,8 +708,14 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             ...validationErrors,
                             description: undefined,
                         }),
+
+
                 }),
+                Cell: ({ cell }) => (
+                    <ViewMoreText text={cell.getValue()} maxLength={20} />
+                ),
             },
+
             {
                 id: 'scheduled_date',
                 accessorKey: 'scheduled_date',
@@ -773,6 +829,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     )
                 },
             },
+
             {
                 accessorKey: 'assigned_to',
                 header: 'Assigned To',
@@ -816,18 +873,50 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     return member ? member.name : '-';
                 },
             },
+
             {
                 accessorKey: 'is_photo_required',
                 header: 'Photo',
-                Cell: ({ row }) => (
-                    <Checkbox
-                        checked={row.original.is_photo_required === 1 ? true : false}
-                        disabled
-                        slotProps={{
-                            input: { 'aria-label': 'photo required' },
-                        }}
-                    />
-                ),
+                size: 100,
+                Cell: ({ row }) => {
+                    const hasImages = Array.isArray(row.original.completion_image_urls) && row.original.completion_image_urls.length > 0;
+
+                    if (row.original.is_photo_required === 1 && hasImages) {
+                        return (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                {row.original.completion_image_urls.map((url, index) => (
+                                    <Avatar
+                                        key={index}
+                                        src={url}
+                                        variant="rounded"
+                                        onClick={() => {
+                                            setSelectedImage(url);
+                                            setOpenImage(true);
+                                        }}
+                                        sx={{
+                                            width: 30,
+                                            height: 30,
+                                            borderRadius: 10,
+                                            cursor: 'pointer',
+                                            border: `1px solid ${palette.divider}`,
+                                            '&:hover': { opacity: 0.8 },
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                        );
+                    }
+
+                    return (
+                        <Checkbox
+                            checked={row.original.is_photo_required === 1 ? true : false}
+                            disabled
+                            slotProps={{
+                                input: { 'aria-label': 'photo required' },
+                            }}
+                        />
+                    );
+                },
                 Edit: ({ row, cell, table }) => {
                     const [checked, setChecked] = React.useState(() => {
                         const currentValue = cell.getValue();
@@ -859,7 +948,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     );
                 },
             },
-            // add update inventory checkbox here
+
             {
                 accessorKey: 'update_inventory',
                 header: 'Inventory Qty',
@@ -906,6 +995,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     );
                 },
             },
+
             {
                 accessorKey: 'status',
                 header: 'Status',
@@ -984,11 +1074,11 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     )
                 },
             },
+
         ],
         [validationErrors, teamMembers, taskTypes, statusOpts, palette]
     )
 
-    // Add these helper functions
     const getRepeatOnHelperText = (scheduleType) => {
         switch (scheduleType) {
             case 'weekly':
@@ -1015,7 +1105,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     };
 
-    // CREATE action
     const handleCreateTask = async ({ values, table }) => {
         try {
             setLoading(true)
@@ -1040,10 +1129,14 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     status: taskData.status,
                     is_photo_required: taskData.is_photo_required
                 };
-                res = await createClientActiveTask(activeTaskData);
+                res = isTeamUser
+                    ? await createTeamActiveTask(activeTaskData)
+                    : await createClientActiveTask(activeTaskData);
             } else {
                 // For task planner, send all fields
-                res = await createClientTask(taskData);
+                res = isTeamUser
+                    ? await createTeamTask(taskData)
+                    : await createClientTask(taskData);
             }
 
             showSnackbar(res.message || 'Task created successfully', 'success')
@@ -1067,18 +1160,18 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     }
 
-    // UPDATE action
     const handleSaveTaskPlanner = async ({ values, table, row }) => {
         try {
             setLoading(true)
-            // Add property_id and inventory_id to the task data
             const taskData = {
                 ...values,
                 property_id: properties_id,
                 inventory_id: inventory_id
             }
-            const res = await updateTaskPlanner(row.original.id, taskData)
-            showSnackbar(res.message || 'Task updated successfully', 'success')
+            const res = isTeamUser
+                ? await updateTeamsTaskPlanner(row.original.id, taskData)
+                : await updateTaskPlanner(row.original.id, taskData)
+            showSnackbar(res.message, 'success')
             await fetchInventoryById(inventoryId)
             table.setEditingRow(null)
             setValidationErrors({})
@@ -1099,22 +1192,29 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     }
 
-    // UPDATE action for Active Tasks
     const handleSaveActiveTask = async ({ values, table, row }) => {
         try {
             setLoading(true)
-            // Add property_id and inventory_id to the task data
             const taskData = {
                 ...values,
                 property_id: properties_id,
                 inventory_id: inventory_id
             }
-            const res = await updateActiveTask(row.original.id, taskData)
-            showSnackbar(res.message || 'Active task updated successfully', 'success')
+            const res = isTeamUser
+                ? await updateTeamsActiveTask(row.original.id, taskData)
+                : await updateActiveTask(row.original.id, taskData)
+            showSnackbar(res.message, 'success')
             await fetchInventoryById(inventoryId)
             table.setEditingRow(null)
             setValidationErrors({})
         } catch (error) {
+            if (error.message === 'Completion photo is required for this task') {
+                setPendingTask(row.original);
+                setTableRef(table);
+                setShowcompletionDialog(true);
+                table.setEditingRow(null);
+                return;
+            }
             if (error.errors && Array.isArray(error.errors)) {
                 const apiErrors = {}
                 error.errors.forEach((err) => {
@@ -1131,10 +1231,62 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
         }
     }
 
+    const handleDeleteTask = (taskId, scheduleType) => {
+        setTaskToDelete({ id: taskId, scheduleType });
+        setOpenDeleteConfirm(true);
+    };
+
+    const handleCancelDelete = () => {
+        setOpenDeleteConfirm(false);
+        setTaskToDelete(null);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!taskToDelete) return;
+
+        setLoading(true);
+        try {
+            let res;
+            const isRecurring = viewMode === 'taskPlanner' ||
+                (taskToDelete.scheduleType && taskToDelete.scheduleType !== 'one_time');
+
+            if (isRecurring) {
+                // Delete recurring task (task planner)
+                res = isTeamUser
+                    ? await deleteTeamRecurringTask(taskToDelete.id)
+                    : await deleteRecurring(taskToDelete.id);
+
+                // Update local state
+                setTaskPlanner(prevTasks => prevTasks.filter(task => task.id !== taskToDelete.id));
+            } else {
+                // Delete one-time task (active task)
+                res = isTeamUser
+                    ? await deleteTeamOneTimeTask(taskToDelete.id)
+                    : await deleteOneTime(taskToDelete.id);
+
+                // Update local state
+                setActiveTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete.id));
+            }
+
+            showSnackbar(res.message || 'Task deleted successfully', 'success');
+        } catch (error) {
+            showSnackbar(error.message || 'Failed to delete task', 'error');
+            console.error('Error deleting task:', error);
+        } finally {
+            setLoading(false);
+            setOpenDeleteConfirm(false);
+            setTaskToDelete(null);
+        }
+    };
+ 
+    const handleCompletionDialogClose = () => {
+        setShowcompletionDialog(false);
+        setPendingTask(null);
+    };
+
     return (
         <React.Fragment>
             <Box>
-
                 <MaterialReactTable
                     columns={viewMode === 'taskPlanner' ? TaskPlannercolumns : ActiveTaskcolumns}
                     data={getCurrentData()}
@@ -1214,7 +1366,6 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                         const isCreating = table.getState().creatingRow?.id === row.id;
 
                         if (isEditing || isCreating) {
-                            // Actions are handled by displayColumnDefOptions above
                             return null;
                         }
 
@@ -1227,6 +1378,18 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                         sx={{ color: palette.primary.main }}
                                     >
                                         <EditIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete">
+                                    <IconButton
+                                        onClick={() => handleDeleteTask(
+                                            row.original.id,
+                                            row.original.schedule_type
+                                        )}
+                                        size="small"
+                                        sx={{ color: palette.secondary.main }}
+                                    >
+                                        <DeleteIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
                             </Box>
@@ -1268,8 +1431,8 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
 
                                 }}
                             >
-                                <MenuItem value="taskPlanner">Task Planner</MenuItem>
-                                <MenuItem value="activeTasks">Active Tasks</MenuItem>
+                                <MenuItem value="taskPlanner">Recurring Tasks</MenuItem>
+                                <MenuItem value="activeTasks">One-Time Tasks</MenuItem>
                             </Select>
                         </Box>
                     )}
@@ -1296,15 +1459,34 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                             fontWeight: 600,
                         },
                     }}
-                    // change table header color to primary main
                     muiTableHeadProps={{
                         sx: {
                             bgcolor: palette.primary.main,
                         },
                     }}
-
                 />
+
             </Box>
+            <ConfirmationDialog
+                open={openDeleteConfirm}
+                onCancel={handleCancelDelete}
+                onDelete={handleConfirmDelete}
+                title="Delete Task"
+                message="Are you sure you want to delete this task? This action cannot be undone."
+            />
+            <TaskCompletionDialog
+                open={showcompletionDialog}
+                onClose={handleCompletionDialogClose}
+                task={pendingTask}
+                updateTaskCompletionStatus={
+                    isTeamUser ? updateTeamTaskStatusCompleted : updateClientTaskStatusCompleted
+                }
+            />
+            <ImageViewer
+                open={openImage}
+                onClose={() => setOpenImage(false)}
+                image={selectedImage}
+            />
         </React.Fragment>
     )
 }

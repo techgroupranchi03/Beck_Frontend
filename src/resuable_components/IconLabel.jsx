@@ -17,8 +17,7 @@ const IconLabel = ({ icon: IconComponent, label, ...props }) => {
                 px: 1,                                      
                 py: 0.25,
                 fontSize: '0.75rem',
-                // lineHeight: 1,
-                ...props.sx,                 // Allow override/customization
+                ...props.sx,     
             }}
             {...props}
         >
