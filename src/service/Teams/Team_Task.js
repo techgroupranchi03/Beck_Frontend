@@ -244,9 +244,11 @@ export const deleteTeamRecurringTask = async (taskId) => {
 
 export const updateTeamTaskStatusCompleted = async (taskId, formData) => {
     const token = getTeamToken();
-    try {
+
+    // /team/groups/tasks/27/status// call  this api for group task status update
+    try {  
         const response = await axios.put(
-            `${BASE_URL}/team/active-tasks/${taskId}`,
+            `${BASE_URL}/team/groups/tasks/${taskId}/status`,
             formData,
             {
                 headers: {
@@ -259,5 +261,23 @@ export const updateTeamTaskStatusCompleted = async (taskId, formData) => {
     } catch (error) {
         console.error('Team task status update error:', error);
         return Promise.reject(error.response?.data);
+    }
+};
+
+export const getTeamGrooupTasksById = async (groupTaskId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/team/groups/${groupTaskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team group task fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching group task failed' });
     }
 };

@@ -1,16 +1,44 @@
 // Inventory
 
+
+import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
+import WeekendIcon from '@mui/icons-material/Weekend';
+import KitchenIcon from '@mui/icons-material/Kitchen';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import BuildIcon from '@mui/icons-material/Build';
+import NaturePeopleIcon from '@mui/icons-material/NaturePeople';
+import CleaningServicesIcon from '@mui/icons-material/CleaningServices';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import { Handyman } from '@mui/icons-material';
+
+export const categoriess = [
+  { label: 'Electronics', value: 'electronics', icon: ElectricalServicesIcon },
+  { label: 'Furniture', value: 'furniture', icon: WeekendIcon },
+  { label: 'Applicances', value: 'applicances', icon: KitchenIcon },
+  { label: 'Safety', value: 'safety', icon: HealthAndSafetyIcon },
+  { label: 'Maintenance', value: 'maintenace', icon: BuildIcon },
+  { label: 'Outdoor', value: 'outdoor', icon: NaturePeopleIcon },
+  { label: 'Cleaning', value: 'cleaning', icon: CleaningServicesIcon },
+];
 export const categories = [
     'electronics',
     'furniture',
     'applicances',
     'safety',
-    'maintenace',
+    'maintenance',
     'outdoor',
     'cleaning',
 ];
 
 // task
+
+export  const taskTypesOptions = [
+    { label: 'Cleaning', value: 'cleaning' , icon: CleaningServicesIcon },
+    { label: 'Maintenance', value: 'maintenance' , icon: BuildIcon },
+    { label: 'Inspection', value: 'inspection' , icon: HealthAndSafetyIcon },
+    { label: 'Repair', value: 'repair' , icon: Handyman },
+    { label: 'Others', value: 'others' , icon: MoreHorizIcon },
+];
 
 export const taskTypes = [
     'cleaning',
@@ -45,7 +73,7 @@ export const scheduleTypes = [
     'daily',
     'weekly',
     'monthly',
-    'yearly'
+    'yearly',
 ];
 
 export const daysOfWeek = [
@@ -89,4 +117,22 @@ export const TeamStatus = [
     'active',
     'inactive',
     'on-leave',
+];
+
+
+
+
+export const units = [
+    { label: "Piece", value: "piece" },
+    { label: "Liters", value: "liters" },
+    { label: "KG", value: "kg" },
+    { label: "Container", value: "container" }
+];
+
+export const containerOptions = [
+    { label: "Full", value: "100%" },
+    { label: "75%", value: "75%" },
+    { label: "Half", value: "50%" },
+    { label: "Quarter", value: "25%" },
+    { label: "Empty", value: "empty" }
 ];

@@ -2,12 +2,18 @@ import React, { useState } from 'react'
 import { Container, Box, Tab, Tabs } from '@mui/material'
 import TaskPlanner from './TaskPlanner'
 import ActiveTask from './ActiveTask'
+import ActiveTaskStaff from '../../teams/ActiveTaskStaff'
+import TaskPlannerStaff from '../../teams/TaskPlannerStaff'
+import { useAuth } from '../../../context/AuthContext'
 
 const TaskTabs = () => {
+    const { user } = useAuth();
     const [value, setValue] = useState(() => {
         const savedTab = localStorage.getItem('taskTabIndex');
         return savedTab ? Number(savedTab) : 0;
     });
+
+    const isStaffOrOthers = user?.teamRole === 'Others' || user?.teamRole === 'Staff';
 
     const handleChange = (event, newValue) => {
         setValue(newValue);
@@ -18,7 +24,6 @@ const TaskTabs = () => {
 
         <Container
             maxWidth={false}
-
         >
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Tabs
@@ -32,8 +37,8 @@ const TaskTabs = () => {
             </Box>
 
             <Box sx={{ mt: 2 }}>
-                {value === 0 && <TaskPlanner />}
-                {value === 1 && <ActiveTask />}
+                {value === 0 && (isStaffOrOthers ? <TaskPlannerStaff /> : <TaskPlanner />)}
+                {value === 1 && (isStaffOrOthers ? <ActiveTaskStaff /> : <ActiveTask />)}
             </Box>
 
         </Container>

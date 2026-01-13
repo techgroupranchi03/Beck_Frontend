@@ -9,18 +9,20 @@ import {
     IconButton,
     Typography,
     CircularProgress,
-    Slide
+    Slide,
+    Stack
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DeleteIcon from '@mui/icons-material/Delete';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { useSnackbar } from '../../resuable_components/Snackbar';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus,}) => {
+const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus, }) => {
     const MAX_PHOTOS = 3;
     const [photos, setPhotos] = useState([]);
     const [photoPreviews, setPhotoPreviews] = useState([]);
@@ -58,7 +60,6 @@ const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus,
         const filesToProcess = files.slice(0, remainingSlots);
 
         filesToProcess.forEach(file => {
-            // ✅ Only validate file type
             if (!file.type.startsWith('image/')) {
                 showSnackbar(`${file.name} is not a valid image file`, 'error');
                 return;
@@ -78,14 +79,14 @@ const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus,
 
         event.target.value = '';
     };
-    
+
 
 
     // Handle photo removal (by index)
     const handleRemovePhoto = (index) => {
         // Revoke the object URL to free memory
         URL.revokeObjectURL(photoPreviews[index]);
-        
+
         setPhotos(prev => prev.filter((_, i) => i !== index));
         setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
     };
@@ -223,47 +224,127 @@ const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            cursor: 'pointer',
-                            '&:hover': {
-                                borderColor: 'primary.main',
-                                backgroundColor: 'action.hover',
-                            },
+                            cursor: { xs: 'default', md: 'pointer' },
                         }}
-                        component="label"
+                        onClick={(e) => {
+                            // Only allow click on desktop (md and above)
+                            if (window.innerWidth >= 900) {
+                                document.getElementById('file-input').click();
+                            }
+                        }}
                     >
                         <input
+                            id="file-input"
                             type="file"
                             accept="image/*"
                             multiple
                             hidden
                             onChange={handleFileChange}
                             disabled={loading}
+                            style={{ display: window.innerWidth < 900 ? 'none' : undefined }}
                         />
-                        <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-                        <Typography variant="body1" color="text.secondary">
-                            Click to upload completion photos
+                       
+                        <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+                            Upload completion photos
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 3 }}>
                             Supported formats: JPG, PNG, GIF (Max 3 photos)
                         </Typography>
+
+                        <Stack direction="row" spacing={2} sx={{ width: '100%', justifyContent: 'center', display: { xs: 'flex', md: 'none' } }}>
+                            <IconButton
+                                component="label"
+                                color="primary"
+                                disabled={loading}
+                                sx={{
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                    width: 56,
+                                    height: 56,
+                                }}
+                            >
+                                <CameraAltIcon sx={{ fontSize: 28 }} />
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    multiple
+                                    hidden
+                                    onChange={handleFileChange}
+                                    disabled={loading}
+                                />
+                            </IconButton>
+
+                            <IconButton
+                                component="label"
+                                color="primary"
+                                disabled={loading}
+                                sx={{
+                                    border: '2px solid',
+                                    borderColor: 'primary.main',
+                                    width: 56,
+                                    height: 56,
+                                }}
+                            >
+                                <PhotoLibraryIcon sx={{ fontSize: 28 }} />
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    hidden
+                                    onChange={handleFileChange}
+                                    disabled={loading}
+                                />
+                            </IconButton>
+                        </Stack>
                     </Box>
                 ) : (
-                    <Button
-                        component="label"
-                        variant="outlined"
-                        startIcon={<CloudUploadIcon />}
-                        fullWidth
-                        disabled={loading || photoPreviews.length >= 3}
-                    >
-                        Add More Photos
-                        <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            hidden
-                            onChange={handleFileChange}
-                        />
-                    </Button>
+                    <Stack direction="row" spacing={2} sx={{ justifyContent: 'center', display: { xs: 'flex', md: 'none' } }}>
+                        <IconButton
+                            component="label"
+                            color="primary"
+                            disabled={photoPreviews.length >= 3}
+                            sx={{
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                '&:hover': { bgcolor: 'primary.dark' },
+                                width: 56,
+                                height: 56,
+                            }}
+                        >
+                            <CameraAltIcon sx={{ fontSize: 28 }} />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                multiple
+                                hidden
+                                onChange={handleFileChange}
+                            />
+                        </IconButton>
+
+                        <IconButton
+                            component="label"
+                            color="primary"
+                            disabled={loading || photoPreviews.length >= 3}
+                            sx={{
+                                border: '2px solid',
+                                borderColor: 'primary.main',
+                                width: 56,
+                                height: 56,
+                            }}
+                        >
+                            <PhotoLibraryIcon sx={{ fontSize: 28 }} />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                hidden
+                                onChange={handleFileChange}
+                            />
+                        </IconButton>
+                    </Stack>
                 )}
             </DialogContent>
 

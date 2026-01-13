@@ -18,12 +18,6 @@ import {
     ListItemIcon,
     Divider,
     Collapse,
-    Accordion,
-    AccordionSummary,
-    AccordionDetails,
-    List,
-    ListItem,
-    ListItemAvatar,
     Avatar,
     Select,
     Chip,
@@ -50,7 +44,8 @@ import {
     Task,
     Close,
     AssignmentTurnedIn,
-    CameraAlt
+    CameraAlt,
+    FileCopy
 } from '@mui/icons-material';
 import InventoryFilter from './InventoryFilter';
 import { useInventoryContext } from './InventoryManagement';
@@ -163,11 +158,18 @@ const Tile_View_Inventory = () => {
     };
 
     const handleTaskEdit = () => {
-        if (selectedTask.taskSource === 'planner') {
-            setOpenTaskDialog(true);
-        } else {
-            setOpenTaskDialog(true);
-        }
+        // if (selectedTask.taskSource === 'planner') {
+        //     setOpenTaskDialog(true);
+        // } else {
+        //     setOpenTaskDialog(true);
+        // }
+        setOpenTaskDialog(true);
+        setTaskAnchorEl(null);
+    };
+
+    const handleDuplicateTask = () => {
+        setSelectedTask({ ...selectedTask, id: null, title: `Copy of ${selectedTask.title}` });
+        setOpenTaskDialog(true);
         setTaskAnchorEl(null);
     };
 
@@ -756,7 +758,7 @@ const Tile_View_Inventory = () => {
                                                                    
 
                                                                     {/* Task chips */}
-                                                                    <Stack direction="row" gap={1} flexWrap="wrap" mb={1}>
+                                                                    <Stack direction="row" gap={1} flexWrap="wrap" mb={1} mt={1}>
                                                                         {task.taskSource === 'planner' ? (
                                                                             <>
                                                                                 {task.task_type && (
@@ -936,9 +938,15 @@ const Tile_View_Inventory = () => {
                 </MenuItem>
                 <MenuItem onClick={openTaskDeleteDialog} dense>
                     <ListItemIcon>
-                        <Delete fontSize="small" sx={{ color: palette.error.main }} />
+                        <Delete fontSize="small" sx={{ color: palette.primary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={handleDuplicateTask} dense>
+                    <ListItemIcon>
+                        <FileCopy fontSize="small" sx={{ color: palette.primary.main }} />
+                    </ListItemIcon>
+                    <ListItemText>Duplicate</ListItemText>
                 </MenuItem>
             </Menu>
 

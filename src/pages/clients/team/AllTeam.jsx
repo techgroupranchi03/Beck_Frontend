@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Box, Button, IconButton, useTheme, Typography, Tooltip, Container } from '@mui/material'
 import { MaterialReactTable } from 'material-react-table'
 import { Edit as EditIcon, Delete as DeleteIcon, Person2Rounded } from '@mui/icons-material'
@@ -17,6 +17,10 @@ const AllTeam = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 9,
+  });
 
   const {
     teamData,
@@ -24,8 +28,19 @@ const AllTeam = () => {
     loading,
     createTeam,
     updateTeam,
-    deleteTeam
+    deleteTeam,
+    fetchTeamMembers,
+    teamPagination,
+
   } = useTeamContext();
+
+  console.log("teamData:", teamData, teamPagination);
+
+  // Handle pagination changes
+  useEffect(() => {
+    const page = pagination.pageIndex + 1; 
+    fetchTeamMembers({}, page);
+  }, [pagination.pageIndex]);
 
   const handleCloseNavigateDialog = () => {
     setOpenNavigateDialog(false);
@@ -303,10 +318,14 @@ const AllTeam = () => {
         <MaterialReactTable
           columns={columns}
           data={teamData}
+          rowCount={teamPagination?.total || 0}
           state={{
             isLoading: loading,
-            columnVisibility: { id: false }
+            columnVisibility: { id: false },
+            pagination: pagination,
           }}
+          onPaginationChange={setPagination}
+          manualPagination
           editDisplayMode="row"
           enableEditing
           enableRowActions

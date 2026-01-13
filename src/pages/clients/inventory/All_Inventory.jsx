@@ -16,7 +16,7 @@ import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import Task_Accordian from './Task_Accordian';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
-import { categories } from '../../../constant';
+import { categories, categoriess } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 
 const All_Inventory = () => {
@@ -33,6 +33,8 @@ const All_Inventory = () => {
     createInventory,
     updateInventory,
     deleteInventory,
+    inventoryPagination,
+    fetchInventoryItems,
   } = useInventoryContext();
 
   const [openConfirm, setOpenConfirm] = useState(false);
@@ -45,6 +47,17 @@ const All_Inventory = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 9,
+  });
+
+
+  // Handle pagination changes
+  useEffect(() => {
+    const page = pagination.pageIndex + 1; 
+    fetchInventoryItems({}, "", page);
+  }, [pagination.pageIndex]);
 
   const handleImageChange = (event) => {
     const file = event.target.files[0];
@@ -242,340 +255,368 @@ const All_Inventory = () => {
 
   const columns = useMemo(() => [
 
-      {
-        accessorKey: 'id',
-        header: 'ID',
-        enableHiding: true,
-        enableEditing: false,
-      },
+    {
+      accessorKey: 'id',
+      header: 'ID',
+      enableHiding: true,
+      enableEditing: false,
+    },
 
-      {
-        accessorKey: 'inventory_image_url',
-        header: 'Image',
-        size: 150,
-        enableEditing: false,
-        Cell: ({ cell, row, table }) => {
-          const imageUrl = cell.getValue();
-          const isEditing = table.getState().editingRow?.id === row.id;
-          const isCreating = table.getState().creatingRow?.id === row.id;
+    {
+      accessorKey: 'inventory_image_url',
+      header: 'Image',
+      size: 150,
+      enableEditing: false,
+      Cell: ({ cell, row, table }) => {
+        const imageUrl = cell.getValue();
+        const isEditing = table.getState().editingRow?.id === row.id;
+        const isCreating = table.getState().creatingRow?.id === row.id;
 
-          if (isEditing || isCreating) {
-            return (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <input
-                  accept="image/*"
-                  type="file"
-                  id={`image-upload-${row.id}`}
-                  style={{ display: 'none' }}
-                  onChange={handleImageChange}
-                />
-                <label htmlFor={`image-upload-${row.id}`}>
-                  <Button
-                    variant="outlined"
-                    component="span"
+        if (isEditing || isCreating) {
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <input
+                accept="image/*"
+                type="file"
+                id={`image-upload-${row.id}`}
+                style={{ display: 'none' }}
+                onChange={handleImageChange}
+              />
+              <label htmlFor={`image-upload-${row.id}`}>
+                <Button
+                  variant="outlined"
+                  component="span"
+                  size="small"
+                  sx={{ fontSize: '0.75rem' }}
+                >
+                  Upload
+                </Button>
+              </label>
+
+              {(imagePreview || imageUrl) && (
+                <Box sx={{ position: 'relative', width: 'fit-content' }}>
+                  <Box
+                    component="img"
+                    src={imagePreview || imageUrl}
+                    alt="Preview"
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    }}
+                  />
+                  <IconButton
                     size="small"
-                    sx={{ fontSize: '0.75rem' }}
+                    onClick={clearImageState}
+                    sx={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      bgcolor: 'error.main',
+                      color: 'white',
+                      width: 20,
+                      height: 20,
+                      '&:hover': {
+                        bgcolor: 'error.dark',
+                      },
+                    }}
                   >
-                    Upload
-                  </Button>
-                </label>
+                    <CloseIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                </Box>
+              )}
 
-                {(imagePreview || imageUrl) && (
-                  <Box sx={{ position: 'relative', width: 'fit-content' }}>
-                    <Box
-                      component="img"
-                      src={imagePreview || imageUrl}
-                      alt="Preview"
-                      sx={{
-                        width: 60,
-                        height: 60,
-                        objectFit: 'cover',
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    />
-                    <IconButton
-                      size="small"
-                      onClick={clearImageState}
-                      sx={{
-                        position: 'absolute',
-                        top: -8,
-                        right: -8,
-                        bgcolor: 'error.main',
-                        color: 'white',
-                        width: 20,
-                        height: 20,
-                        '&:hover': {
-                          bgcolor: 'error.dark',
-                        },
-                      }}
-                    >
-                      <CloseIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </Box>
-                )}
-
-                {validationErrors?.image && (
-                  <Typography variant="caption" color="error">
-                    {validationErrors.image}
-                  </Typography>
-                )}
-              </Box>
-            );
-          }
-
-          return imageUrl ? (
-            <Box
-              component="img"
-              src={imageUrl}
-              alt="Inventory"
-              sx={{
-                width: 50,
-                height: 50,
-                objectFit: 'cover',
-                borderRadius: 1,
-              }}
-            />
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              No Image
-            </Typography>
+              {validationErrors?.image && (
+                <Typography variant="caption" color="error">
+                  {validationErrors.image}
+                </Typography>
+              )}
+            </Box>
           );
-        },
-      },
+        }
 
-      {
-        accessorKey: 'name',
-        header: 'Item Name',
-        size: 200,
-        muiEditTextFieldProps: {
-          required: true,
-          error: !!validationErrors?.name,
-          helperText: validationErrors?.name,
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              name: undefined,
-            }),
-        },
+        return imageUrl ? (
+          <Box
+            component="img"
+            src={imageUrl}
+            alt="Inventory"
+            sx={{
+              width: 50,
+              height: 50,
+              objectFit: 'cover',
+              borderRadius: 1,
+            }}
+          />
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            No Image
+          </Typography>
+        );
       },
+    },
 
-      {
-        accessorKey: 'category',
-        header: 'Category',
-        size: 150,
-        editVariant: 'select',
-        editSelectOptions: categories.map((cat) => ({ value: cat, label: cat.charAt(0).toUpperCase() + cat.slice(1) })),
-        muiEditTextFieldProps: {
-          select: true,
-          required: true,
-          error: !!validationErrors?.category,
-          helperText: validationErrors?.category,
-          SelectProps: {
-            displayEmpty: true,
-            renderValue: (selected) => {
-              if (!selected) {
-                return <em>Select Category</em>;
-              }
-              return selected.charAt(0).toUpperCase() + selected.slice(1);
-            },
+    {
+      accessorKey: 'name',
+      header: 'Item Name',
+      size: 200,
+      muiEditTextFieldProps: {
+        required: true,
+        error: !!validationErrors?.name,
+        helperText: validationErrors?.name,
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            name: undefined,
+          }),
+      },
+    },
+
+    {
+      accessorKey: 'category',
+      header: 'Category',
+      size: 150,
+      editVariant: 'select',
+      editSelectOptions: categoriess.map((cat) => ({ value: cat.value, label: cat.label })),
+      muiEditTextFieldProps: {
+        select: true,
+        required: true,
+        error: !!validationErrors?.category,
+        helperText: validationErrors?.category,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Category</em>;
+            }
+            const category = categoriess.find(cat => cat.value === selected);
+            if (category) {
+              const IconComponent = category.icon;
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconComponent sx={{ fontSize: 18 }} />
+                  {category.label}
+                </Box>
+              );
+            }
+            return selected;
           },
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              category: undefined,
-            }),
         },
-        Cell: ({ cell }) => (
+        children: categoriess.map((cat) => {
+          const IconComponent = cat.icon;
+          return (
+            <MenuItem key={cat.value} value={cat.value}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconComponent sx={{ fontSize: 18, color: palette.text.secondary }} />
+                {cat.label}
+              </Box>
+            </MenuItem>
+          );
+        }),
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            category: undefined,
+          }),
+      },
+      Cell: ({ cell }) => {
+        const value = cell.getValue();
+        const category = categoriess.find(cat => cat.value === value);
+        const IconComponent = category?.icon;
+
+        return (
           <Box
             sx={{
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: 'center',
+              gap: 1,
               px: 1.5,
               py: 0.5,
               borderRadius: 1,
-              // bgcolor: palette.primary.light,
               color: palette.text.primary,
               fontSize: "0.75rem",
               fontWeight: 600,
-              textTransform: 'capitalize',
             }}
           >
-            {cell.getValue()}
+            {IconComponent && <IconComponent sx={{ fontSize: 18, color: palette.text.secondary }} />}
+            {category?.label || value}
           </Box>
-        ),
+        );
       },
+    },
 
-      {
-        accessorKey: 'property_id',
-        header: 'Property',
-        size: 200,
-        editVariant: 'select',
-        editSelectOptions: properties.map(prop => ({ value: prop.id, label: prop.name })),
-        muiEditTextFieldProps: {
-          select: true,
-          required: true,
-          error: !!validationErrors?.property_id,
-          helperText: validationErrors?.property_id,
-          SelectProps: {
-            displayEmpty: true,
-            renderValue: (selected) => {
-              if (!selected) {
-                return <em>Select Property</em>;
-              }
-              const property = properties.find(p => p.id === selected);
-              return property ? property.name : selected;
-            },
-          },
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              property_id: undefined,
-            }),
-          children: [
-            <MenuItem key="empty-placeholder" value="">
-              <em>Select Property</em>
-            </MenuItem>,
-            ...properties.map((prop) => (
-              <MenuItem key={prop.id} value={prop.id}>
-                {prop.name}
-              </MenuItem>
-            ))
-          ],
-        },
-        Cell: ({ row }) => row.original.property_name || '-',
-      },
-
-      {
-        accessorKey: 'located_at',
-        header: 'Located At',
-        size: 200,
-        muiEditTextFieldProps: {
-          error: !!validationErrors?.located_at,
-          helperText: validationErrors?.located_at,
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              located_at: undefined,
-            }),
-        },
-      },
-
-      {
-        accessorKey: 'lower_limit',
-        header: 'Lower Limit',
-        size: 120,
-        muiEditTextFieldProps: {
-          type: 'number',
-          inputProps: { min: 0, max: 9999, step: 0.01 },
-          error: !!validationErrors?.lower_limit,
-          helperText: validationErrors?.lower_limit,
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              lower_limit: undefined,
-            }),
-        },
-      },
-
-      {
-        accessorKey: 'unit',
-        header: 'Unit',
-        size: 120,
-        editVariant: 'select',
-        editSelectOptions: units,
-        muiEditTextFieldProps: ({ row, table }) => ({
-          select: true,
-          required: true,
-          error: !!validationErrors?.unit,
-          helperText: validationErrors?.unit,
-          SelectProps: {
-            displayEmpty: true,
-            renderValue: (selected) => {
-              if (!selected) {
-                return <em>Select Unit</em>;
-              }
-              return selected;
-            },
-          },
-          onChange: (e) => {
-            const newUnit = e.target.value;
-            const rowId = row?.id || 'creating';
-            setSelectedUnit(prev => ({ ...prev, [rowId]: newUnit }));
-            // Update the row value
-            row._valuesCache.unit = newUnit;
-            // Reset quantity when unit changes
-            if (newUnit === 'container') {
-              row._valuesCache.quantity = '';
+    {
+      accessorKey: 'property_id',
+      header: 'Property',
+      size: 200,
+      editVariant: 'select',
+      editSelectOptions: properties.map(prop => ({ value: prop.id, label: prop.name })),
+      muiEditTextFieldProps: {
+        select: true,
+        required: true,
+        error: !!validationErrors?.property_id,
+        helperText: validationErrors?.property_id,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Property</em>;
             }
+            const property = properties.find(p => p.id === selected);
+            return property ? property.name : selected;
           },
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              unit: undefined,
-            }),
-        }),
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            property_id: undefined,
+          }),
+        children: [
+          <MenuItem key="empty-placeholder" value="">
+            <em>Select Property</em>
+          </MenuItem>,
+          ...properties.map((prop) => (
+            <MenuItem key={prop.id} value={prop.id}>
+              {prop.name}
+            </MenuItem>
+          ))
+        ],
       },
+      Cell: ({ row }) => row.original.property_name || '-',
+    },
 
-      {
-        accessorKey: 'quantity',
-        header: 'Quantity',
-        size: 120,
-        muiEditTextFieldProps: ({ row, table }) => {
+    {
+      accessorKey: 'located_at',
+      header: 'Located At',
+      size: 200,
+      muiEditTextFieldProps: {
+        error: !!validationErrors?.located_at,
+        helperText: validationErrors?.located_at,
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            located_at: undefined,
+          }),
+      },
+    },
+
+    {
+      accessorKey: 'lower_limit',
+      header: 'Lower Limit',
+      size: 120,
+      muiEditTextFieldProps: {
+        type: 'number',
+        inputProps: { min: 0, max: 9999, step: 0.01 },
+        error: !!validationErrors?.lower_limit,
+        helperText: validationErrors?.lower_limit,
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            lower_limit: undefined,
+          }),
+      },
+    },
+
+    {
+      accessorKey: 'unit',
+      header: 'Unit',
+      size: 120,
+      editVariant: 'select',
+      editSelectOptions: units,
+      muiEditTextFieldProps: ({ row, table }) => ({
+        select: true,
+        required: true,
+        error: !!validationErrors?.unit,
+        helperText: validationErrors?.unit,
+        SelectProps: {
+          displayEmpty: true,
+          renderValue: (selected) => {
+            if (!selected) {
+              return <em>Select Unit</em>;
+            }
+            return selected;
+          },
+        },
+        onChange: (e) => {
+          const newUnit = e.target.value;
           const rowId = row?.id || 'creating';
-          const currentUnit = selectedUnit[rowId] || row?.original?.unit || '';
-          const isContainer = currentUnit.toLowerCase() === 'container';
-
-          if (isContainer && Array.isArray(containerOptions)) {
-            return {
-              select: true,
-              required: true,
-              error: !!validationErrors?.quantity,
-              helperText: validationErrors?.quantity,
-              SelectProps: {
-                displayEmpty: true,
-              },
-              children: [
-                <MenuItem key="empty-placeholder" value="">
-                  <em>Select Level</em>
-                </MenuItem>,
-                ...containerOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))
-              ],
-              onFocus: () =>
-                setValidationErrors({
-                  ...validationErrors,
-                  quantity: undefined,
-                }),
-            };
+          setSelectedUnit(prev => ({ ...prev, [rowId]: newUnit }));
+          // Update the row value
+          row._valuesCache.unit = newUnit;
+          // Reset quantity when unit changes
+          if (newUnit === 'container') {
+            row._valuesCache.quantity = '';
           }
+        },
+        onFocus: () =>
+          setValidationErrors({
+            ...validationErrors,
+            unit: undefined,
+          }),
+      }),
+    },
 
-          const isPiece = currentUnit.toLowerCase() === 'piece';
-          const isKgOrLiters = currentUnit.toLowerCase() === 'kg' || currentUnit.toLowerCase() === 'liters' || currentUnit.toLowerCase() === 'l';
+    {
+      accessorKey: 'quantity',
+      header: 'Quantity',
+      size: 120,
+      muiEditTextFieldProps: ({ row, table }) => {
+        const rowId = row?.id || 'creating';
+        const currentUnit = selectedUnit[rowId] || row?.original?.unit || '';
+        const isContainer = currentUnit.toLowerCase() === 'container';
 
+        if (isContainer && Array.isArray(containerOptions)) {
           return {
-            type: 'number',
+            select: true,
             required: true,
             error: !!validationErrors?.quantity,
             helperText: validationErrors?.quantity,
-            inputProps: {
-              min: 0,
-              max: 9999,
-              step: isPiece ? 1 : (isKgOrLiters ? 0.1 : 0.01),
+            SelectProps: {
+              displayEmpty: true,
             },
+            children: [
+              <MenuItem key="empty-placeholder" value="">
+                <em>Select Level</em>
+              </MenuItem>,
+              ...containerOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))
+            ],
             onFocus: () =>
               setValidationErrors({
                 ...validationErrors,
                 quantity: undefined,
               }),
           };
-        },
-      },
+        }
 
-    ],
+        const isPiece = currentUnit.toLowerCase() === 'piece';
+        const isKgOrLiters = currentUnit.toLowerCase() === 'kg' || currentUnit.toLowerCase() === 'liters' || currentUnit.toLowerCase() === 'l';
+
+        return {
+          type: 'number',
+          required: true,
+          error: !!validationErrors?.quantity,
+          helperText: validationErrors?.quantity,
+          inputProps: {
+            min: 0,
+            max: 9999,
+            step: isPiece ? 1 : (isKgOrLiters ? 0.1 : 0.01),
+          },
+          onFocus: () =>
+            setValidationErrors({
+              ...validationErrors,
+              quantity: undefined,
+            }),
+        };
+      },
+    },
+
+  ],
     [validationErrors, properties, categories, units, palette, imageFile, imagePreview]
   );
 
@@ -633,10 +674,14 @@ const All_Inventory = () => {
         <MaterialReactTable
           columns={columns}
           data={inventoryData}
+          rowCount={inventoryPagination?.total || 0}
           state={{
             isLoading: loading,
-            columnVisibility: { id: false }
+            columnVisibility: { id: false },
+            pagination: pagination,
           }}
+          onPaginationChange={setPagination}
+          manualPagination
           editDisplayMode="row"
           enableEditing
           enableExpandAll={false}
@@ -883,7 +928,7 @@ const All_Inventory = () => {
           title="Delete Inventory Item"
           message="Are you sure you want to delete this inventory item? This action cannot be undone."
         />
-        
+
       </Container>
     </React.Fragment>
   );

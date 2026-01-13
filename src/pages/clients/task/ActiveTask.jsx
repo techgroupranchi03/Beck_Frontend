@@ -1,22 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Box, Chip, MenuItem, useTheme, Checkbox, Tooltip, IconButton, Button, Autocomplete, TextField, Icon, Avatar } from '@mui/material'
-import { MaterialReactTable } from 'material-react-table'
-import { Delete, Edit as EditIcon } from '@mui/icons-material'
+import { MaterialReactTable, createRow } from 'material-react-table'
+import { Delete, Edit as EditIcon, FileCopy } from '@mui/icons-material'
 import { formatDate } from '../../../utils/dateFormat';
-import { statusOpts, taskTypes } from '../../../constant';
+import { statusOpts, taskTypes, taskTypesOptions } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import ViewMoreText from '../../../resuable_components/ViewMore';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import ImageViewer from '../../../resuable_components/ImageViewer';
-import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
+// import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
 
 const ActiveTask = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
-  const [showcompletionDialog, setShowCompletionDialog] = useState(false);
-  const [pendingTask, setPendingTask] = useState(null);
+  // const [showcompletionDialog, setShowCompletionDialog] = useState(false);
+  // const [pendingTask, setPendingTask] = useState(null);
 
   const {
     allTasksData,
@@ -28,7 +28,9 @@ const ActiveTask = () => {
     createActiveTask,
     updateActiveTaskData,
     fetchInventoryByProperty,
-    updateTaskCompletionStatus,
+    allTaskPagination,
+    fetchAllTasks
+    // updateTaskCompletionStatus,
   } = useTaskContext();
 
   const [validationErrors, setValidationErrors] = useState({});
@@ -37,7 +39,17 @@ const ActiveTask = () => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [openImage, setOpenImage] = useState(false);
-  const [tableRef, setTableRef] = useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 6,
+  })
+  // const [tableRef, setTableRef] = useState(null);
+
+  // hanlde pagination change
+  useEffect(() => {
+    const page = pagination.pageIndex + 1;
+    fetchAllTasks({}, "", page);
+  }, [pagination.pageIndex]);
 
   const columns = useMemo(() => [
 
@@ -219,7 +231,7 @@ const ActiveTask = () => {
       header: 'Task Type',
       size: 130,
       editVariant: 'select',
-      editSelectOptions: taskTypes,
+      editSelectOptions: taskTypesOptions.map(type => ({ value: type.value, label: type.label })),
       muiEditTextFieldProps: {
         select: true,
         required: true,
@@ -231,6 +243,16 @@ const ActiveTask = () => {
             if (!selected) {
               return <em>Select Task Type</em>;
             }
+            const taskType = taskTypesOptions.find(t => t.value === selected);
+            if (taskType) {
+              const IconComponent = taskType.icon;
+              return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconComponent sx={{ fontSize: 18, color: palette.text.secondary }} />
+                  {taskType.label}
+                </Box>
+              );
+            }
             return selected;
           },
         },
@@ -239,36 +261,39 @@ const ActiveTask = () => {
             ...validationErrors,
             task_type: undefined,
           }),
-        children: [
-          <MenuItem key="empty-placeholder" value="">
-            <em>Select Task Type</em>
-          </MenuItem>,
-          ...taskTypes.map((type) => (
-            <MenuItem key={type} value={type}>
-              {type}
+        children: taskTypesOptions.map((type) => {
+          const IconComponent = type.icon;
+          return (
+            <MenuItem key={type.value} value={type.value}>
+              {IconComponent && <IconComponent sx={{ fontSize: 16, mr: 1 }} />}
+              {type.label}
             </MenuItem>
-          ))
-        ],
+          );
+        }),
       },
       Cell: ({ cell }) => {
         const value = cell.getValue()
+        const taskType = taskTypesOptions.find(t => t.value === value);
+        const IconComponent = taskType?.icon;
         return (
           <Box
             sx={{
-              display: 'inline-block',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 0.5,
               px: 1.5,
-              py: 0.6,
+              height: 24,
               borderRadius: 10,
               bgcolor: palette.taskType?.[value] || palette.grey[500],
               color: 'white',
               fontSize: '0.75rem',
-              fontWeight: 600,
-              textAlign: 'center',
               textTransform: 'capitalize',
               borderRadius: 10,
             }}
           >
-            {value}
+            {IconComponent && <IconComponent sx={{ fontSize: 16 }} />}
+            {taskType?.label}
           </Box>
         )
       },
@@ -380,7 +405,7 @@ const ActiveTask = () => {
             }}
           />
 
-        
+
 
 
         );
@@ -515,13 +540,13 @@ const ActiveTask = () => {
       table.setEditingRow(null)
       setValidationErrors({})
     } catch (error) {
-      if (error.message === 'Completion photo is required for this task') {
-        setPendingTask(row.original);
-        setTableRef(table);
-        setShowCompletionDialog(true);
-        table.setEditingRow(null); // Close editing mode
-        return;
-      }
+      // if (error.message === 'Completion photo is required for this task') {
+      //   setPendingTask(row.original);
+      //   setTableRef(table);
+      //   setShowCompletionDialog(true);
+      //   table.setEditingRow(null);
+      //   return;
+      // }
       if (error.errors && Array.isArray(error.errors)) {
         const apiErrors = {}
         error.errors.forEach((err) => {
@@ -563,9 +588,13 @@ const ActiveTask = () => {
         <MaterialReactTable
           columns={columns}
           data={allTasksData?.active_tasks || []}
-          initialState={{
+          rowCount={allTaskPagination?.total || 0}
+          state={{
             isLoading: loading,
+            pagination: pagination,
           }}
+          onPaginationChange={setPagination}
+          manualPagination
           editDisplayMode="row"
           createDisplayMode="row"
           enableEditing={true}
@@ -602,7 +631,24 @@ const ActiveTask = () => {
                   <Delete fontSize="small" />
                 </IconButton>
               </Tooltip>
+              <Tooltip title="Duplicate">
+                <IconButton
+                  size="small"
+                  sx={{ color: palette.primary.light }}
+                  onClick={() => {
+                    const duplicatedData = { ...row.original };
+                    delete duplicatedData.id; 
+                    // Create a proper MRT row with pre-filled data
+                    const newCreatingRow = createRow(table, duplicatedData);
+                    // Open the creation row pre-filled
+                    table.setCreatingRow(newCreatingRow);
+                  }}
+                >
+                  <FileCopy fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Box>
+
           )}
           renderTopToolbarCustomActions={({ table }) => (
             <Button
@@ -621,6 +667,7 @@ const ActiveTask = () => {
           )}
           enableColumnFilters={false}
           enableSorting={true}
+          enablePagination
           enableDensityToggle={false}
           enableHiding={false}
           muiTablePaperProps={{
@@ -638,7 +685,7 @@ const ActiveTask = () => {
             },
           }}
         />
-        
+
       </Box>
 
       <ConfirmationDialog
@@ -655,12 +702,12 @@ const ActiveTask = () => {
         image={selectedImage}
       />
 
-      <TaskCompletionDialog
+      {/* <TaskCompletionDialog
         open={showcompletionDialog}
         onClose={handleCompletionDialogClose}
         task={pendingTask}
         updateTaskCompletionStatus={updateTaskCompletionStatus}
-      />
+      /> */}
 
     </React.Fragment>
   )

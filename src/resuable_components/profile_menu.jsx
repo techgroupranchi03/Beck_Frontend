@@ -55,18 +55,18 @@ export default function ProfileMenu() {
         setAnchorEl(null);
         logout();
     };
-    
+
     const handleMenuOpen = (event) => {
         setAnchorEl(event.currentTarget);
     };
-    
+
     const handleMenuClose = () => {
         setAnchorEl(null);
     };
 
     const handleSwitchAccount = async (clientId) => {
         if (switchingAccount) return;
-        
+
         setSwitchingAccount(true);
         try {
             const response = await switchTeamAccount(clientId);
@@ -136,7 +136,7 @@ export default function ProfileMenu() {
             >
                 {getInitials()}
             </Box>
-           
+
 
 
             {/* Profile dropdown menu */}
@@ -244,7 +244,7 @@ export default function ProfileMenu() {
                                                 handleSwitchAccount(account.client_id);
                                             }
                                         }}
-                                        disabled={!!account.is_current_client || switchingAccount}
+                                        disabled={!!account.is_current_client || !account.is_active_subscription || switchingAccount}
                                         sx={{
                                             display: 'flex',
                                             flexDirection: 'column',
@@ -274,6 +274,14 @@ export default function ProfileMenu() {
                                                 >
                                                     Role: {account.role}
                                                 </Typography>
+                                                {!account.is_active_subscription && (
+                                                    <Chip
+                                                        label="Plan Expired"
+                                                        size="small"
+                                                        color="error"
+                                                        sx={{ mt: 0.5, height: 16, fontSize: 10 }}
+                                                    />
+                                                )}
                                             </Box>
                                             {!!account.is_current_client && (
                                                 <CheckCircle
@@ -281,6 +289,8 @@ export default function ProfileMenu() {
                                                     sx={{ color: theme.palette.success.main }}
                                                 />
                                             )}
+
+
                                         </Stack>
                                     </MenuItem>
                                 ))}
@@ -296,38 +306,24 @@ export default function ProfileMenu() {
                         <Divider sx={{ my: 1 }} />
                     </>
                 )}
-
-                {/* Logout */}
-                <MenuItem
+                <Button
+                    variant="contained"
+                    fullWidth
                     onClick={handleLogout}
+                    disabled={switchingAccount}
+                    startIcon={<Logout />}
+                    disableElevation
                     sx={{
-                        mt: 1,
-                        textTransform: "none",
-                        fontWeight: 600,
+                        borderRadius: 10,
                         bgcolor: theme.palette.primary.main,
-                        color: theme.palette.custom.cream,
-                        borderRadius: 2,
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        "&:hover": { bgcolor: theme.palette.secondary.main },
+                        elevation: 0,
+                        '&:hover': {
+                            bgcolor: theme.palette.secondary.main
+                        }
                     }}
                 >
-                    <ListItemIcon
-                        sx={{
-                            color: theme.palette.custom.cream,
-                        }}
-                    >
-                        <Logout fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText
-                        primary="Logout"
-                        primaryTypographyProps={{
-                            fontWeight: 600,
-                            color: theme.palette.custom.cream,
-                        }}
-                    />
-                </MenuItem>
+                    Log out
+                </Button>
             </Menu>
 
         </Box>

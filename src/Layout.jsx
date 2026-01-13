@@ -38,7 +38,7 @@ const getPageTitle = (pathname) => {
     if (path.includes("task")) return "Task Management";
     return "Team Portal";
   }
-  return "Beck Holiday Homes";
+  return "TaskBnb";
 };
 
 export default function Layout({ role }) {
@@ -48,7 +48,8 @@ export default function Layout({ role }) {
   const pageTitle = getPageTitle(location.pathname);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  // const [drawerOpen, setDrawerOpen] = useState(!isMobile);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
 
   // Auto-close drawer on mobile when route changes
@@ -168,7 +169,7 @@ export default function Layout({ role }) {
         >
           <Avatar
             src="/images/logo.png"
-            alt="Beck Holiday Homes"
+            alt="TaskBnb Logo"
             sx={{
               width: isMobile ? 40 : 45,
               height: isMobile ? 40 : 45,
@@ -184,7 +185,7 @@ export default function Layout({ role }) {
                 fontSize: isMobile ? '0.875rem' : '1rem'
               }}
             >
-              Beck Holiday Homes
+              TaskBnb
             </Typography>
           )}
         </Stack>
@@ -237,7 +238,7 @@ export default function Layout({ role }) {
           </Stack>
         </Box>
       </Drawer>
-      
+
       <Box
         flex={1}
         display="flex"
@@ -312,7 +313,7 @@ export default function Layout({ role }) {
         >
           <Outlet />
         </Box>
-        
+
       </Box>
 
     </Box>

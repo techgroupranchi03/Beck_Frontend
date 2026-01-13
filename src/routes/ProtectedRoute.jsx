@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { trackAuthEvent } from '../utils/tracking';
 
 /**
  * ProtectedRoute Component
@@ -13,10 +14,10 @@ import { Box, CircularProgress, Typography } from '@mui/material';
  * - requiredRole: (optional) Specific role required (e.g., 'admin', 'client')
  * - redirectTo: (optional) Custom redirect path if not authenticated
  */
-const ProtectedRoute = ({ 
-  children, 
+const ProtectedRoute = ({
+  children,
   requiredRole = null,
-  redirectTo = null 
+  redirectTo = null
 }) => {
   const { user, loading, isAuthenticated, hasRole } = useAuth();
   const location = useLocation();
@@ -44,21 +45,26 @@ const ProtectedRoute = ({
 
   // Check if user is authenticated
   if (!isAuthenticated()) {
+
+    // Track unauthorized access attempt
+    trackAuthEvent('Unauthorized Access', requiredRole || 'unknown', 'failed', 'Not authenticated');
+
+
     // Determine redirect path based on required role
-    const loginPath = requiredRole === 'admin' 
-      ? '/admin/login' 
+    const loginPath = requiredRole === 'admin'
+      ? '/admin/login'
       : requiredRole === 'client'
-      ? '/clients/login'
-      : requiredRole === 'team'
-      ? '/teams/login'
-      : redirectTo || '/clients/login';
+        ? '/clients/login'
+        : requiredRole === 'team'
+          ? '/teams/login'
+          : redirectTo || '/clients/login';
 
     // Redirect to login, preserving the attempted location
     return (
-      <Navigate 
-        to={loginPath} 
-        state={{ from: location.pathname }} 
-        replace 
+      <Navigate
+        to={loginPath}
+        state={{ from: location.pathname }}
+        replace
       />
     );
   }
@@ -66,14 +72,22 @@ const ProtectedRoute = ({
   // Check if specific role is required
   if (requiredRole && !hasRole(requiredRole)) {
     // User is authenticated but doesn't have required role
+    // Track role mismatch
+    trackAuthEvent('Unauthorized Role', requiredRole, 'failed',
+      `User role: ${user?.role}, Required: ${requiredRole}`);
     // Redirect to their appropriate dashboard
-    const dashboardPath = user.role === 'admin' 
-      ? '/admin/dashboard' 
+    const dashboardPath = user.role === 'admin'
+      ? '/admin/dashboard'
       : user.role === 'team'
-      ? '/teams/dashboard'
-      : '/clients/dashboard';
-    
+        ? '/teams/dashboard'
+        : '/clients/dashboard';
+
     return <Navigate to={dashboardPath} replace />;
+  }
+
+  // Track successful authorized access
+  if (user && requiredRole) {
+    trackAuthEvent('Authorized Access', requiredRole, 'success');
   }
 
   // User is authenticated and has required role (if specified)

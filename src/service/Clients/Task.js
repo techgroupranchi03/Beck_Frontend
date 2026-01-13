@@ -271,3 +271,160 @@ export const updateClientTaskStatusCompleted = async (taskId, formData) => {
         return Promise.reject(error.response?.data)
     }
 };
+
+
+
+export const getClientGroupTasksById = async (groupTaskId) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/client/groups/${groupTaskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client group task fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching group task failed' });
+    }
+};
+
+
+export const createClientGroupTask = async (groupTaskData) => {
+    const token = getClientToken();
+    console.log('Creating group task with data:', groupTaskData);
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/client/groups`,
+            groupTaskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client group task creation error:', error);
+        return Promise.reject(error.response?.data || { message: 'Group task creation failed' });
+    }
+};
+
+export const updateClientGroupTask = async (groupTaskId, groupTaskData) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/groups/${groupTaskId}`,
+            groupTaskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client group task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Group task update failed' });
+    }
+};
+
+export const deleteClientGroupTask = async (groupTaskId) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.delete(
+            `${BASE_URL}/client/groups/${groupTaskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client group task deletion error:', error);
+        return Promise.reject(error.response?.data || { message: 'Group task deletion failed' });
+    }
+};
+
+export const createClientSubGroupTask = async (groupId, subGroupTaskData) => {
+    const token = getClientToken();
+    console.log('Creating sub-group task with data:', groupId, subGroupTaskData);
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/client/groups/${groupId}/tasks`,
+            subGroupTaskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client sub-group task creation error:', error);
+        return Promise.reject(error.response?.data || { message: 'Sub-group task creation failed' });
+    }
+};
+
+export const updateClientSubGroupTask = async (groupId, subGroupTaskId, subGroupTaskData) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/groups/${groupId}/tasks/${subGroupTaskId}`,
+            subGroupTaskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client sub-group task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Sub-group task update failed' });
+    }
+};
+
+export const deleteClientSubGroupTask = async (groupId, subGroupTaskId) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.delete(
+            `${BASE_URL}/client/groups/${groupId}/tasks/${subGroupTaskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client sub-group task deletion error:', error);
+        return Promise.reject(error.response?.data || { message: 'Sub-group task deletion failed' });
+    }
+};
+
+
+export const addExistingTaskInsideGroupTask = async (groupId, taskData) => {
+    const token = getClientToken();
+    console.log('Adding existing task to group with data:', groupId, taskData);
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/client/groups/${groupId}/tasks/bulk`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client existing task addition error:', error);
+        return Promise.reject(error.response?.data || { message: 'Existing task addition failed' });
+    }
+}; 
+

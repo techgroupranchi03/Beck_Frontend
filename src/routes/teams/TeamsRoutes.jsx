@@ -8,6 +8,7 @@ import TaskManagement from '../../pages/clients/task/TaskManagement'
 import InventoryManagement from '../../pages/clients/inventory/InventoryManagement'
 import PropertyManagement from '../../pages/clients/property/PropertyManagement'
 import TeamManagement from '../../pages/clients/team/TeamManagement'
+import GroupTaskDetails from '../../pages/clients/task/GroupTaskDetails'
 
 const TeamsRoutes = () => {
     return (
@@ -27,7 +28,8 @@ const TeamsRoutes = () => {
                 {/* nested routes inside Layout */}
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<TeamsDashboard />} />
-                <Route path="task-management/*" element={<TaskManagement />} />
+                <Route path="task-management" element={<TaskManagement />} />
+                <Route path="task-management/:groupTaskName" element={<GroupTaskDetails />} />
                 <Route path="inventory-management" element={<InventoryManagement />} />
                 <Route path="property-management" element={<PropertyManagement />} />
                 <Route path="team-management" element={<TeamManagement />} />

@@ -12,13 +12,20 @@ import {
     getAllClientTasks,
     deleteOneTime,
     deleteRecurring,
-    updateClientTaskStatusCompleted
+    updateClientTaskStatusCompleted,
+    getClientGroupTasksById,
+    createClientGroupTask,
+    updateClientGroupTask,
+    deleteClientGroupTask,
+    createClientSubGroupTask,
+    updateClientSubGroupTask,
+    deleteClientSubGroupTask
 } from '../../../service/Clients/Task';
 import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
 import { getTeamMembers } from '../../../service/Clients/Team';
 import { useAuth } from '../../../context/AuthContext';
-import { createTeamActiveTask, createTeamTask, deleteTeamOneTimeTask, deleteTeamRecurringTask, getActiveTasks, getAllTeamTasks, getPlannerTasks, getTeamInventoryByPropertyId, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
+import { createTeamActiveTask, createTeamTask, deleteTeamOneTimeTask, deleteTeamRecurringTask, getActiveTasks, getAllTeamTasks, getPlannerTasks, getTeamGrooupTasksById, getTeamInventoryByPropertyId, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
 import { getTeamProperties } from '../../../service/Teams/Team_Properties';
 
 export const useTaskData = () => {
@@ -34,6 +41,7 @@ export const useTaskData = () => {
     const [error, setError] = useState(null);
     const [taskPlannerPagination, setTaskPlannerPagination] = useState({});
     const [activeTasksPagination, setActiveTasksPagination] = useState({});
+    // console.log("useTaskData initialized for user:", user);
     const isTeamUser = user?.role === 'team';
 
     const fetchAllTasks = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
@@ -47,17 +55,28 @@ export const useTaskData = () => {
                 : await getAllClientTasks(filters, searchText, page);
             if (append) {
                 setAllTasksData((prev) => {
-                    if (prev && (prev.active_tasks || prev.recurring_tasks)) {
+                    if (prev && (prev.active_tasks || prev.recurring_tasks || prev.task_groups)) {
                         const newData = res.data || {};
                         return {
                             active_tasks: [...(prev.active_tasks || []), ...(newData.active_tasks || [])],
-                            recurring_tasks: [...(prev.recurring_tasks || []), ...(newData.recurring_tasks || [])]
+                            recurring_tasks: [...(prev.recurring_tasks || []), ...(newData.recurring_tasks || [])],
+                            task_groups: [...(prev.task_groups || []), ...(newData.task_groups || [])]
                         };
                     }
                     return res.data || [];
                 });
             } else {
-                setAllTasksData(res.data || []);
+                // Ensure we always set the complete data structure to avoid stale data
+                const responseData = res.data || {};
+                if (responseData.active_tasks || responseData.recurring_tasks || responseData.task_groups) {
+                    setAllTasksData({
+                        active_tasks: responseData.active_tasks || [],
+                        recurring_tasks: responseData.recurring_tasks || [],
+                        task_groups: responseData.task_groups || []
+                    });
+                } else {
+                    setAllTasksData(responseData);
+                }
             }
 
             setAllTaskPagination({
@@ -202,6 +221,19 @@ export const useTaskData = () => {
         }
     }, []);
 
+    const fetchGroupTasksByGroupId = useCallback(async (groupId) => {
+        try {
+            const res = isTeamUser
+                ? await getTeamGrooupTasksById(groupId)
+                : await getClientGroupTasksById(groupId);
+            return res.data || [];
+        } catch (err) {
+            console.error('Error fetching group tasks by group ID:', err);
+            setError(err);
+            throw err;
+        }
+    }, []);
+
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -213,14 +245,15 @@ export const useTaskData = () => {
                 fetchProperties(),
                 fetchInventoryItems(),
                 fetchTeamMembers(),
-                fetchInventoryByProperty()
+                fetchInventoryByProperty(),
+                // fetchGroupTasksByGroupId()
             ]);
         } catch (err) {
             console.error('Error fetching all data:', err);
         } finally {
             setLoading(false);
         }
-    }, [fetchTaskPlannerData, fetchActiveTasksData, fetchProperties, fetchInventoryItems, fetchTeamMembers, fetchInventoryByProperty, fetchAllTasks]);
+    }, [fetchTaskPlannerData, fetchActiveTasksData, fetchProperties, fetchInventoryItems, fetchTeamMembers, fetchInventoryByProperty, fetchAllTasks,]);
 
     useEffect(() => {
         fetchAllData();
@@ -412,9 +445,9 @@ export const useTaskData = () => {
     };
 
     const updateTaskCompletionStatus = async (taskId, formData) => {
-        console.log("Updating Task Completion Status for Task ID:", taskId);
+        console.log("Updating Task Completion Status for Task ID:", taskId, formData);
         try {
-            const res =  isTeamUser
+            const res = isTeamUser
                 ? await updateTeamTaskStatusCompleted(taskId, formData)
                 : await updateClientTaskStatusCompleted(taskId, formData);
             return res;
@@ -455,6 +488,93 @@ export const useTaskData = () => {
         }
     };
 
+    const createGroupTask = async (values) => {
+        try {
+            const res = isTeamUser
+                ? await createTeamTask(values)// need to change the api for team group task creation
+                : await createClientGroupTask(values);
+            // After creating group task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error creating group task:', err);
+            throw err;
+        }
+    };
+
+    const updateGroupTask = async (id, values) => {
+        try {
+            const res = isTeamUser
+                ? await updateTeamsTaskPlanner(id, values) // need to change the api for team group task update
+                : await updateClientGroupTask(id, values);
+            // After updating group task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error updating group task:', err);
+            throw err;
+        }
+    };
+    const deleteGroupTask = async (id) => {
+        try {
+            const res = isTeamUser
+                ? await deleteTeamRecurringTask(id) // need to change the api for team group task deletion
+                : await deleteClientGroupTask(id);
+            // After deleting group task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error deleting group task:', err);
+            throw err;
+        }
+    };
+
+    const createSubTaskInsideGroup = async (groupId, values) => {
+        console.log("Creating Sub Task inside Group ID:", groupId, "with values:", values);
+        try {
+            const res = isTeamUser
+                ? await createTeamTask(groupId, values) // need to change the api for team sub task creation inside group
+                : await createClientSubGroupTask(groupId, values);
+            // After creating sub task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error creating sub task inside group:', err);
+            throw err;
+        }
+    };
+
+    const updateSubTaskInsideGroup = async (groupId ,subGroupTaskId, values) => {
+        console.log("Updating Sub Task inside Group ID:", groupId, "Sub Group Task ID:", subGroupTaskId, "with values:", values);
+        try {
+            const res = isTeamUser
+                ? await updateTeamsTaskPlanner(groupId, subGroupTaskId, values) // need to change the api for team sub task update inside group
+                : await updateClientSubGroupTask(groupId, subGroupTaskId, values);
+            // After updating sub task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error updating sub task inside group:', err);
+            throw err;
+        }
+    };
+
+    const deleteSubTaskInsideGroup = async (groupId, subGroupTaskId) => {
+        try {
+            const res = isTeamUser
+                ? await deleteTeamOneTimeTask(groupId, subGroupTaskId) // need to change the api for team sub task deletion inside group
+                : await deleteClientSubGroupTask(groupId, subGroupTaskId);
+            // After deleting sub task, refresh the all tasks data
+            await fetchAllTasks();
+            return res;
+        } catch (err) {
+            console.error('Error deleting sub task inside group:', err);
+            throw err;
+        }
+    };
+
+    
+
     return {
 
         allTasksData,
@@ -476,11 +596,17 @@ export const useTaskData = () => {
         createActiveTask,
         updateTaskPlannerData,
         refreshTaskPlanner,
+        createGroupTask,
+        updateGroupTask,
+        createSubTaskInsideGroup,
+        updateSubTaskInsideGroup,
+        deleteSubTaskInsideGroup,
 
         // completed status update
         updateTaskCompletionStatus,
         deleteOneTimeTask,
         deleteRecurringTask,
+        deleteGroupTask,
 
         // Active Tasks Operations
         updateActiveTaskData,
@@ -492,6 +618,7 @@ export const useTaskData = () => {
         fetchTaskPlannerData,
         fetchActiveTasksData,
         fetchInventoryByProperty,
+        fetchGroupTasksByGroupId,
 
         // General Operations
         refetchAll: fetchAllData,

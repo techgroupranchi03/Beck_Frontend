@@ -21,7 +21,7 @@ import {
     FormLabel,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close';
-import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
+import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, taskTypesOptions } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
@@ -33,7 +33,8 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
 
     const [taskScheduleType, setTaskScheduleType] = useState('one_time');
-    const isEdit = !!task;
+    const isEdit = !!task && !!task.id;
+    const isDuplicate = !!task && !task.id;
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
@@ -66,13 +67,14 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
         update_inventory: 0,
         status: ''
     });
+    
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [inventoryOptions, setInventoryOptions] = useState(inventoryItems || []);
     const [repeatData, setRepeatData] = useState({});
 
     useEffect(() => {
-        if (isEdit && task) {
+        if ((isEdit || isDuplicate) && task) {
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
@@ -97,7 +99,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 setTaskScheduleType('one_time');
             }
 
-            // Parse repeat_on for edit mode
+            // Parse repeat_on for edit/duplicate mode
             try {
                 const repeatOnValue = task.repeat_on;
                 if (repeatOnValue) {
@@ -110,7 +112,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 setRepeatData({});
             }
 
-            // Fetch inventory for the task's property when editing
+            // Fetch inventory for the task's property when editing/duplicating
             if (task.property_id) {
                 fetchInventoryByProperty(task.property_id)
                     .then((data) => setInventoryOptions(data || []))
@@ -139,7 +141,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
             setInventoryOptions(inventoryItems || []);
         }
         setValidationErrors({});
-    }, [task, isEdit, open]);
+    }, [task, isEdit, isDuplicate, open]);
 
     useEffect(() => {
         if (['weekly', 'monthly', 'yearly'].includes(formData.schedule_type)) {
@@ -215,8 +217,10 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                     const recurringPayload = {
                         ...formData,
                         start_date: formData.start_date
+                        
                     };
                     delete recurringPayload.scheduled_date;
+                    delete recurringPayload.status;
                     res = await createTask(recurringPayload);
                 }
                 showSnackbar(res.message, 'success');
@@ -264,7 +268,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
 
     return (
         <>
-        
+
             <Dialog
                 open={open}
                 fullWidth
@@ -273,7 +277,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 TransitionComponent={Transition}
             >
                 <DialogTitle>
-                    {isEdit ? 'Edit Task' : 'Create New Task'}
+                    {isEdit ? 'Edit Task' : isDuplicate ? 'Duplicate Task' : 'Create New Task'}
                     <IconButton
                         aria-label="close"
                         onClick={onClose}
@@ -288,7 +292,9 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
 
                 </DialogTitle>
                 <DialogContent dividers>
+
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
+
                         <Grid size={{ xs: 12 }}>
                             <TextField
                                 label="Title"
@@ -303,7 +309,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                         </Grid>
 
                         <Grid size={{ xs: 12 }}>
-                            
+
                             <TextField
                                 label="Description"
                                 value={formData.description}
@@ -329,13 +335,13 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                     },
                                 }}
                             />
-                            
+
                         </Grid>
 
                         <Grid size={{ xs: 12 }} container spacing={2}>
 
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControl component="fieldset" disabled={isEdit}>
+                                <FormControl component="fieldset" disabled={isEdit && !isDuplicate}>
                                     <FormLabel component="legend">Task Schedule</FormLabel>
                                     <RadioGroup
                                         row
@@ -466,9 +472,9 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                     onChange={handleChange('start_date')}
                                     fullWidth
                                     size="small"
-                                    disabled={isEdit}
+                                    disabled={isEdit && !isDuplicate}
                                     error={!!validationErrors.start_date}
-                                    helperText={validationErrors.start_date || (isEdit ? 'Cannot change start date' : '')}
+                                    helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
                                     InputLabelProps={{
                                         shrink: true,
                                     }}
@@ -486,7 +492,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                     fullWidth
                                     size="small"
                                     error={!!validationErrors.scheduled_date}
-                                    helperText={validationErrors.scheduled_date || (isEdit ? 'Cannot change schedule date' : '')}
+                                    helperText={validationErrors.scheduled_date}
                                     InputLabelProps={{
                                         shrink: true,
                                     }}
@@ -614,9 +620,10 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                 error={!!validationErrors.task_type}
                                 helperText={validationErrors.task_type}
                             >
-                                {taskTypes.map((type) => (
-                                    <MenuItem key={type} value={type} dense>
-                                        {type}
+                                {taskTypesOptions.map((type) => (
+                                    <MenuItem key={type.value} value={type.value} dense>
+                                        <type.icon sx={{ mr: 1, color: 'text.secondary', fontSize: 16 }} />
+                                        {type.label}
                                     </MenuItem>
                                 ))}
                             </TextField>
@@ -720,7 +727,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                             borderRadius: 10,
                         }}
                     >
-                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : 'Create Task')}
+                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Create Task')}
                     </Button>
 
                 </DialogActions>

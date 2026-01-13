@@ -287,7 +287,6 @@ const Teams_login = () => {
 
                 {step === 1 ? (
                     <>
-                        {/* Phone Number Input Step */}
                         {/* Phone Number Field */}
                         <TextField
                             fullWidth
@@ -351,16 +350,24 @@ const Teams_login = () => {
 
                             {accountData?.accounts?.map((account) => (
                                 // use list items for better accessibility
-                                <List key={account.id} disablePadding sx={{ mb: 1 }}>
+                                <List key={account.id} disablePadding 
+                                sx={{
+                                     mb: 1,
+                                     opacity: account.is_active_subscription === false ? 0.5 : 1,
+                                     }}
+                                >
                                     <ListItem
                                         button
-                                        onClick={() => !loading && handleAccountSelection(account)}
-                                        disabled={loading}
+                                        onClick={
+                                            () => !loading && account.is_active_subscription !== false && handleAccountSelection(account)
+                                        }
+                                        // disabled={loading || account.is_active_subscription === false}
                                         sx={{
                                             border: `2px solid ${theme.palette.divider}`,
                                             borderRadius: 2,
+                                            cursor: account.is_active_subscription === false ? 'not-allowed' : 'pointer',
                                             '&:hover': {
-                                                borderColor: theme.palette.primary.main,
+                                                borderColor: account.is_active_subscription === false ? theme.palette.divider : theme.palette.primary.main,
                                                 backgroundColor: theme.palette.action.hover,
                                             },
                                         }}
@@ -383,6 +390,11 @@ const Teams_login = () => {
                                                     <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
                                                         Role: {account.role}
                                                     </Typography>
+                                                    {account.is_active_subscription === false && (
+                                                        <Typography variant="body2" sx={{ color: "error.main",}}>
+                                                            Plan Expired
+                                                        </Typography>
+                                                    )}
 
                                                 </>
                                             }

@@ -15,6 +15,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { adminLogin } from "../../service/Admin/Admin_auth";
 import { useAuth } from "../../context/AuthContext";
+import { trackAuthEvent, trackFormSubmit } from '../../utils/tracking';
 
 const Admin_login = () => {
     const theme = useTheme();
@@ -41,6 +42,9 @@ const Admin_login = () => {
         setError("");
         setLoading(true);
 
+        // Track login attempt start
+        await trackFormSubmit('Admin Login Form', true);
+
         try {
             // Call login API
             const response = await adminLogin({ username, password });
@@ -48,6 +52,8 @@ const Admin_login = () => {
 
             if (!token) {
                 setError("Invalid response from server. Token not found.");
+                await trackFormSubmit('Admin Login Form', false, 'Token not found');
+                await trackAuthEvent('Login', 'admin', 'failed', 'Token not found');
                 setLoading(false);
                 return;
             }
@@ -57,11 +63,18 @@ const Admin_login = () => {
             const success = await login(token, 'admin');
 
             if (success) {
+                // Track successful login
+                await trackAuthEvent('Login', 'admin', 'success');
                 const from = location.state?.from || '/admin/dashboard';
                 navigate(from, { replace: true });
+            } else {
+                await trackAuthEvent('Login', 'admin', 'failed', 'Auth context login failed');
             }
         } catch (error) {
-             if (error.errors && Array.isArray(error.errors)) {
+            // Track failed login
+            await trackAuthEvent('Login', 'admin', 'failed', error.message || 'Unknown error');
+            await trackFormSubmit('Admin Login Form', false, error.message);
+            if (error.errors && Array.isArray(error.errors)) {
                 const apiErrors = {}
                 error.errors.forEach((err) => {
                     Object.keys(err).forEach((key) => {
@@ -74,6 +87,12 @@ const Admin_login = () => {
             setLoading(false);
         }
     };
+    // Add page view tracking in useEffect:
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            trackAuthEvent('Page View', 'admin', 'success', 'Login page viewed');
+        }
+    }, [isAuthenticated]);
 
     // Handle Enter key press
     const handleKeyPress = (e) => {

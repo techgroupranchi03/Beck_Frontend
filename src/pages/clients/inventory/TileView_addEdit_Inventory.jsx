@@ -1,7 +1,7 @@
 import { Close, Inventory, CloudUpload, ExpandMore } from '@mui/icons-material';
 import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Accordion, AccordionSummary, AccordionDetails, Checkbox, FormControlLabel, Radio, RadioGroup, FormLabel } from '@mui/material'
 import React, { useState, useEffect } from 'react'
-import { categories, taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
+import { categories, taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, categoriess, taskTypesOptions } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 
@@ -176,6 +176,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     }, [taskScheduleType, taskFormData.task_schedule_type]);
 
+
     useEffect(() => {
         if (['daily', 'weekly', 'monthly', 'yearly'].includes(taskFormData.task_schedule_type)) {
             setTaskFormData(prev => ({
@@ -184,6 +185,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             }));
         }
     }, [repeatData, taskFormData.task_schedule_type]);
+
 
     const handleCreateUpdate = async () => {
         try {
@@ -279,6 +281,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         }
     };
 
+
     return (
         <Dialog
             open={open}
@@ -305,7 +308,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
 
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 1 }}>
-           
+
                     <Grid size={{ xs: 12, }}>
                         <TextField
                             label="Inventory Name"
@@ -334,9 +337,10 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 onChange={(e) => handleChange('category', e.target.value)}
                                 fullWidth
                             >
-                                {categories.map((cat) => (
-                                    <MenuItem key={cat} value={cat}>
-                                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                {categoriess.map((cat) => (
+                                    <MenuItem key={cat.value} value={cat.value} dense>
+                                        <cat.icon sx={{ mr: 1, color: palette.text.secondary, fontSize: 16 }} />
+                                        {cat.label}
                                     </MenuItem>
                                 ))}
                             </Select>
@@ -356,7 +360,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             value={properties.find(p => p.id === formData.property_id) || null}
                             renderOption={(props, option) => (
                                 <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                                        {option.name}</span>
                                     {(option.property_image_url) && (
                                         <img
                                             src={option.property_image_url}
@@ -393,7 +398,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                             fullWidth
                         />
                     </Grid>
-                    
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Lower Limit"
@@ -516,23 +521,23 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     </IconButton>
                                 </Box>
                             )}
-                           
-                                <Button
-                                    variant="outlined"
-                                    component="label"
-                                    startIcon={<CloudUpload />}
-                                    sx={{ textTransform: 'none' }}
-                                >
-                                    Upload Image
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        hidden
-                                        name="inventory_image"
-                                        onChange={handleImageChange}
-                                    />
-                                </Button>
-                        
+
+                            <Button
+                                variant="outlined"
+                                component="label"
+                                startIcon={<CloudUpload />}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Upload Image
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    name="inventory_image"
+                                    onChange={handleImageChange}
+                                />
+                            </Button>
+
 
 
 
@@ -557,7 +562,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         </AccordionSummary>
                         <AccordionDetails>
                             <Grid container spacing={2}>
-                              
+
                                 <Grid size={{ xs: 12 }}>
                                     <TextField
                                         label="Task Title"
@@ -577,13 +582,28 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         label="Task Description"
                                         variant="outlined"
                                         size='small'
+                                        fullWidth
                                         multiline
                                         rows={3}
                                         value={taskFormData.task_description}
                                         onChange={(e) => handleTaskChange('task_description', e.target.value)}
                                         error={!!validationErrors?.task_description}
-                                        helperText={validationErrors?.task_description}
-                                        fullWidth
+                                        inputProps={{ maxLength: 500 }}
+                                        helperText={
+                                            <>
+                                                <span>{validationErrors.task_description}</span>
+                                                <span>{taskFormData.task_description.length}/500</span>
+                                            </>
+                                        }
+                                        slotProps={{
+                                            formHelperText: {
+                                                sx: {
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                },
+                                            },
+                                        }}
+
                                     />
                                 </Grid>
 
@@ -650,9 +670,10 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         fullWidth
                                         required
                                     >
-                                        {taskTypes.map((type) => (
-                                            <MenuItem key={type} value={type} dense>
-                                                {type}
+                                        {taskTypesOptions.map((type) => (
+                                            <MenuItem key={type.value} value={type.value} dense>
+                                                <type.icon sx={{ mr: 1, color: 'text.secondary', fontSize: 16 }} />
+                                                {type.label}
                                             </MenuItem>
                                         ))}
                                     </TextField>
@@ -671,7 +692,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         required
                                     >
                                         {teamMembers.map((member) => (
-                                            <MenuItem key={member.id} value={member.id} dense>
+                                            <MenuItem key={member.id} value={member.id} dense sx={{ textTransform: 'capitalize' }}>
                                                 {member.name}
                                             </MenuItem>
                                         ))}
@@ -856,7 +877,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
 
 
             </DialogContent>
-            
+
             <DialogActions sx={{ px: 2, py: 2 }}>
                 <Button
                     variant="text"

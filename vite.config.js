@@ -6,6 +6,11 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 7001,
-    strictPort: true
+    strictPort: true,
+    allowedHosts: [
+      'taskbnb.in',
+      'www.taskbnb.in',
+      'api.taskbnb.in'
+    ]
   }
 });

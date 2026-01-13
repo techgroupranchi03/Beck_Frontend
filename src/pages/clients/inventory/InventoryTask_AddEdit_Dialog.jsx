@@ -21,7 +21,7 @@ import {
     FormLabel,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close';
-import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
+import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, taskTypesOptions } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
@@ -31,7 +31,8 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 });
 
 const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
-    const isEdit = Boolean(task);
+    const isEdit = !!task && !!task.id;
+    const isDuplicate = !!task && !task.id;
     const [taskScheduleType, setTaskScheduleType] = useState('one_time');
     const theme = useTheme();
     const { palette } = theme;
@@ -68,7 +69,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
     const [repeatData, setRepeatData] = useState({});
 
     useEffect(() => {
-        if (isEdit && task) {
+        if ((isEdit || isDuplicate) && task) {
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
@@ -93,7 +94,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                 setTaskScheduleType('one_time');
             }
 
-            // Parse repeat_on for edit mode
+            // Parse repeat_on for edit/duplicate mode
             try {
                 const repeatOnValue = task.repeat_on;
                 if (repeatOnValue) {
@@ -126,7 +127,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
             setTaskScheduleType('one_time');
         }
         setValidationErrors({});
-    }, [task, isEdit, open, inventoryId, inventoryData]);
+    }, [task, isEdit, isDuplicate, open, inventoryId, inventoryData]);
 
     useEffect(() => {
         if (formData.schedule_type && formData.schedule_type !== 'one_time') {
@@ -194,11 +195,19 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                     const oneTimePayload = {
                         ...formData,
                         schedule_type: 'one_time',
-                        repeat_on: '{}'
+                        repeat_on: '{}',
+                        start_date: formData.scheduled_date || formData.start_date
                     };
+                    delete oneTimePayload.scheduled_date;
                     res = await createTask(oneTimePayload);
                 } else {
-                    res = await createTask(formData);
+                    const recurringPayload ={
+                        ...formData,
+                        start_date: formData.start_date || formData.scheduled_date,
+                    };
+                    delete recurringPayload.scheduled_date;
+                    delete recurringPayload.status;
+                    res = await createTask(recurringPayload);
                 }
                 showSnackbar(res.message, 'success');
             }
@@ -252,7 +261,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                 TransitionComponent={Transition}
             >
                 <DialogTitle>
-                    {isEdit ? 'Edit Task' : 'Create New Task'}
+                    {isEdit ? 'Edit Task' : isDuplicate ? 'Duplicate Task' : 'Create New Task'}
                     <IconButton
                         aria-label="close"
                         onClick={onClose}
@@ -295,10 +304,10 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 helperText={validationErrors.description}
                             />
                         </Grid>
- 
+
                         <Grid size={{ xs: 12 }} container spacing={2}>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControl component="fieldset" disabled={isEdit}>
+                                <FormControl component="fieldset" disabled={isEdit && !isDuplicate}>
                                     <FormLabel component="legend">Task Schedule</FormLabel>
                                     <RadioGroup
                                         row
@@ -377,14 +386,14 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                         target: { value: newValue ? newValue.id : "" }
                                     });
                                 }}
-                                disabled={isEdit || !!inventoryId}
+                                disabled={(isEdit && !isDuplicate) || !!inventoryId}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
                                         label="Select Inventory"
                                         required
                                         error={!!validationErrors.inventory_id}
-                                        helperText={validationErrors.inventory_id || (isEdit ? 'Cannot change inventory' : inventoryId ? 'Inventory auto-selected' : '')}
+                                        helperText={validationErrors.inventory_id || ((isEdit && !isDuplicate) ? 'Cannot change inventory' : inventoryId ? 'Inventory auto-selected' : '')}
                                     />
                                 )}
                                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -400,9 +409,9 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                     onChange={handleChange('start_date')}
                                     fullWidth
                                     size="small"
-                                    disabled={isEdit}
+                                    disabled={isEdit && !isDuplicate}
                                     error={!!validationErrors.start_date}
-                                    helperText={validationErrors.start_date || (isEdit ? 'Cannot change start date' : '')}
+                                    helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
                                     InputLabelProps={{
                                         shrink: true,
                                     }}
@@ -420,14 +429,14 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                     fullWidth
                                     size="small"
                                     error={!!validationErrors.scheduled_date}
-                                    helperText={validationErrors.scheduled_date || (isEdit ? 'Cannot change schedule date' : '')}
+                                    helperText={validationErrors.scheduled_date}
                                     InputLabelProps={{
                                         shrink: true,
                                     }}
                                 />
                             </Grid>
                         )}
-      
+
                         {taskScheduleType === 'recurring' && formData.schedule_type === 'weekly' && (
                             <Grid size={{ xs: 12 }}>
                                 <Autocomplete
@@ -548,9 +557,10 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 error={!!validationErrors.task_type}
                                 helperText={validationErrors.task_type}
                             >
-                                {taskTypes.map((type) => (
-                                    <MenuItem key={type} value={type} dense>
-                                        {type}
+                                {taskTypesOptions.map((type) => (
+                                    <MenuItem key={type.value} value={type.value} dense>
+                                        <type.icon sx={{ mr: 1, color: 'text.secondary', fontSize: 16 }} />
+                                        {type.label}
                                     </MenuItem>
                                 ))}
                             </TextField>
@@ -653,7 +663,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                             borderRadius: 100,
                         }}
                     >
-                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : 'Create Task')}
+                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Create Task')}
                     </Button>
 
                 </DialogActions>
