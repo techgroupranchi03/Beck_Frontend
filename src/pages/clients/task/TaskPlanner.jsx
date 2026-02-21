@@ -37,7 +37,7 @@ const TaskPlanner = () => {
         fetchAllTasks
     } = useTaskContext();
 
-    console.log("allTaskData:", allTasksData);
+    // console.log("allTaskData:", allTasksData);
 
 
     // handle pagination change
@@ -786,7 +786,7 @@ const TaskPlanner = () => {
                                 <IconButton
                                     onClick={() => table.setEditingRow(row)}
                                     size="small"
-                                    sx={{ color: palette.primary.main }}
+                                    sx={{ color: palette.secondary.main }}
                                 >
                                     <EditIcon fontSize="small" />
                                 </IconButton>
@@ -812,7 +812,7 @@ const TaskPlanner = () => {
                                         table.setCreatingRow(newCreatingRow);
                                     }}
                                     size="small"
-                                    sx={{ color: palette.primary.light }}
+                                    sx={{ color: palette.secondary.main }}
                                 >
                                     <FileCopy fontSize="small" />
                                 </IconButton>

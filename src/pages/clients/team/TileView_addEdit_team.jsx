@@ -1,18 +1,17 @@
-import { 
-    Autocomplete, 
-    Dialog, 
-    DialogContent, 
-    DialogTitle, 
+import React, { useState, useEffect } from 'react'
+import {
+    Autocomplete,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     DialogActions,
-    Grid, 
-    IconButton, 
+    Grid,
+    IconButton,
     TextField,
-    Select,
     MenuItem,
     Button,
-    useTheme 
+    useTheme
 } from '@mui/material'
-import React, { useState, useEffect } from 'react'
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import { Close } from '@mui/icons-material';
 import { TeamStatus } from '../../../constant';
@@ -48,7 +47,6 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                 status: teamMember.status || '',
             });
         } else {
-            // Reset form for new team member
             setFormData({
                 name: '',
                 role: '',
@@ -65,7 +63,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             ...prev,
             [field]: value
         }));
-        // Clear validation error for this field
+
         if (validationErrors[field]) {
             setValidationErrors(prev => ({
                 ...prev,
@@ -139,7 +137,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             </DialogTitle>
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                   
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Name"
@@ -152,7 +150,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             helperText={validationErrors.name}
                         />
                     </Grid>
-                   
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
@@ -164,9 +162,9 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                                 });
                             }}
                             renderInput={(params) => (
-                                <TextField 
-                                    {...params} 
-                                    label="Role" 
+                                <TextField
+                                    {...params}
+                                    label="Role"
                                     required
                                     error={!!validationErrors.role}
                                     helperText={validationErrors.role}
@@ -174,13 +172,12 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
                             )}
                         />
                     </Grid>
-             
+
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                             label="Phone Number"
                             value={formData.phone}
                             onChange={(e) => {
-                                // Only allow numbers
                                 const value = e.target.value.replace(/[^0-9]/g, '');
                                 handleChange('phone')({ target: { value } });
                             }}
@@ -217,17 +214,6 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2 }}>
-
-                <Button
-                    variant='text'
-                    size='medium'
-                    sx={{ textTransform: 'none' }}
-                    onClick={onClose}
-                    disabled={loading}
-                >
-                    Cancel
-                </Button>
-
                 <Button
                     variant='contained'
                     disableElevation
@@ -246,7 +232,7 @@ const TileView_addEdit_team = ({ open, onClose, teamMember }) => {
 
             </DialogActions>
         </Dialog>
-        
+
     )
 }
 

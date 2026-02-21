@@ -54,13 +54,13 @@ import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { GroupTaskCard } from "./GroupTaskCard.jsx";
 import { formatDate } from "../../../utils/dateFormat.js";
 import { Form, useLocation } from "react-router-dom";
-import CardSkeleton from "../../../resuable_components/CardSkeleton.jsx";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import IconLabel from "../../../resuable_components/IconLabel.jsx";
 import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog.jsx";
 import { taskStatusFilter } from "../../../constant.js";
 import { formatSchedule } from "../../../utils/scheduleFormatter.js";
 import { useViewMode } from "../../../context/ViewModeContext.jsx";
+import TaskCardSkeleton from "./TaskCardSkeleton.jsx";
 
 export const Tile_View_task = () => {
     const theme = useTheme();
@@ -96,7 +96,6 @@ export const Tile_View_task = () => {
         properties
     } = useTaskContext();
 
-    console.log("allTasksData in Tile View:", allTasksData);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -115,9 +114,6 @@ export const Tile_View_task = () => {
         }
         return [];
     }, [allTasksData]);
-
-    console.log("tasksToRender:", tasksToRender);
-
 
 
     const loadMoreTasks = useCallback(async () => {
@@ -174,7 +170,6 @@ export const Tile_View_task = () => {
     };
 
     const handleDuplicate = (task) => {
-        console.log("Duplicating task:", task);
         setSelectedTask({ ...task, id: null, });
         if (task.is_task_group) {
             setOpenAddEditGroupTaskDialog(true);
@@ -314,6 +309,7 @@ export const Tile_View_task = () => {
         setOpenAddEditDialog(false);
         setSelectedTask(null);
     };
+
     const handleCloseGroupTaskDialog = () => {
         setOpenAddEditGroupTaskDialog(false);
         setSelectedTask(null);
@@ -387,6 +383,8 @@ export const Tile_View_task = () => {
                         onClick={() => setIsSearchVisible((prev) => !prev)}
                         sx={{
                             bgcolor: isSearchVisible ? palette.secondary.main : "transparent",
+                            color: isSearchVisible ? "#ffffff" : palette.text.primary,
+                            "&:hover": { bgcolor: palette.primary.main, color: "#ffffff" }
                         }}
                     >
                         {isSearchVisible ? <SearchOff /> : <Search />}
@@ -449,6 +447,11 @@ export const Tile_View_task = () => {
             />
 
             <Divider sx={{ my: 2 }} />
+
+            {/* show skeleton when loading intial data  */}
+            {loading && tasksToRender.length === 0 && (
+                <TaskCardSkeleton count={6} viewMode={viewMode} />
+            )}
 
             {!loading && tasksToRender.length === 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -566,6 +569,7 @@ export const Tile_View_task = () => {
                                                 </Stack>
                                             );
                                         })()}
+                                        
                                         {/* Task Type + Status shouldd not be show for weekly/monthly/yearly tasks */}
 
                                         {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
@@ -600,8 +604,10 @@ export const Tile_View_task = () => {
                                                 </Tooltip>
                                             </Stack>
                                         )}
+
                                         {/* Description */}
                                         <ViewMoreText text={task.description} limit={100} />
+
                                         <Stack direction="row" flexWrap="wrap" gap={1} mt={1} >
                                             <IconLabel
                                                 icon={Task}
@@ -712,15 +718,6 @@ export const Tile_View_task = () => {
                 </Grid>
             )}
 
-            {loading && (
-                <Grid container spacing={2}>
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
-                            <CardSkeleton />
-                        </Grid>
-                    ))}
-                </Grid>
-            )}
 
             <div ref={observerTarget} style={{ height: '10px' }}></div>
 
@@ -778,13 +775,13 @@ export const Tile_View_task = () => {
             >
                 <MenuItem onClick={() => handleEdit(selectedTask)} dense>
                     <ListItemIcon>
-                        <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+                        <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={() => openDeleteDialog(selectedTask)} dense>
                     <ListItemIcon>
-                        <Delete fontSize="small" sx={{ color: palette.primary.main }} />
+                        <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>
@@ -792,7 +789,7 @@ export const Tile_View_task = () => {
                 {/* add the option to duplicate the task  */}
                 <MenuItem onClick={() => { handleDuplicate(selectedTask); }} dense>
                     <ListItemIcon>
-                        <FileCopy fontSize="small" sx={{ color: palette.primary.main }} />
+                        <FileCopy fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Duplicate Task</ListItemText>
                 </MenuItem>
@@ -817,6 +814,7 @@ export const Tile_View_task = () => {
                 onClose={handleCloseDialog}
                 task={selectedTask}
             />
+            
             <TileVeiwAddEditGroupTaskDialog
                 open={openAddEditGroupTaskDialog}
                 onClose={handleCloseGroupTaskDialog}

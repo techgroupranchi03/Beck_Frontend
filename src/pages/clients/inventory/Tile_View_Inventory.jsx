@@ -22,7 +22,8 @@ import {
     Select,
     Chip,
     Icon,
-    Tooltip
+    Tooltip,
+    CircularProgress
 } from '@mui/material';
 import {
     Clear,
@@ -55,6 +56,7 @@ import InventoryTask_AddEdit_Dialog from './InventoryTask_AddEdit_Dialog';
 import { formatDate } from '../../../utils/dateFormat';
 import ViewMoreText from '../../../resuable_components/ViewMore';
 import CardSkeleton from '../../../resuable_components/CardSkeleton';
+import InventoryCardSkeleton from './InventoryCardSkeleton';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import IconLabel from '../../../resuable_components/IconLabel';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
@@ -62,6 +64,8 @@ import ImageViewer from '../../../resuable_components/ImageViewer';
 import formatSchedule from '../../../utils/scheduleFormatter';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
 import { useViewMode } from '../../../context/ViewModeContext';
+
+
 
 const Tile_View_Inventory = () => {
     const theme = useTheme();
@@ -89,6 +93,7 @@ const Tile_View_Inventory = () => {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
     const observerTarget = useRef(null);
+    const [inventoryTaskData, setInventoryTaskData] = useState([]);
 
     const {
         inventoryData,
@@ -100,6 +105,7 @@ const Tile_View_Inventory = () => {
         deleteRecurringTask,
         properties,
         units,
+        getInventoryDetails,
     } = useInventoryContext();
 
     const handleFilterToggle = () => {
@@ -158,11 +164,6 @@ const Tile_View_Inventory = () => {
     };
 
     const handleTaskEdit = () => {
-        // if (selectedTask.taskSource === 'planner') {
-        //     setOpenTaskDialog(true);
-        // } else {
-        //     setOpenTaskDialog(true);
-        // }
         setOpenTaskDialog(true);
         setTaskAnchorEl(null);
     };
@@ -254,11 +255,19 @@ const Tile_View_Inventory = () => {
         }
     };
 
-    const handleCollapseToggle = (cardId) => {
+    const handleCollapseToggle = async (cardId) => {
+        console.log("Toggling card:", cardId);
+        const isExpanding = !expandedCards[cardId];
+
         setExpandedCards(prev => ({
             ...prev,
-            [cardId]: !prev[cardId]
+            [cardId]: isExpanding
         }));
+
+        if (isExpanding) {
+            const res = await getInventoryDetails(cardId);
+            setInventoryTaskData(res || []);
+        }
     };
 
     const handleSearch = async (text) => {
@@ -273,7 +282,7 @@ const Tile_View_Inventory = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [filters, searchText]); 
+    }, [filters, searchText]);
 
     const loadMoreInventoryItems = useCallback(async () => {
         if (isLoadingMore || loading || !inventoryPagination.hasNextPage) {
@@ -318,7 +327,7 @@ const Tile_View_Inventory = () => {
 
     return (
         <Container maxWidth={viewMode === 'center' ? "md" : "mx"} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
-           
+
             <Box
                 sx={{
                     mb: 2,
@@ -399,6 +408,8 @@ const Tile_View_Inventory = () => {
                         onClick={() => setIsSearchVisible((prev) => !prev)}
                         sx={{
                             bgcolor: isSearchVisible ? palette.secondary.main : "transparent",
+                            color: isSearchVisible ? "#ffffff" : palette.text.primary,
+                            "&:hover": { bgcolor: palette.primary.main, color: "#ffffff" }
                         }}
                     >
                         {isSearchVisible ? <SearchOff /> : <Search />}
@@ -454,7 +465,14 @@ const Tile_View_Inventory = () => {
                 />
             )}
 
-            {inventoryData.length === 0 && !loading && (
+            <Divider sx={{ my: 2 }} />
+
+            {/* show skeleton when loading initial data */}
+            {loading && inventoryData.length === 0 && (
+                <InventoryCardSkeleton count={6} viewMode={viewMode} />
+            )}
+
+            {!loading && inventoryData.length === 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                         No inventory items found.
@@ -462,426 +480,419 @@ const Tile_View_Inventory = () => {
                 </Box>
             )}
 
-            <Grid container spacing={2}>
-                {loading ? (
-                    Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
-                            <CardSkeleton />
-                        </Grid>
-                    ))
-                ) : (inventoryData.map((item) => (
-                    <Grid
-                        size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }}
-                        item key={item.id}
-                    >
-                        <Card
-                            elevation={0}
-                            sx={{
-                                pt: 0,
-                                borderRadius: 3,
-                                position: "relative",
-                                border: expandedCards[item.id]
-                                    ? `1px solid ${palette.primary.main}`
-                                    : `1px solid ${palette.divider}`,
-                                bgcolor: expandedCards[item.id]
-                                    ? palette.action.hover
-                                    : palette.background.paper,
-                            }}
+            {!loading && inventoryData.length > 0 && (
+                <Grid container spacing={2} >
+                    {inventoryData.map((item) => (
+                        <Grid
+                            size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }}
+                            item key={item.id}
                         >
-                            <Box display="flex" alignItems="center">
-                                <CardMedia
-                                    component="img"
-                                    sx={{
-                                        borderRadius: 3,
-                                        ml: 2,
+                            <Card
+                                elevation={0}
+                                sx={{
+                                    pt: 0,
+                                    borderRadius: 3,
+                                    position: "relative",
+                                    border: expandedCards[item.id]
+                                        ? `1px solid ${palette.primary.main}`
+                                        : `1px solid ${palette.divider}`,
+                                    bgcolor: expandedCards[item.id]
+                                        ? palette.action.hover
+                                        : palette.background.paper,
+                                }}
+                            >
+                                <Box display="flex" alignItems="center">
+                                    <CardMedia
+                                        component="img"
+                                        sx={{
+                                            borderRadius: 3,
+                                            ml: 2,
 
-                                        width: 80,
-                                        height: 80,
-                                        objectFit: 'cover',
-                                        bgcolor: palette.background.default,
-                                    }}
-                                    image={item.inventory_image_url}
-                                    alt={item.name || ''}
-                                />
-                                <CardContent sx={{ pl: 2, pb: 0, flex: 1 }}>
-                                    <Typography variant="body1" sx={{ fontWeight: 600, }}>
-                                        {item.name}
-                                    </Typography>
+                                            width: 80,
+                                            height: 80,
+                                            objectFit: 'cover',
+                                            bgcolor: palette.background.default,
+                                        }}
+                                        image={item.inventory_image_url}
+                                        alt={item.name || ''}
+                                    />
+                                    <CardContent sx={{ pl: 2, pb: 0, flex: 1 }}>
+                                        <Typography variant="body1" sx={{ fontWeight: 600, }}>
+                                            {item.name}
+                                        </Typography>
 
-                                    <Stack direction="row" flexWrap="wrap" gap={1} mb={2} mt={1}>
-                                        <Tag
-                                            icon={<CategoryOutlined size="small" />}
-                                            label={item.category}
-                                            bgcolor={palette.tagTask.categatory}
-                                            color={palette.tagTask.color}
+                                        <Stack direction="row" flexWrap="wrap" gap={1} mb={2} mt={1}>
+                                            <Tag
+                                                icon={<CategoryOutlined size="small" />}
+                                                label={item.category}
+                                                bgcolor={palette.tagTask.categatory}
+                                                color={palette.tagTask.color}
 
-                                        />
+                                            />
 
-                                        <Tag
-                                            icon={<Business size="small" />}
-                                            label={item.property_name}
-                                            bgcolor={palette.tagTask.location}
-                                            color={palette.tagTask.color}
-                                        />
+                                            <Tag
+                                                icon={<Business size="small" />}
+                                                label={item.property_name}
+                                                bgcolor={palette.tagTask.location}
+                                                color={palette.tagTask.color}
+                                            />
 
-                                        <Tag
-                                            icon={<InventoryOutlined size="small" />}
-                                            label={`Qty: ${item.quantity} ${item.unit}`}
-                                            bgcolor={palette.tagTask.quantity}
-                                            color={palette.tagTask.color}
-                                        />
-                                        {/* i want to add  located_at and lower_limit tags here */}
-                                        <Tag
-                                            icon={<HomeWorkOutlined size="small" />}
-                                            label={item.located_at || 'N/A'}
-                                            bgcolor={palette.tagTask.location}
-                                            color={palette.tagTask.color}
-                                        />
-                                        <Tag
-                                            icon={<AccessTime size="small" />}
-                                            label={`Low Limit: ${item.lower_limit}`}
-                                            bgcolor={palette.tagTask.lower_limit}
-                                            color={palette.tagTask.color}
-                                        />
+                                            <Tag
+                                                icon={<InventoryOutlined size="small" />}
+                                                label={`Qty: ${item.quantity} ${item.unit}`}
+                                                bgcolor={palette.tagTask.quantity}
+                                                color={palette.tagTask.color}
+                                            />
+                                            {/* i want to add  located_at and lower_limit tags here */}
+                                            <Tag
+                                                icon={<HomeWorkOutlined size="small" />}
+                                                label={item.located_at || 'N/A'}
+                                                bgcolor={palette.tagTask.location}
+                                                color={palette.tagTask.color}
+                                            />
+                                            <Tag
+                                                icon={<AccessTime size="small" />}
+                                                label={`Low Limit: ${item.lower_limit}`}
+                                                bgcolor={palette.tagTask.lower_limit}
+                                                color={palette.tagTask.color}
+                                            />
 
-                                    </Stack>
-                                </CardContent>
-                                <IconButton
-                                    onClick={(event) => {
-                                        setSelectedItem(item)
-                                        setAnchorEl(event.currentTarget)
-                                    }}
+                                        </Stack>
+                                    </CardContent>
+                                    <IconButton
+                                        onClick={(event) => {
+                                            setSelectedItem(item)
+                                            setAnchorEl(event.currentTarget)
+                                        }}
 
-                                    sx={{
-                                        position: "absolute",
-                                        top: 8,
-                                        right: 8,
-                                    }}
-                                >
-                                    <MoreVert />
-                                </IconButton>
-                            </Box>
+                                        sx={{
+                                            position: "absolute",
+                                            top: 8,
+                                            right: 8,
+                                        }}
+                                    >
+                                        <MoreVert />
+                                    </IconButton>
+                                </Box>
 
-                            {/* Tasks Section */}
-                            <Divider sx={{ py: 0.5 }} />
-                            <Box sx={{ px: 1, py: 0 }}>
-                                <Stack
-                                    direction="row"
-                                    alignItems="center"
-                                    justifyContent="space-between"
-                                    onClick={() => handleCollapseToggle(item.id)}
-                                    sx={{
-                                        cursor: 'pointer',
-                                        '&:hover': { backgroundColor: palette.action.hover },
-                                        borderRadius: 1,
-                                        p: 1,
-                                        mx: -1
-                                    }}
-                                >
-                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                        {expandedCards[item.id] ? 'Hide Tasks' : 'Show Tasks'}
-                                    </Typography>
-                                    <Stack direction="row" alignItems="center" spacing={1}>
-                                        {/* add task button is here it show when the Collapse is open */}
-                                        {expandedCards[item.id] && (
-                                            <Button
-                                                size="small"
-                                                startIcon={<Add />}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedInventoryId(item.id);
-                                                    setSelectedTask(null);
-                                                    setOpenTaskDialog(true);
-                                                }}
+                                {/* Tasks Section */}
+                                <Divider sx={{ py: 0.5 }} />
+                                <Box sx={{ px: 1, py: 0 }}>
+                                    <Stack
+                                        direction="row"
+                                        alignItems="center"
+                                        justifyContent="space-between"
+                                        onClick={() => handleCollapseToggle(item.id)}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '&:hover': { backgroundColor: palette.action.hover },
+                                            borderRadius: 1,
+                                            p: 1,
+                                            mx: -1
+                                        }}
+                                    >
+                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                            {expandedCards[item.id] ? 'Hide Tasks' : 'Show Tasks'}
+                                        </Typography>
+                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                            {/* add task button is here it show when the Collapse is open */}
+                                            {expandedCards[item.id] && (
+                                                <Button
+                                                    size="small"
+                                                    startIcon={<Add />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedInventoryId(item.id);
+                                                        setSelectedTask(null);
+                                                        setOpenTaskDialog(true);
+                                                    }}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        color: palette.primary.main,
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                >
+                                                    Add task
+                                                </Button>
+                                            )}
+                                            <ExpandMore
+                                                fontSize="medium"
                                                 sx={{
-                                                    textTransform: 'none',
-                                                    color: palette.primary.main,
-                                                    fontSize: '0.75rem'
+                                                    transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transition: 'transform 0.3s'
                                                 }}
-                                            >
-                                                Add task
-                                            </Button>
-                                        )}
-                                        <ExpandMore
-                                            fontSize="medium"
-                                            sx={{
-                                                transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.3s'
-                                            }}
-                                        />
+                                            />
+                                        </Stack>
                                     </Stack>
-                                </Stack>
-                            </Box>
+                                </Box>
 
-                            <Collapse in={expandedCards[item.id]} timeout="auto" unmountOnExit>
-                                {/* make scrollable area for tasks if more than 1 tasks */}
-                                <Box sx={{
-                                    maxHeight: 250,
-                                    overflowY: 'auto',
-                                }}>
-                                    {(() => {
-                                        const allTasks = [
-                                            ...(item.task_instances || []).map(t => ({ ...t, taskSource: 'instance' })),
-                                            ...(item.task_planner || []).map(t => ({ ...t, taskSource: 'planner' }))
-                                        ];
+                                <Collapse in={expandedCards[item.id]} timeout="auto" unmountOnExit>
+                                    {/* make scrollable area for tasks if more than 1 tasks */}
+                                    <Box sx={{
+                                        maxHeight: 250,
+                                        overflowY: 'auto',
+                                    }}>
+                                        {(() => {
+                                            const allTasks = expandedCards[item.id] && inventoryTaskData ? [
+                                                ...(inventoryTaskData.task_instances || []).map(t => ({ ...t, taskSource: 'instance' })),
+                                                ...(inventoryTaskData.tasks_planner || []).map(t => ({ ...t, taskSource: 'planner' }))
+                                            ] : [];
 
-                                        return allTasks.length > 0 ? (
-                                            <Stack spacing={1.5} sx={{ py: 1, px: 1 }}>
-                                                {allTasks.map((task) => (
-                                                    <Card
-                                                        key={`${task.taskSource}-${task.id}`}
-                                                        elevation={0}
-                                                        sx={{
-                                                            position: 'relative',
-                                                            border: `1px solid ${palette.divider}`,
-                                                            borderRadius: 2,
-                                                            bgcolor: palette.background.default,
-                                                        }}
-                                                    >
-                                                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                                            <IconButton
-                                                                size="small"
-                                                                sx={{ position: 'absolute', top: 8, right: 8 }}
-                                                                onClick={(e) => handleTaskMenuOpen(e, task)}
-                                                            >
-                                                                <MoreVert fontSize="small" />
-                                                            </IconButton>
+                                            return allTasks.length > 0 ? (
+                                                <Stack spacing={1.5} sx={{ py: 1, px: 1 }}>
+                                                    {allTasks.map((task) => (
+                                                        <Card
+                                                            key={`${task.taskSource}-${task.id}`}
+                                                            elevation={0}
+                                                            sx={{
+                                                                position: 'relative',
+                                                                border: `1px solid ${palette.divider}`,
+                                                                borderRadius: 2,
+                                                                bgcolor: palette.background.default,
+                                                            }}
+                                                        >
+                                                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    sx={{ position: 'absolute', top: 8, right: 8 }}
+                                                                    onClick={(e) => handleTaskMenuOpen(e, task)}
+                                                                >
+                                                                    <MoreVert fontSize="small" />
+                                                                </IconButton>
 
-                                                            <Stack direction="row" spacing={1} alignItems="flex-start">
-                                                                {/* Content */}
-                                                                <Box sx={{ flex: 1, pr: 3 }}>
-                                                                    <Typography variant="body1" fontWeight={600} textTransform="capitalize" gutterBottom>
-                                                                        {task.title}
-                                                                    </Typography>
+                                                                <Stack direction="row" spacing={1} alignItems="flex-start">
+                                                                    {/* Content */}
+                                                                    <Box sx={{ flex: 1, pr: 3 }}>
+                                                                        <Typography variant="body1" fontWeight={600} textTransform="capitalize" gutterBottom>
+                                                                            {task.title}
+                                                                        </Typography>
 
-                                                                    {/* Repeat Days for Recurring Tasks */}
-                                                                    {(() => {
-                                                                        const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
-                                                                        if (!scheduleInfo) return null;
-                                                                        return (
-                                                                            <Stack
-                                                                                direction="row"
-                                                                                spacing={1}
-                                                                                flexWrap="wrap"
-                                                                                alignItems="center"
-                                                                                justifyContent="space-between"
-                                                                                mb={1}
-                                                                            >
+                                                                        {/* Repeat Days for Recurring Tasks */}
+                                                                        {(() => {
+                                                                            const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                                                                            if (!scheduleInfo) return null;
+                                                                            return (
                                                                                 <Stack
                                                                                     direction="row"
-                                                                                    spacing={0.2}
+                                                                                    spacing={1}
+                                                                                    flexWrap="wrap"
                                                                                     alignItems="center"
+                                                                                    justifyContent="space-between"
+                                                                                    mb={1}
                                                                                 >
-                                                                                    <Box
-                                                                                        sx={{
-                                                                                            display: 'flex',
-                                                                                            alignItems: 'center',
-                                                                                            color: palette.primary.main,
-                                                                                        }}
+                                                                                    <Stack
+                                                                                        direction="row"
+                                                                                        spacing={0.2}
+                                                                                        alignItems="center"
                                                                                     >
-                                                                                        <scheduleInfo.icon fontSize="small" />
-                                                                                    </Box>
+                                                                                        <Box
+                                                                                            sx={{
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center',
+                                                                                                color: palette.primary.main,
+                                                                                            }}
+                                                                                        >
+                                                                                            <scheduleInfo.icon fontSize="small" />
+                                                                                        </Box>
 
-                                                                                    <Typography
-                                                                                        variant="body2"
+                                                                                        <Typography
+                                                                                            variant="body2"
 
-                                                                                        sx={{
-                                                                                            whiteSpace: 'normal',
-                                                                                            bgcolor: palette.background.customPaper,
-                                                                                            color: palette.text.secondary,
-                                                                                            px: 1,
-                                                                                            borderRadius: 1,
-                                                                                            fontSize: '0.875rem',
-                                                                                        }}
-                                                                                    >
-                                                                                        {scheduleInfo.description}
-                                                                                    </Typography>
+                                                                                            sx={{
+                                                                                                whiteSpace: 'normal',
+                                                                                                bgcolor: palette.background.customPaper,
+                                                                                                color: palette.text.secondary,
+                                                                                                px: 1,
+                                                                                                borderRadius: 1,
+                                                                                                fontSize: '0.875rem',
+                                                                                            }}
+                                                                                        >
+                                                                                            {scheduleInfo.description}
+                                                                                        </Typography>
+                                                                                    </Stack>
+
+                                                                                    {/* add status chip here */}
+                                                                                    <Tooltip placement="top" arrow title="Task Status">
+                                                                                        <Chip
+                                                                                            label={task.status.replace('_', ' ')}
+                                                                                            size="small"
+                                                                                            sx={{
+                                                                                                bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                                                                color: 'white',
+                                                                                                px: 1.5,
+                                                                                                borderRadius: 5,
+
+                                                                                            }}
+                                                                                        />
+                                                                                    </Tooltip>
                                                                                 </Stack>
-
-                                                                                {/* add status chip here */}
-                                                                                <Tooltip placement="top" arrow title="Task Status">
-                                                                                    <Chip
-                                                                                        label={task.status.replace('_', ' ')}
-                                                                                        size="small"
-                                                                                        sx={{
-                                                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                                                            color: 'white',
-                                                                                            px: 1.5,
-                                                                                            borderRadius: 5,
-
-                                                                                        }}
-                                                                                    />
-                                                                                </Tooltip>
-                                                                            </Stack>
-                                                                        )
-                                                                    })()}
+                                                                            )
+                                                                        })()}
 
 
 
-                                                                    {/* Task Type & Status */}
-                                                                    {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
-                                                                        <Stack
-                                                                            spacing={1}
-                                                                            mb={1}
-                                                                            mt={1}
-                                                                            direction="row"
-                                                                            justifyContent="space-between"
-                                                                        >
+                                                                        {/* Task Type & Status */}
+                                                                        {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
+                                                                            <Stack
+                                                                                spacing={1}
+                                                                                mb={1}
+                                                                                mt={1}
+                                                                                direction="row"
+                                                                                justifyContent="space-between"
+                                                                            >
 
-                                                                            <IconLabel
-                                                                                icon={CalendarMonth}
-                                                                                label={
-                                                                                    task.scheduled_date || task.start_date
-                                                                                        ? formatDate(task.scheduled_date || task.start_date)
-                                                                                        : "N/A"
-                                                                                }
-                                                                            />
-
-                                                                            {task.status && (
-                                                                                <Tooltip placement="top" arrow title="Task Status">
-                                                                                    <Chip
-                                                                                        label={task.status.replace('_', ' ')}
-                                                                                        size="small"
-                                                                                        sx={{
-                                                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                                                            color: 'white',
-                                                                                            px: 1.5,
-                                                                                            borderRadius: 5,
-                                                                                        }}
-                                                                                    />
-                                                                                </Tooltip>
-                                                                            )}
-                                                                        </Stack>
-                                                                    )}
-                                                                    {/* Task Description */}
-                                                                        <ViewMoreText text={task.description} limit={40} />
-                                                                   
-
-                                                                    {/* Task chips */}
-                                                                    <Stack direction="row" gap={1} flexWrap="wrap" mb={1} mt={1}>
-                                                                        {task.taskSource === 'planner' ? (
-                                                                            <>
-                                                                                {task.task_type && (
-                                                                                    <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
-                                                                                )}
-                                                                                {task.assigned_to_name && (
-                                                                                    <IconLabel icon={Person} label={task.assigned_to_name} />
-                                                                                )}
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                {task.task_type && (
-                                                                                    <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
-                                                                                )}
-                                                                                {task.assigned_to_name && (
-                                                                                    <IconLabel icon={Person} label={task.assigned_to_name} />
-                                                                                )}
-                                                                            </>
-                                                                        )}
-                                                                    </Stack>
-
-                                                                    {/* Icons for Photo Required & Update Inventory */}
-                                                                    <Stack direction="row" spacing={1} mt={1} alignItems="center"
-                                                                        justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}
-                                                                    >
-                                                                        {task.last_task?.scheduled_date && (
-                                                                            <Typography variant="body2"
-                                                                                sx={{
-                                                                                    color: palette.primary.main,
-                                                                                    fontWeight: 500
-                                                                                }}>
-                                                                                Last Executed On: {formatDate(task.last_task.scheduled_date)}
-                                                                            </Typography>
-                                                                        )}
-                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                            {!!task.is_photo_required && task.completion_image_urls && (
-                                                                                <Chip
-                                                                                    sx={{
-                                                                                        px: 0.5,
-                                                                                        height: 30,
-                                                                                        '& .MuiChip-label': {
-                                                                                            p: 0.5,
-                                                                                        },
-                                                                                    }}
-                                                                                    icon={<CameraAlt />}
+                                                                                <IconLabel
+                                                                                    icon={CalendarMonth}
                                                                                     label={
-                                                                                        Array.isArray(task.completion_image_urls) &&
-                                                                                            task.completion_image_urls.length > 0 ? (
-                                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
-                                                                                                {task.completion_image_urls.map((url, index) => (
-                                                                                                    <Avatar
-                                                                                                        key={index}
-                                                                                                        src={url}
-                                                                                                        variant="rounded"
-                                                                                                        onClick={() => {
-                                                                                                            setSelectedImage(url);
-                                                                                                            setOpenImage(true);
-                                                                                                        }}
-                                                                                                        sx={{
-                                                                                                            width: 25,
-                                                                                                            height: 25,
-                                                                                                            borderRadius: 10,
-                                                                                                            cursor: 'pointer',
-                                                                                                            border: `1px solid ${palette.divider}`,
-                                                                                                            '&:hover': { opacity: 0.8 },
-                                                                                                        }}
-                                                                                                    />
-                                                                                                ))}
-                                                                                            </Box>
-                                                                                        ) : null
+                                                                                        task.scheduled_date || task.start_date
+                                                                                            ? formatDate(task.scheduled_date || task.start_date)
+                                                                                            : "N/A"
                                                                                     }
                                                                                 />
-                                                                            )}
 
-                                                                            {!!task.is_photo_required && !task.completion_image_urls && (
-                                                                                <Tooltip title="Photo Required" placement="top" arrow>
-                                                                                    <CameraAlt color="action" sx={{ fontSize: 25 }} />
-                                                                                </Tooltip>
+                                                                                {task.status && (
+                                                                                    <Tooltip placement="top" arrow title="Task Status">
+                                                                                        <Chip
+                                                                                            label={task.status.replace('_', ' ')}
+                                                                                            size="small"
+                                                                                            sx={{
+                                                                                                bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                                                                color: 'white',
+                                                                                                px: 1.5,
+                                                                                                borderRadius: 5,
+                                                                                            }}
+                                                                                        />
+                                                                                    </Tooltip>
+                                                                                )}
+                                                                            </Stack>
+                                                                        )}
+                                                                        {/* Task Description */}
+                                                                        <ViewMoreText text={task.description} limit={40} />
+
+
+                                                                        {/* Task chips */}
+                                                                        <Stack direction="row" gap={1} flexWrap="wrap" mb={1} mt={1}>
+                                                                            {task.taskSource === 'planner' ? (
+                                                                                <>
+                                                                                    {task.task_type && (
+                                                                                        <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
+                                                                                    )}
+                                                                                    {task.assigned_to_name && (
+                                                                                        <IconLabel icon={Person} label={task.assigned_to_name} />
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {task.task_type && (
+                                                                                        <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
+                                                                                    )}
+                                                                                    {task.assigned_to_name && (
+                                                                                        <IconLabel icon={Person} label={task.assigned_to_name} />
+                                                                                    )}
+                                                                                </>
                                                                             )}
-                                                                            {!!task.update_inventory && (
-                                                                                <Tooltip title="Inventory Update" placement="top" arrow>
-                                                                                    <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
-                                                                                </Tooltip>
+                                                                        </Stack>
+
+                                                                        {/* Icons for Photo Required & Update Inventory */}
+                                                                        <Stack direction="row" spacing={1} mt={1} alignItems="center"
+                                                                            justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}
+                                                                        >
+                                                                            {task.last_task?.scheduled_date && (
+                                                                                <Typography variant="body2"
+                                                                                    sx={{
+                                                                                        color: palette.primary.main,
+                                                                                        fontWeight: 500
+                                                                                    }}>
+                                                                                    Last Executed On: {formatDate(task.last_task.scheduled_date)}
+                                                                                </Typography>
                                                                             )}
-                                                                        </Box>
-                                                                    </Stack>
-                                                                </Box>
-                                                            </Stack>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))}
-                                            </Stack>
-                                        ) : (
-                                            <Box
-                                                textAlign="center"
-                                                py={3}
-                                                sx={{
-                                                    bgcolor: palette.action.hover,
-                                                    borderRadius: 2,
-                                                }}
-                                            >
-                                                <Typography variant="caption" color="text.secondary">
-                                                    No tasks found for this inventory
-                                                </Typography>
-                                            </Box>
-                                        );
-                                    })()}
-                                </Box>
-                            </Collapse>
-                        </Card>
-                    </Grid>
-                )))}
-            </Grid>
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                {!!task.is_photo_required && task.completion_image_urls && (
+                                                                                    <Chip
+                                                                                        sx={{
+                                                                                            px: 0.5,
+                                                                                            height: 30,
+                                                                                            '& .MuiChip-label': {
+                                                                                                p: 0.5,
+                                                                                            },
+                                                                                        }}
+                                                                                        icon={<CameraAlt />}
+                                                                                        label={
+                                                                                            Array.isArray(task.completion_image_urls) &&
+                                                                                                task.completion_image_urls.length > 0 ? (
+                                                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
+                                                                                                    {task.completion_image_urls.map((url, index) => (
+                                                                                                        <Avatar
+                                                                                                            key={index}
+                                                                                                            src={url}
+                                                                                                            variant="rounded"
+                                                                                                            onClick={() => {
+                                                                                                                setSelectedImage(url);
+                                                                                                                setOpenImage(true);
+                                                                                                            }}
+                                                                                                            sx={{
+                                                                                                                width: 25,
+                                                                                                                height: 25,
+                                                                                                                borderRadius: 10,
+                                                                                                                cursor: 'pointer',
+                                                                                                                border: `1px solid ${palette.divider}`,
+                                                                                                                '&:hover': { opacity: 0.8 },
+                                                                                                            }}
+                                                                                                        />
+                                                                                                    ))}
+                                                                                                </Box>
+                                                                                            ) : null
+                                                                                        }
+                                                                                    />
+                                                                                )}
+
+                                                                                {!!task.is_photo_required && !task.completion_image_urls && (
+                                                                                    <Tooltip title="Photo Required" placement="top" arrow>
+                                                                                        <CameraAlt color="action" sx={{ fontSize: 25 }} />
+                                                                                    </Tooltip>
+                                                                                )}
+                                                                                {!!task.update_inventory && (
+                                                                                    <Tooltip title="Inventory Update" placement="top" arrow>
+                                                                                        <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
+                                                                                    </Tooltip>
+                                                                                )}
+                                                                            </Box>
+                                                                        </Stack>
+                                                                    </Box>
+                                                                </Stack>
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
+                                                </Stack>
+                                            ) : (
+                                                <Box
+                                                    textAlign="center"
+                                                    py={3}
+                                                    sx={{
+                                                        bgcolor: palette.action.hover,
+                                                        borderRadius: 2,
+                                                    }}
+                                                >
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        No tasks found for this inventory
+                                                    </Typography>
+                                                </Box>
+                                            );
+                                        })()}
+                                    </Box>
+                                </Collapse>
+                            </Card>
+                        </Grid>
+                    ))}
+
+                </Grid>
+            )}
 
             {/* Loading indicator for infinite scroll */}
             {isLoadingMore && (
-                <Grid container spacing={2} sx={{ mt: 2 }}>
-                    {Array.from({ length: 6 }).map((_, index) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
-                            <CardSkeleton />
-                        </Grid>
-                    ))}
-                </Grid>
+                <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                    <CircularProgress size={24} />
+                </Box>
             )}
 
             <div ref={observerTarget} style={{ height: '20px' }} />
@@ -932,19 +943,19 @@ const Tile_View_Inventory = () => {
             >
                 <MenuItem onClick={handleTaskEdit} dense>
                     <ListItemIcon>
-                        <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+                        <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={openTaskDeleteDialog} dense>
                     <ListItemIcon>
-                        <Delete fontSize="small" sx={{ color: palette.primary.main }} />
+                        <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={handleDuplicateTask} dense>
                     <ListItemIcon>
-                        <FileCopy fontSize="small" sx={{ color: palette.primary.main }} />
+                        <FileCopy fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Duplicate</ListItemText>
                 </MenuItem>
@@ -988,13 +999,13 @@ const Tile_View_Inventory = () => {
             >
                 <MenuItem onClick={() => handleEditEnventory(selectedItem)} dense>
                     <ListItemIcon>
-                        <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+                        <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
                 <MenuItem onClick={() => openDeleteDialog(selectedItem)} dense>
                     <ListItemIcon>
-                        <Delete fontSize="small" sx={{ color: palette.error.main }} />
+                        <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>
@@ -1041,6 +1052,7 @@ const Tile_View_Inventory = () => {
                 image={selectedImage}
             />
         </Container>
+        
     );
 };
 

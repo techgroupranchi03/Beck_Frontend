@@ -1,73 +1,81 @@
-import React from "react";
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-} from "@mui/material";
-import {
-  People,
-  PersonAdd,
-  PersonOff,
-  TrendingUp,
-} from "@mui/icons-material";
+import React from 'react'
+import { Box, Container, Grid, Typography } from '@mui/material'
+import { StatCard } from '../../resuable_components/StatCard'
+import { Apartment, CheckBox, Inventory, People } from '@mui/icons-material'
+import TaskOverview from '../../resuable_components/TaskOverview'
+import RecentActivity from '../../resuable_components/RecentActivity'
 
-const palette = {
-  primary: "#407f68",
-  lightGreen: "#96d980",
-  accent: "#6b603f",
-  cream: "#fef7c5",
-};
-
-export default function ClientsDashboard() {
+const ClientsDashboard = () => {
   return (
-    <>
-      {/* Metric Cards */}
-      <Grid container spacing={3} mb={6} sx={{mt: 4}}>
-        {[
-          { label: "TOTAL CLIENTS", value: 500, icon: <People />, color: palette.primary },
-          { label: "ACTIVE CLIENTS", value: 200, icon: <PersonAdd />, color: palette.primary },
-          { label: "INACTIVE CLIENTS", value: 300, icon: <PersonOff />, color: palette.primary },
-          { label: "NEW / 30 DAYS", value: 200, icon: <TrendingUp />, color: palette.primary },
-        ].map((c, i) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} item key={i}>
-            <Card sx={{ bgcolor: c.color, color: "#fff", borderRadius: 2, boxShadow: 3, elevation: 0 }}>
-              <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                {React.cloneElement(c.icon, { fontSize: "large" })}
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>{c.label}</Typography>
-                  <Typography variant="h4" fontWeight={700}>{c.value}</Typography>
-                </Box>
-              </CardContent>
-            </Card>
+    <React.Fragment>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        {/* Stats Grid */}
+        <Grid container spacing={3} mb={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCard
+              title="Total Properties"
+              value={48}
+              change="+3 this month"
+              changeType="positive"
+              icon={Apartment}
+              iconColor="primary.contrastText"
+              iconBgColor="primary.main"
+            />
           </Grid>
-        ))}
-      </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCard
+              title="Active Tasks"
+              value={23}
+              change="8 due today"
+              changeType="neutral"
+              icon={CheckBox}
+              iconColor="warning.main"
+              iconBgColor="warning.light"
+            />
+          </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCard
+              title="Team Members"
+              value={12}
+              change="+2 this week"
+              changeType="positive"
+              icon={People}
+              iconColor="success.main"
+              iconBgColor="success.light"
+            />
+          </Grid>
+          
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCard
+              title="Inventory Items"
+              value={156}
+              change="12 low stock"
+              changeType="negative"
+              icon={Inventory}
+              iconColor="error.main"
+              iconBgColor="error.light"
+            />
+          </Grid>
 
-      {/* Charts */}
-      <Grid container spacing={3}>
-        {["Client Growth (Line chart)", "Status Distribution (Pie chart)"].map((title, i) => (
-          <Grid size={{ xs: 12, md: 6 }} item key={i}>
-            <Card sx={{ height: 300, bgcolor: palette.cream, p: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>{title}</Typography>
-              <Box
-                sx={{
-                  height: "100%",
-                  bgcolor: "#fff",
-                  borderRadius: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#aaa",
-                }}
-              >
-                [Chart placeholdesdr]
-              </Box>
-            </Card>
+
+        </Grid>
+
+        {/* Task Overview and Recent Activity */}
+        <Grid container spacing={3}>
+          <Grid size={{sm: 6}}>
+            <TaskOverview />
           </Grid>
-        ))}
-      </Grid>
-    </>
-  );
+          
+          <Grid size={{sm: 6}}>
+            <RecentActivity />
+          </Grid>
+        </Grid>
+                 
+      </Container>
+    </React.Fragment>
+  )
 }
+
+export default ClientsDashboard

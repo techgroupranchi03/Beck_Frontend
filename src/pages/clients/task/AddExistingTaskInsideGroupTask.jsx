@@ -33,14 +33,18 @@ import {
 } from '@mui/icons-material';
 import { useTaskData } from './useTaskData';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
-import { addExistingTaskInsideGroupTask } from '../../../service/Clients/Task';
+import { addClientExistingTaskInsideGroupTask } from '../../../service/Clients/Task';
 import { formatSchedule } from '../../../utils/scheduleFormatter';
 import { useTheme } from '@mui/material/styles';
 import { formatDate } from '../../../utils/dateFormat';
 import { taskStatusFilter } from '../../../constant';
+import { useAuth } from '../../../context/AuthContext';
+import { addTeamExistingTaskInsideGroupTask } from '../../../service/Teams/Team_Task';
+
 
 const FilterSection = ({ title, icon, children, defaultExpanded = false }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
 
   return (
     <Box sx={{ mb: 0 }}>
@@ -75,6 +79,8 @@ const FilterSection = ({ title, icon, children, defaultExpanded = false }) => {
 const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
   const theme = useTheme();
   const { palette } = theme;
+  const { user } = useAuth();
+  const isTeamUser = user?.role === 'team';
 
   const {
     allTasksData,
@@ -236,7 +242,9 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
         source: task.is_recurring ? 'recurring' : 'tasks',
       }));
       console.log("Task Ids:", taskIds);
-      const res = await addExistingTaskInsideGroupTask(groupId, { task_ids: taskIds });
+      const res = isTeamUser
+        ? await addTeamExistingTaskInsideGroupTask(groupId, { task_ids: taskIds }) 
+        : await addClientExistingTaskInsideGroupTask(groupId, { task_ids: taskIds });
       showSnackbar(res?.message, 'success');
       onClose(true);
     } catch (error) {

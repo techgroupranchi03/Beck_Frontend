@@ -14,14 +14,16 @@ import {
     Chip,
     CircularProgress,
 } from "@mui/material";
-import { Logout, Business, CheckCircle, Person } from "@mui/icons-material";
+import { Logout, Business, CheckCircle, Person, Palette } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getAvailableTeamsAccounts, switchTeamAccount } from "../service/Teams/SelectAccount.js";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfileMenu() {
     const theme = useTheme();
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = React.useState(null);
     const [availableAccounts, setAvailableAccounts] = useState([]);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
@@ -62,6 +64,11 @@ export default function ProfileMenu() {
 
     const handleMenuClose = () => {
         setAnchorEl(null);
+    };
+
+    const handleThemeSettings = () => {
+        setAnchorEl(null);
+        navigate('themeSetting');
     };
 
     const handleSwitchAccount = async (clientId) => {
@@ -136,8 +143,6 @@ export default function ProfileMenu() {
             >
                 {getInitials()}
             </Box>
-
-
 
             {/* Profile dropdown menu */}
             <Menu
@@ -306,6 +311,28 @@ export default function ProfileMenu() {
                         <Divider sx={{ my: 1 }} />
                     </>
                 )}
+                
+                {/* Theme Settings Menu Item */}
+                <MenuItem onClick={handleThemeSettings}>
+                    <ListItemIcon>
+                        <Palette fontSize="small" sx={{ color: theme.palette.primary.main }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                        primary={
+                            <Typography variant="body2" fontWeight={500}>
+                                Theme Settings
+                            </Typography>
+                        }
+                        secondary={
+                            <Typography variant="caption" color="text.secondary">
+                                Customize colors
+                            </Typography>
+                        }
+                    />
+                </MenuItem>
+
+                <Divider sx={{ my: 1 }} />
+
                 <Button
                     variant="contained"
                     fullWidth

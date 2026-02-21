@@ -214,25 +214,26 @@ const Clients_login = () => {
                 )}
 
                 {/* Logo and App Name */}
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3, mt: step === 2 ? 3 : 0 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: step === 2 ? 3 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
                         alt="Beck HolidayHomes Logo"
                         sx={{ width: 64, height: 64, mb: 1 }}
                     />
                     <Typography
-                        variant="h4"
-                        fontWeight="bold"
-                        sx={{ color: theme.palette.text.primary }}
+                        variant="h5"
+                         mb={1}
+                        sx={{ color: theme.palette.text.primary, fontWeight: "bold" }}
                     >
                         Beck HolidayHomes
                     </Typography>
                     <Typography
-                        variant="h6"
-                        sx={{ color: theme.palette.text.secondary }}
+                        variant="body1"
+                        sx={{ color: theme.palette.text.secondary, fontWeight: "bold" }}
                     >
                         {step === 1 ? 'Client Login' : 'Enter Your OTP code here'}
                     </Typography>
+                    
                 </Box>
 
                 {step === 1 ? (
@@ -279,9 +280,7 @@ const Clients_login = () => {
                                 mt: 3,
                                 py: 1.2,
                                 backgroundColor: theme.palette.primary.main,
-                                "&:hover": { backgroundColor: "#326655" },
-                                "&:disabled": { backgroundColor: "#9db5a9" },
-                                fontWeight: "bold",
+                                "&:hover": { backgroundColor: theme.palette.secondary.main },
                                 borderRadius: 2,
                                 textTransform: "none",
                             }}
@@ -330,7 +329,7 @@ const Clients_login = () => {
                                                 borderWidth: "2px",
                                             },
                                             "&:hover fieldset": {
-                                                borderColor: digit ? theme.palette.primary.main : theme.palette.primary.light,
+                                                borderColor: digit ? theme.palette.primary.main : theme.palette.secondary.main,
                                             },
                                             "&.Mui-focused fieldset": {
                                                 borderColor: theme.palette.primary.main,
@@ -382,8 +381,7 @@ const Clients_login = () => {
                                 mt: 2,
                                 py: 1.2,
                                 backgroundColor: theme.palette.primary.main,
-                                "&:hover": { backgroundColor: "#326655" },
-                                "&:disabled": { backgroundColor: "#9db5a9" },
+                                "&:hover": { backgroundColor: theme.palette.secondary.main },
                                 fontWeight: "bold",
                                 borderRadius: 2,
                                 textTransform: "none",
@@ -405,7 +403,6 @@ const Clients_login = () => {
                                     ml: 1,
                                     textTransform: "none",
                                     color: theme.palette.primary.main,
-                                    "&:disabled": { color: theme.palette.text.disabled }
                                 }}
                             >
                                 {resendTimer > 0 ? `Resend ` : "Resend"}

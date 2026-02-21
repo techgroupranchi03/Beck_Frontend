@@ -1,0 +1,1837 @@
+===============================================================================
+            BECK FRONTEND - THEME IMPLEMENTATION GUIDE
+                              Task Bnb 
+===============================================================================
+
+Last Updated: January 24, 2026
+
+TABLE OF CONTENTS:
+1. Theme System Architecture
+2. Theme Color Palette Structure
+3. Theme Context & State Management
+4. Theme Creation & Customization
+5. Component Usage Guidelines
+6. Implementation Examples
+7. UI Elements Reference
+8. Legacy Documentation
+
+===============================================================================
+                    1. THEME SYSTEM ARCHITECTURE
+===============================================================================
+
+1.1 OVERVIEW
+   The application uses a centralized theme system built with React Context
+   and Material-UI (MUI). The system supports:
+   
+   ✓ Multiple preset themes
+   ✓ Custom user-created themes
+   ✓ Independent light/dark mode themes
+   ✓ Real-time theme switching
+   ✓ API-backed theme persistence
+   ✓ User profile theme syncing
+
+1.2 CORE COMPONENTS
+   
+   Component              | Location                    | Purpose
+   ────────────────────────────────────────────────────────────────────
+   ThemeContext.jsx       | src/context/                | State management & API
+   theme.js               | src/theme/                  | Theme definitions
+   ThemeSettings.jsx      | src/pages/                  | UI for customization
+   Layout.jsx             | src/                        | Theme application
+
+1.3 THEME TYPES
+   
+   PRESET THEMES (client_id = null)
+   • Built-in themes provided by the system
+   • Cannot be edited or deleted by users
+   • Marked with isDefault flag for defaults
+   
+   CUSTOM THEMES (client_id != null)
+   • Created by users through ThemeSettings
+   • Fully editable and deletable
+   • Stored per client in database
+
+1.4 MODE SUPPORT
+   
+   • Light Mode - Optimized for daylight viewing
+   • Dark Mode - Reduced eye strain for low-light
+   • Each user selects separate theme for each mode
+   • Mode toggle persists in localStorage
+
+1.5 DATA FLOW ARCHITECTURE
+   
+   ┌─────────────────┐
+   │  User Profile   │
+   │  (Backend API)  │
+   └────────┬────────┘
+            │ fetch
+            ▼
+   ┌─────────────────┐
+   │  ThemeContext   │ ◄─── User interaction
+   │   (React)       │
+   └────────┬────────┘
+            │ create
+            ▼
+   ┌─────────────────┐
+   │   MUI Theme     │
+   │    Object       │
+   └────────┬────────┘
+            │ provide
+            ▼
+   ┌─────────────────┐
+   │  All Components │
+   │  (useTheme())   │
+   └─────────────────┘
+
+===============================================================================
+                    2. THEME COLOR PALETTE STRUCTURE
+===============================================================================
+
+===============================================================================
+                    2. THEME COLOR PALETTE STRUCTURE
+===============================================================================
+
+2.1 CORE PALETTE (7 Essential Colors)
+   
+   The system uses a simplified 7-color palette that maps to ALL UI elements:
+   
+   COLOR KEY          | PURPOSE                        | DEFAULT LIGHT | DEFAULT DARK
+   ──────────────────────────────────────────────────────────────────────────────────
+   layout             | Sidebar, drawer backgrounds    | #132421       | #132421
+   active             | Primary buttons, brand color   | #407f68       | #407f68
+   interactive        | Secondary buttons, accents     | #6b603f       | #6b603f
+   notifications      | Success, highlights            | #96d980       | #96d980
+   surface            | Light backgrounds, cards       | #fef7c5       | #fef7c5
+   text_primary       | Headings, main text            | #000000       | #ffffff
+   text_secondary     | Descriptions, captions         | #555555       | #b0b0b0
+
+2.2 MUI THEME MAPPING
+   
+   Custom palette colors map to MUI's standardized theme structure:
+   
+   CUSTOM COLOR       | MUI THEME PATH                 | COMPONENT USAGE
+   ──────────────────────────────────────────────────────────────────────────
+   layout             | palette.primary.dark           | Drawer paper background
+   active             | palette.primary.main           | Primary Button background
+   interactive        | palette.secondary.main         | Secondary Button background
+   notifications      | palette.primary.light          | Success indicators
+   surface            | palette.background.creme       | Card accents, soft surfaces
+                      | palette.custom.cream           | (alias for compatibility)
+   text_primary       | palette.text.primary           | Typography primary text
+   text_secondary     | palette.text.secondary         | Typography secondary text
+
+2.3 COMPUTED THEME PROPERTIES
+   
+   These properties are computed based on mode, not customizable:
+   
+   PROPERTY                    | LIGHT MODE      | DARK MODE       | USAGE
+   ────────────────────────────────────────────────────────────────────────
+   background.default          | #f9f9f9         | #1a1a1a         | Page background
+   background.paper            | #ffffff         | #3c3c3c         | Card surfaces
+   background.customPaper      | #ada8a828       | #e9dfdf18       | Alternative cards
+   card_button.paper           | #f0f0f0         | #3c3c3c         | Button cards
+   customGradients.right       | white→trans.    | dark→trans.     | Scroll fade right
+   customGradients.left        | white→trans.    | dark→trans.     | Scroll fade left
+
+2.4 SEMANTIC TASK COLORS (Fixed)
+   
+   These colors are NOT customizable and remain consistent across themes:
+   
+   TASK TYPE COLORS (palette.taskType):
+   ├── inspection: #0288D1 (light) / #42a5f5 (dark)
+   ├── maintenance: #6D4C41
+   ├── delivery: #00796B (light) / #66bb6a (dark)
+   ├── repair: #546E7A
+   ├── cleaning: #7E57C2
+   └── other: #9E9E9E (light) / #bdbdbd (dark)
+   
+   TASK STATUS COLORS (palette.taskStatus):
+   ├── pending: #607D8B
+   ├── in_progress: #2196F3 (light) / #42a5f5 (dark)
+   ├── cancelled: #9E9E9E (light) / #e66c6aff (dark)
+   ├── completed: #4CAF50 (light) / #66bb6a (dark)
+   └── overdue: #F44336 (light) / #e53935 (dark)
+   
+   TAG COLORS (palette.tagTask):
+   ├── category: #449e7d28 (light) / #81c78428 (dark)
+   ├── location: #e2ece26c (light) / #64b5f628 (dark)
+   ├── quantity: #9cdae252
+   ├── lower_limit: #f4433628
+   └── color: #000000ff (light) / #ffffffff (dark)
+
+2.5 THEME DATA STRUCTURE (API Format)
+   
+   {
+     "id": 1,
+     "theme_name": "Ocean Breeze",
+     "is_dark": 0,
+     "isDefault": 0,
+     "client_id": null,
+     "theme_properties": {
+       "palette": {
+         "layout": "#132421",
+         "active": "#407f68",
+         "interactive": "#6b603f",
+         "notifications": "#96d980",
+         "surface": "#fef7c5",
+         "text_primary": "#000000",
+         "text_secondary": "#555555"
+       }
+     }
+   }
+
+===============================================================================
+                3. THEME CONTEXT & STATE MANAGEMENT
+===============================================================================
+
+3.1 THEME CONTEXT PROVIDER (ThemeContext.jsx)
+   
+   Location: src/context/ThemeContext.jsx
+   Export: ThemeProvider (component), useThemeMode (hook)
+   
+   STATE VARIABLES:
+   ┌─────────────────────────┬──────────┬─────────────────────────────────┐
+   │ Variable                │ Type     │ Purpose                         │
+   ├─────────────────────────┼──────────┼─────────────────────────────────┤
+   │ presetThemes            │ Array    │ Built-in themes (client_id=null)│
+   │ customThemes            │ Array    │ User themes (client_id!=null)   │
+   │ themesLoading           │ Boolean  │ Loading state for API fetch     │
+   │ selectedLightThemeId    │ Number   │ Active theme ID for light mode  │
+   │ selectedDarkThemeId     │ Number   │ Active theme ID for dark mode   │
+   │ mode                    │ String   │ Current mode: 'light' or 'dark' │
+   └─────────────────────────┴──────────┴─────────────────────────────────┘
+
+3.2 CONTEXT API METHODS
+   
+   METHOD                          | PARAMETERS               | PURPOSE
+   ────────────────────────────────────────────────────────────────────────
+   toggleTheme()                   | none                     | Switch light ↔ dark
+   syncUserTheme(themeData)        | {light: {id}, dark: {id}}| Sync from profile
+   applyPresetTheme(light, dark)   | lightId, darkId          | Apply both themes
+   resetToDefault()                | none                     | Reset to defaults
+   reloadThemes()                  | none                     | Re-fetch from API
+   setSelectedLightThemeId(id)     | themeId                  | Set light theme
+   setSelectedDarkThemeId(id)      | themeId                  | Set dark theme
+
+3.3 THEME INITIALIZATION LIFECYCLE
+   
+   STEP 1: Component Mount
+   ────────────────────────────────────────────────────────────────────
+   • ThemeProvider component mounts in app root
+   • useEffect triggers loadThemes()
+   • API call: fetchClientTheme()
+   • Response contains all themes (preset + custom)
+   
+   STEP 2: Theme Separation
+   ────────────────────────────────────────────────────────────────────
+   • Filter themes by client_id === null → presetThemes
+   • Filter themes by client_id !== null → customThemes
+   • Set themesLoading = false
+   
+   STEP 3: User Sync
+   ────────────────────────────────────────────────────────────────────
+   • Layout.jsx calls syncUserTheme(user.theme)
+   • Extract light.id and dark.id from user profile
+   • Update selectedLightThemeId and selectedDarkThemeId
+   
+   STEP 4: Theme Creation
+   ────────────────────────────────────────────────────────────────────
+   • Determine activeThemeId based on current mode
+   • Find theme object in presetThemes + customThemes
+   • Extract theme_properties.palette
+   • Call createCustomTheme(mode, palette)
+   • Return MUI theme object
+   
+   STEP 5: Application
+   ────────────────────────────────────────────────────────────────────
+   • MuiThemeProvider receives theme object
+   • CssBaseline applies global styles
+   • All child components can access via useTheme()
+
+3.4 ACTIVE THEME RESOLUTION CODE
+   
+   // Get active theme ID based on current mode
+   const activeThemeId = useMemo(() => {
+     return mode === 'light' ? selectedLightThemeId : selectedDarkThemeId;
+   }, [mode, selectedLightThemeId, selectedDarkThemeId]);
+   
+   // Create theme object
+   const theme = useMemo(() => {
+     if (activeThemeId) {
+       const allThemes = [...presetThemes, ...(customThemes || [])];
+       const selectedTheme = allThemes.find(t => t.id === activeThemeId);
+       
+       if (selectedTheme?.theme_properties?.palette) {
+         return createCustomTheme(mode, selectedTheme.theme_properties.palette);
+       }
+     }
+     // Fallback to default themes
+     return mode === "light" ? lightTheme : darkTheme;
+   }, [mode, activeThemeId, presetThemes, customThemes]);
+
+3.5 MODE PERSISTENCE
+   
+   • Mode stored in localStorage with key "themeMode"
+   • Read on initial mount: localStorage.getItem("themeMode")
+   • Written on toggle: localStorage.setItem("themeMode", newMode)
+   • Survives page refresh and browser restart
+
+===============================================================================
+                4. THEME CREATION & CUSTOMIZATION
+===============================================================================
+
+4.1 THEME DEFINITION FILE (theme.js)
+   
+   Location: src/theme/theme.js
+   
+   EXPORTS:
+   • createCustomTheme(mode, customPalette) → Theme
+   • lightTheme → Theme (default light)
+   • darkTheme → Theme (default dark)
+
+4.2 CREATE CUSTOM THEME FUNCTION
+   
+   Purpose: Transform custom palette into complete MUI theme object
+   
+   Signature:
+   createCustomTheme(mode: 'light' | 'dark', customPalette: Object) → Theme
+   
+   Implementation:
+   ────────────────────────────────────────────────────────────────────
+   export const createCustomTheme = (mode, customPalette) => {
+     const isLight = mode === "light";
+     
+     return createTheme({
+       palette: {
+         mode,
+         primary: {
+           main: customPalette.active,         // Brand color
+           dark: customPalette.layout,          // Sidebar
+           light: customPalette.notifications,  // Highlights
+         },
+         secondary: {
+           main: customPalette.interactive,     // Accents
+         },
+         background: {
+           creme: customPalette.surface,
+           default: isLight ? "#f9f9f9" : "#1a1a1a",
+           paper: isLight ? "#ffffff" : "#3c3c3c",
+           customPaper: isLight ? "#ada8a828" : "#e9dfdf18",
+         },
+         text: {
+           primary: customPalette.text_primary || 
+                    (isLight ? "#000000" : "#ffffff"),
+           secondary: customPalette.text_secondary || 
+                      (isLight ? "#555555" : "#b0b0b0"),
+         },
+         custom: {
+           cream: customPalette.surface,
+           lightGreen: customPalette.notifications,
+         },
+         // ... task colors, status colors, etc.
+       },
+       customGradients: { /* ... */ },
+       typography: typography,
+       components: {
+         MuiDrawer: {
+           styleOverrides: {
+             paper: {
+               backgroundColor: customPalette.layout,
+               color: "#ffffff",
+             },
+           },
+         },
+       },
+     });
+   };
+
+4.3 THEME SETTINGS UI (ThemeSettings.jsx)
+   
+   Location: src/pages/ThemeSettings.jsx
+   
+   FEATURES:
+   ┌────────────────────────────────────────────────────────────────┐
+   │ ✓ Display preset themes in grid layout                        │
+   │ ✓ Display custom themes in separate grid                      │
+   │ ✓ Visual preview of each theme's colors                       │
+   │ ✓ Create new custom theme (light or dark)                     │
+   │ ✓ Edit existing custom themes                                 │
+   │ ✓ Delete custom themes (with confirmation)                    │
+   │ ✓ Select active theme for current mode                        │
+   │ ✓ Checkmark indicator on active theme                         │
+   │ ✓ Edit/Delete icons only on custom themes                     │
+   └────────────────────────────────────────────────────────────────┘
+   
+   COMPONENTS:
+   
+   ThemePreview({ colors })
+   • Renders miniature UI preview
+   • Shows layout, surface, active, text colors
+   • Displays button with active color
+   
+   ThemeCard({ themeData, isActive, onSelect, onEdit, onDelete })
+   • Clickable card for theme selection
+   • Shows ThemePreview
+   • Edit/Delete buttons for custom themes
+   • Active state styling and checkmark
+   
+   ColorPicker({ label, value, onChange })
+   • Color input with visual swatch
+   • Hex code text field
+   • Native color picker overlay
+   
+   Theme Dialog (Create/Edit)
+   • Form for theme name and is_dark flag
+   • 7 color pickers for palette
+   • Preview panel showing live changes
+   • Save/Cancel actions
+
+4.4 THEME CRUD OPERATIONS
+   
+   CREATE:
+   • User clicks "Create Light Theme" or "Create Dark Theme"
+   • Dialog opens with default color values
+   • User customizes colors via ColorPicker
+   • Submit calls createClientTheme(themeData)
+   • Success: reloadThemes() and show snackbar
+   
+   READ:
+   • Themes fetched on mount via fetchClientTheme()
+   • Separated into presetThemes and customThemes
+   • Displayed in grid with ThemeCard components
+   
+   UPDATE:
+   • User clicks Edit icon on custom theme
+   • Dialog pre-fills with existing values
+   • User modifies colors
+   • Submit calls updateClientTheme(id, themeData)
+   • Success: reloadThemes() and show snackbar
+   
+   DELETE:
+   • User clicks Delete icon on custom theme
+   • Confirmation dialog appears
+   • Confirm calls deleteClientTheme(id)
+   • Success: reloadThemes() and show snackbar
+
+4.5 THEME SELECTION FLOW
+   
+   1. User clicks on theme card
+   2. handleThemeSelect(themeId, selectedTheme) called
+   3. Determine if theme is for light or dark mode (selectedTheme.is_dark)
+   4. Update appropriate state:
+      - If is_dark === 0: setSelectedLightThemeId(themeId)
+      - If is_dark === 1: setSelectedDarkThemeId(themeId)
+   5. Call updateUserTheme(themeData) to save to backend
+   6. Theme context automatically updates UI
+
+===============================================================================
+                    5. COMPONENT USAGE GUIDELINES
+===============================================================================
+
+5.1 ACCESSING THEME IN COMPONENTS
+   
+   METHOD 1: useTheme Hook (MUI)
+   ────────────────────────────────────────────────────────────────────
+   import { useTheme } from '@mui/material/styles';
+   
+   const MyComponent = () => {
+     const theme = useTheme();
+     
+     return (
+       <Box sx={{ 
+         bgcolor: theme.palette.background.paper,
+         color: theme.palette.text.primary,
+         borderColor: theme.palette.divider,
+       }}>
+         <Typography variant="h5" color="text.primary">
+           Heading
+         </Typography>
+         <Button 
+           sx={{ 
+             bgcolor: theme.palette.primary.main,
+             color: '#ffffff',
+           }}
+         >
+           Action
+         </Button>
+       </Box>
+     );
+   };
+
+5.2 ACCESSING THEME CONTEXT
+   
+   METHOD 2: useThemeMode Hook (Custom)
+   ────────────────────────────────────────────────────────────────────
+   import { useThemeMode } from '../context/ThemeContext';
+   
+   const ThemeToggleButton = () => {
+     const { mode, toggleTheme, presetThemes, customThemes } = useThemeMode();
+     
+     return (
+       <IconButton onClick={toggleTheme}>
+         {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+       </IconButton>
+     );
+   };
+
+5.3 THEME COLOR USAGE PATTERNS
+   
+   SIDEBAR/DRAWER:
+   ────────────────────────────────────────────────────────────────────
+   <Drawer
+     sx={{
+       '& .MuiDrawer-paper': {
+         bgcolor: theme.palette.primary.dark,  // layout color
+         color: '#ffffff',
+       },
+     }}
+   >
+   
+   PRIMARY ACTION BUTTON:
+   ────────────────────────────────────────────────────────────────────
+   <Button
+     variant="contained"
+     sx={{
+       bgcolor: theme.palette.primary.main,    // active color
+       color: '#ffffff',
+       '&:hover': {
+         bgcolor: theme.palette.primary.dark,
+       },
+     }}
+   >
+   
+   SECONDARY ACTION BUTTON:
+   ────────────────────────────────────────────────────────────────────
+   <Button
+     variant="contained"
+     sx={{
+       bgcolor: theme.palette.secondary.main,  // interactive color
+       color: '#ffffff',
+     }}
+   >
+   
+   SUCCESS/HIGHLIGHT:
+   ────────────────────────────────────────────────────────────────────
+   <Chip
+     label="Completed"
+     sx={{
+       bgcolor: theme.palette.primary.light,  // notifications color
+       color: '#000000',
+     }}
+   />
+   
+   SOFT BACKGROUND:
+   ────────────────────────────────────────────────────────────────────
+   <Card
+     sx={{
+       bgcolor: theme.palette.background.creme,  // surface color
+       border: `1px solid ${theme.palette.divider}`,
+     }}
+   >
+
+5.4 THEME CONSISTENCY RULES
+   
+   DO:
+   ✓ Always use theme.palette.* for colors
+   ✓ Use semantic color names (primary.main, text.primary)
+   ✓ Respect mode-specific computed values
+   ✓ Use MUI's sx prop for theming
+   ✓ Access custom properties via theme.palette.custom.*
+   
+   DON'T:
+   ✗ Hardcode hex colors directly in components
+   ✗ Use inline styles for theme-dependent values
+   ✗ Override theme colors with !important
+   ✗ Assume color values - always reference theme
+   ✗ Mix different color systems (RGB, HSL, hex)
+
+5.5 RESPONSIVE THEME USAGE
+   
+   import { useMediaQuery } from '@mui/material';
+   
+   const MyComponent = () => {
+     const theme = useTheme();
+     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+     
+     return (
+       <Box
+         sx={{
+           p: isMobile ? 1 : 3,
+           bgcolor: theme.palette.background.paper,
+         }}
+       >
+         Content adapts to screen size AND theme
+       </Box>
+     );
+   };
+
+===============================================================================
+                        6. IMPLEMENTATION EXAMPLES
+===============================================================================
+===============================================================================
+                        6. IMPLEMENTATION EXAMPLES
+===============================================================================
+
+6.1 COMPLETE COMPONENT EXAMPLE: THEMED CARD
+   
+   import React from 'react';
+   import { Card, CardContent, Typography, Button, Box } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   
+   const ThemedCard = ({ title, description, onAction }) => {
+     const theme = useTheme();
+     
+     return (
+       <Card
+         sx={{
+           bgcolor: theme.palette.background.paper,
+           border: `1px solid ${theme.palette.divider}`,
+           borderRadius: 2,
+           boxShadow: theme.shadows[2],
+           transition: 'all 0.3s ease',
+           '&:hover': {
+             boxShadow: theme.shadows[8],
+             transform: 'translateY(-4px)',
+           },
+         }}
+       >
+         <CardContent>
+           {/* Primary heading */}
+           <Typography 
+             variant="h5" 
+             color="text.primary"
+             gutterBottom
+             fontWeight={600}
+           >
+             {title}
+           </Typography>
+           
+           {/* Secondary description */}
+           <Typography 
+             variant="body2" 
+             color="text.secondary"
+             mb={2}
+           >
+             {description}
+           </Typography>
+           
+           {/* Accent surface */}
+           <Box
+             sx={{
+               bgcolor: theme.palette.background.creme,
+               p: 1.5,
+               borderRadius: 1,
+               mb: 2,
+             }}
+           >
+             <Typography variant="caption" color="text.secondary">
+               Additional Info
+             </Typography>
+           </Box>
+           
+           {/* Primary action button */}
+           <Button
+             variant="contained"
+             fullWidth
+             onClick={onAction}
+             sx={{
+               bgcolor: theme.palette.primary.main,
+               color: '#ffffff',
+               '&:hover': {
+                 bgcolor: theme.palette.primary.dark,
+               },
+             }}
+           >
+             Take Action
+           </Button>
+         </CardContent>
+       </Card>
+     );
+   };
+   
+   export default ThemedCard;
+
+6.2 LAYOUT WITH THEME SYNC (Layout.jsx Pattern)
+   
+   import React, { useEffect } from 'react';
+   import { Box } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   import { useAuth } from './context/AuthContext';
+   import { useThemeMode } from './context/ThemeContext';
+   
+   const Layout = () => {
+     const theme = useTheme();
+     const { user } = useAuth();
+     const { syncUserTheme } = useThemeMode();
+     
+     // Sync theme from user profile on mount
+     useEffect(() => {
+       if (user?.theme) {
+         syncUserTheme(user.theme);
+       }
+     }, [user, syncUserTheme]);
+     
+     return (
+       <Box sx={{ bgcolor: theme.palette.background.default }}>
+         {/* Sidebar */}
+         <Drawer
+           sx={{
+             '& .MuiDrawer-paper': {
+               bgcolor: theme.palette.primary.dark,
+               color: '#ffffff',
+             },
+           }}
+         >
+           {/* Nav items */}
+         </Drawer>
+         
+         {/* Main content */}
+         <Box component="main">
+           {/* Page content */}
+         </Box>
+       </Box>
+     );
+   };
+
+6.3 TASK STATUS CHIP (Using Fixed Semantic Colors)
+   
+   import { Chip } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   
+   const TaskStatusChip = ({ status }) => {
+     const theme = useTheme();
+     
+     const getStatusColor = () => {
+       switch(status) {
+         case 'completed':
+           return theme.palette.taskStatus.completed;
+         case 'in_progress':
+           return theme.palette.taskStatus.in_progress;
+         case 'pending':
+           return theme.palette.taskStatus.pending;
+         case 'overdue':
+           return theme.palette.taskStatus.overdue;
+         default:
+           return theme.palette.taskStatus.pending;
+       }
+     };
+     
+     return (
+       <Chip
+         label={status.replace('_', ' ').toUpperCase()}
+         sx={{
+           bgcolor: getStatusColor(),
+           color: '#ffffff',
+           fontWeight: 600,
+           textTransform: 'uppercase',
+         }}
+       />
+     );
+   };
+
+6.4 THEME TOGGLE BUTTON (ThemeToggleButton.jsx Pattern)
+   
+   import React from 'react';
+   import { IconButton, Tooltip } from '@mui/material';
+   import { Brightness4, Brightness7 } from '@mui/icons-material';
+   import { useThemeMode } from '../context/ThemeContext';
+   
+   const ThemeToggleButton = () => {
+     const { mode, toggleTheme } = useThemeMode();
+     
+     return (
+       <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
+         <IconButton onClick={toggleTheme} color="inherit">
+           {mode === 'light' ? <Brightness4 /> : <Brightness7 />}
+         </IconButton>
+       </Tooltip>
+     );
+   };
+   
+   export default ThemeToggleButton;
+
+6.5 FORM WITH THEMED INPUTS
+   
+   import { TextField, Box, Button } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   
+   const ThemedForm = () => {
+     const theme = useTheme();
+     
+     return (
+       <Box
+         component="form"
+         sx={{
+           bgcolor: theme.palette.background.paper,
+           p: 3,
+           borderRadius: 2,
+         }}
+       >
+         <TextField
+           fullWidth
+           label="Property Name"
+           variant="outlined"
+           sx={{
+             mb: 2,
+             '& .MuiOutlinedInput-root': {
+               '& fieldset': {
+                 borderColor: theme.palette.divider,
+               },
+               '&:hover fieldset': {
+                 borderColor: theme.palette.primary.main,
+               },
+             },
+           }}
+         />
+         
+         <Button
+           variant="contained"
+           fullWidth
+           sx={{
+             bgcolor: theme.palette.primary.main,
+             color: '#ffffff',
+           }}
+         >
+           Submit
+         </Button>
+       </Box>
+     );
+   };
+
+6.6 GRADIENT USAGE (Scroll Fade)
+   
+   import { Box } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   
+   const ScrollableContainer = ({ children }) => {
+     const theme = useTheme();
+     
+     return (
+       <Box sx={{ position: 'relative' }}>
+         {/* Left fade */}
+         <Box
+           sx={{
+             position: 'absolute',
+             left: 0,
+             top: 0,
+             bottom: 0,
+             width: 40,
+             background: theme.customGradients.left,
+             pointerEvents: 'none',
+             zIndex: 1,
+           }}
+         />
+         
+         {/* Scrollable content */}
+         <Box sx={{ overflowX: 'auto' }}>
+           {children}
+         </Box>
+         
+         {/* Right fade */}
+         <Box
+           sx={{
+             position: 'absolute',
+             right: 0,
+             top: 0,
+             bottom: 0,
+             width: 40,
+             background: theme.customGradients.right,
+             pointerEvents: 'none',
+             zIndex: 1,
+           }}
+         />
+       </Box>
+     );
+   };
+
+6.7 TABLE WITH THEME
+   
+   import { Table, TableBody, TableCell, TableContainer, 
+            TableHead, TableRow, Paper } from '@mui/material';
+   import { useTheme } from '@mui/material/styles';
+   
+   const ThemedTable = ({ data }) => {
+     const theme = useTheme();
+     
+     return (
+       <TableContainer 
+         component={Paper}
+         sx={{
+           bgcolor: theme.palette.background.paper,
+           border: `1px solid ${theme.palette.divider}`,
+         }}
+       >
+         <Table>
+           <TableHead>
+             <TableRow
+               sx={{
+                 bgcolor: theme.palette.background.customPaper,
+               }}
+             >
+               <TableCell sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>
+                 Name
+               </TableCell>
+               <TableCell sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>
+                 Status
+               </TableCell>
+             </TableRow>
+           </TableHead>
+           <TableBody>
+             {data.map((row) => (
+               <TableRow
+                 key={row.id}
+                 sx={{
+                   '&:hover': {
+                     bgcolor: theme.palette.action.hover,
+                   },
+                 }}
+               >
+                 <TableCell sx={{ color: theme.palette.text.primary }}>
+                   {row.name}
+                 </TableCell>
+                 <TableCell sx={{ color: theme.palette.text.secondary }}>
+                   {row.status}
+                 </TableCell>
+               </TableRow>
+             ))}
+           </TableBody>
+         </Table>
+       </TableContainer>
+     );
+   };
+
+===============================================================================
+                        7. UI ELEMENTS REFERENCE
+===============================================================================
+
+7.1 LAYOUT COMPONENTS
+   ├── Sidebar/Drawer → palette.primary.dark (layout)
+   ├── Header/AppBar → palette.background.paper
+   ├── Main Content Area → palette.background.default
+   ├── Footer → palette.background.paper
+   └── Modal/Dialog Backdrop → rgba overlay
+
+7.2 CONTAINER ELEMENTS
+   ├── Cards → palette.background.paper
+   ├── Panels → palette.background.paper
+   ├── Dialogs/Modals → palette.background.paper
+   ├── Accordions → palette.background.paper
+   ├── Tabs → palette.background.paper
+   └── Paper Components → palette.background.paper / customPaper
+
+7.3 TEXT ELEMENTS
+   ├── Headings (H1-H6) → palette.text.primary
+   ├── Primary Text → palette.text.primary
+   ├── Secondary Text → palette.text.secondary
+   ├── Disabled Text → palette.action.disabled
+   ├── Link Text → palette.primary.main
+   ├── Caption Text → palette.text.secondary
+   └── Label Text → palette.text.primary
+
+7.4 BUTTONS
+   ├── Primary Action → palette.primary.main (active)
+   ├── Secondary Action → palette.secondary.main (interactive)
+   ├── Delete/Destructive → palette.error.main (#d32f2f)
+   ├── Text Buttons → palette.primary.main
+   ├── Icon Buttons → palette.text.primary
+   ├── Outlined Buttons → border: palette.primary.main
+   └── Disabled Buttons → palette.action.disabled
+
+7.5 FORM ELEMENTS
+   ├── Input Fields → background.paper, border: divider
+   ├── Input Labels → palette.text.secondary
+   ├── Input Focus → border: palette.primary.main
+   ├── Checkboxes → palette.primary.main
+   ├── Radio Buttons → palette.primary.main
+   ├── Select Dropdowns → background.paper
+   └── Switches → palette.primary.main
+
+7.6 BORDERS & DIVIDERS
+   ├── Border Default → palette.divider (rgba(0,0,0,0.12))
+   ├── Focused Border → palette.primary.main
+   ├── Divider Lines → palette.divider
+   └── Outlined Elements → palette.divider
+
+7.7 STATUS INDICATORS
+   ├── Success → palette.taskStatus.completed
+   ├── Warning → palette.warning.main
+   ├── Error → palette.error.main
+   ├── Info → palette.info.main
+   ├── Progress → palette.taskStatus.in_progress
+   └── Pending → palette.taskStatus.pending
+
+7.8 NAVIGATION ELEMENTS
+   ├── Active Nav Item → palette.primary.main
+   ├── Inactive Nav Item → transparent
+   ├── Nav Text → #ffffff (on dark sidebar)
+   └── Nav Hover → palette.primary.main with opacity
+
+7.9 DATA DISPLAY
+   ├── Table Headers → background.customPaper
+   ├── Table Rows → background.paper
+   ├── Table Hover → action.hover
+   └── Empty States → text.secondary
+
+7.10 BACKGROUNDS
+    ├── Page Background → background.default
+    ├── Card Background → background.paper
+    ├── Soft Background → background.creme (surface)
+    ├── Alternative → background.customPaper
+    └── Hover States → action.hover
+
+===============================================================================
+                        8. LEGACY DOCUMENTATION
+===============================================================================
+
+The following sections preserve the original documentation structure:
+
+8.1 LAYOUT COMPONENTS (Original)
+   ├── Header/AppBar
+   ├── Main Content Area
+   ├── Footer
+   └── Modal/Dialog Backdrop
+
+1.2 CONTAINER ELEMENTS
+   ├── Cards
+   ├── Panels
+   ├── Dialogs/Modals
+   ├── Accordions
+   ├── Tabs
+   └── Paper Components
+
+1.3 TEXT ELEMENTS
+   ├── Headings (H1-H6)
+   ├── Primary Text
+   ├── Secondary Text
+   ├── Disabled Text
+   ├── Link Text
+   ├── Caption Text
+   └── Label Text
+
+1.4 BUTTONS
+   ├── Primary Action Buttons
+   ├── Secondary Action Buttons
+   ├── Delete/Destructive Buttons
+   ├── Text Buttons
+   ├── Icon Buttons
+   ├── Outlined Buttons
+   └── Disabled Buttons
+
+1.5 FORM ELEMENTS
+   ├── Input Fields
+   ├── Select/Dropdown
+   ├── Checkboxes
+   ├── Radio Buttons
+   ├── Switches
+   ├── Date Pickers
+   └── Autocomplete
+
+1.6 BORDERS & DIVIDERS
+   ├── Card Borders
+   ├── Input Borders
+   ├── Table Borders
+   ├── Section Dividers
+   └── Separator Lines
+
+1.7 STATUS INDICATORS
+   ├── Tags/Chips
+   ├── Badges
+   ├── Progress Bars
+   ├── Status Colors (Task Status)
+   ├── Alerts/Notifications
+   └── Tooltips
+
+1.8 NAVIGATION ELEMENTS
+   ├── Menu Items
+   ├── Breadcrumbs
+   ├── Pagination
+   └── Stepper
+
+1.9 DATA DISPLAY
+   ├── Tables
+   ├── Lists
+   ├── Grids
+   └── Data Cards
+
+1.10 BACKGROUNDS
+    ├── Page Background
+    ├── Sidebar Background
+    ├── Card Background
+    ├── Modal Background
+    ├── Hover States
+    └── Selected States
+
+===============================================================================
+                    2. THEME COLOR KEY STRUCTURE
+===============================================================================
+
+2.1 BASE PALETTE COLORS (from colorPalettes.js)
+    
+    RECOMMENDED SEMANTIC NAMING:
+    {
+      primary: "#132421",        // Primary dark color (sidebar, headers)
+      secondary: "#407f68",      // Secondary brand color
+      tertiary: "#6b603f",       // Tertiary accent color
+      quaternary: "#96d980",     // Quaternary highlight color
+      surface: "#fef7c5"         // Surface/background accent color
+    }
+
+    CURRENT IMPLEMENTATION (To be refactored):
+    {
+      dark: "#132421",           // → Should be renamed to: primary
+      primary: "#407f68",        // → Should be renamed to: secondary
+      accent: "#6b603f",         // → Should be renamed to: tertiary
+      lightGreen: "#96d980",     // → Should be renamed to: quaternary
+      cream: "#fef7c5"           // → Should be renamed to: surface
+    }
+
+    MIGRATION GUIDE:
+    Old Key        → New Key       → Usage
+    ──────────────────────────────────────────────────────────────
+    dark           → primary       → Sidebar, dark headers, dark UI elements
+    primary        → secondary     → Main brand color, primary buttons
+    accent         → tertiary      → Secondary buttons, accents
+    lightGreen     → quaternary    → Highlights, hover states, light accents
+    cream          → surface       → Soft backgrounds, cards with accent
+
+2.2 SEMANTIC COLOR NAMING BENEFITS
+
+    ✅ Why Semantic Names?
+    - Easier to understand hierarchy (primary > secondary > tertiary)
+    - Theme-agnostic (works with any color scheme)
+    - Standard naming convention across projects
+    - Easier refactoring and maintenance
+    - Better for developers joining the project
+
+    📋 Naming Convention Standard:
+    
+    PRIMARY (1st level)
+    - Most important/dominant color
+    - Used for: Main navigation, sidebars, primary dark surfaces
+    - Visibility: High contrast, attention-grabbing
+    
+    SECONDARY (2nd level)
+    - Main brand/action color
+    - Used for: Primary buttons, links, key CTAs
+    - Visibility: Brand identity, main interactions
+    
+    TERTIARY (3rd level)
+    - Supporting accent color
+    - Used for: Secondary buttons, subtle accents
+    - Visibility: Supporting elements
+    
+    QUATERNARY (4th level)
+    - Highlight/hover color
+    - Used for: Hover states, highlights, success indicators
+    - Visibility: Interactive feedback
+    
+    SURFACE (Background accent)
+    - Light background color
+    - Used for: Soft backgrounds, cards, panels
+    - Visibility: Subtle differentiation
+
+2.3 MUI THEME PALETTE STRUCTURE (Updated Mapping)
+
+    palette: {
+      primary: {
+        main: palette.secondary,      // Main brand color (green #407f68)
+        dark: palette.primary,        // Dark variant (sidebar #132421)
+        light: palette.quaternary,    // Light variant (highlight #96d980)
+      },
+      secondary: {
+        main: palette.tertiary,       // Accent color (#6b603f)
+      },
+      background: {
+        default: "#f9f9f9",          // Page background
+        paper: "#ffffff",            // Card/modal background
+        surface: palette.surface,     // Accent background (cream #fef7c5)
+        customPaper: "#ada8a828",    // Special paper
+      },
+      text: {
+        primary: "#000000",          // Main text
+        secondary: "#555555",        // Secondary text
+        customtext: "#ffffff",       // Text on dark backgrounds
+      },
+      custom: {
+        primary: palette.primary,        // Direct access to primary
+        secondary: palette.secondary,    // Direct access to secondary
+        tertiary: palette.tertiary,      // Direct access to tertiary
+        quaternary: palette.quaternary,  // Direct access to quaternary
+        surface: palette.surface,        // Direct access to surface
+      },
+      card_button: {...},            // Card-specific colors
+      taskType: {...},               // Task type colors
+      taskStatus: {...},             // Task status colors
+      tagTask: {...}                 // Tag/chip colors
+    }
+
+2.4 IMPLEMENTATION IN colorPalettes.js (REFACTORED)
+
+    export const colorPalettes = {
+      green: {
+        name: "Theme 1",
+        description: "Natural and calming green tones",
+        colors: {
+          primary: "#132421",      // Dark (sidebar, headers)
+          secondary: "#407f68",    // Main brand green
+          tertiary: "#6b603f",     // Accent brown
+          quaternary: "#96d980",   // Light green highlight
+          surface: "#fef7c5",      // Cream background
+        },
+      },
+      blue: {
+        name: "Theme 2",
+        description: "Professional ocean blue tones",
+        colors: {
+          primary: "#1a2332",      // Dark navy
+          secondary: "#2563eb",    // Main brand blue
+          tertiary: "#0891b2",     // Cyan accent
+          quaternary: "#60a5fa",   // Light blue highlight
+          surface: "#dbeafe",      // Light blue background
+        },
+      },
+      purple: {
+        name: "Theme 3",
+        description: "Elegant and creative purple tones",
+        colors: {
+          primary: "#2d1b4e",      // Dark purple
+          secondary: "#7c3aed",    // Main brand purple
+          tertiary: "#a855f7",     // Purple accent
+          quaternary: "#c084fc",   // Light purple highlight
+          surface: "#f3e8ff",      // Lavender background
+        },
+      },
+    };
+
+2.5 MUI THEME PALETTE STRUCTURE
+    palette: {
+      primary: {...},           // Primary brand colors
+      secondary: {...},         // Secondary/accent colors
+      background: {...},        // Background colors
+      text: {...},             // Text colors
+      custom: {...},           // Custom colors
+      card_button: {...},      // Card-specific colors
+      taskType: {...},         // Task type colors
+      taskStatus: {...},       // Task status colors
+      tagTask: {...}          // Tag/chip colors
+    }
+
+===============================================================================
+                3. STANDARD COLOR KEYS BY COMPONENT
+===============================================================================
+
+LEGEND:
+✅ Semantic Key = Recommended standardized key
+🔄 Current Key = Current implementation key
+📝 Usage = Where/how to use this color
+
+3.1 SIDEBAR/DRAWER
+    ✅ Semantic Key: palette.custom.primary  OR  theme.palette.primary.dark
+    🔄 Current Key: palette.primary.dark (maps to dark: "#132421")
+    📝 Usage: Background color of sidebar
+    
+    Example (Recommended):
+    backgroundColor: theme.palette.primary.dark  // Uses MUI primary.dark
+    // OR
+    backgroundColor: theme.palette.custom.primary  // Direct semantic access
+
+    Text Color Key: "#ffffff" OR palette.text.customtext
+    Usage: Text inside sidebar
+    Example: color: "#ffffff"
+
+3.2 HEADER/APPBAR
+    ✅ Semantic Key: palette.primary.main  OR  palette.custom.secondary
+    🔄 Current Key: palette.primary.main (maps to primary: "#407f68")
+    📝 Usage: Header/AppBar background - main brand color
+    
+    Example:
+    backgroundColor: theme.palette.primary.main  // Main brand color
+
+    Text Key: palette.text.customtext
+    Usage: Header text and icons
+    Example: color: theme.palette.text.customtext
+
+3.3 BACKGROUNDS
+
+    a) Page Background
+       Key: palette.background.default
+       Value: "#f9f9f9"
+       Usage: Main page background
+
+    b) Card Background
+       Key: palette.background.paper
+       Value: "#ffffff"
+       Usage: Cards, dialogs, modals
+
+    c) Custom Paper Background
+       Key: palette.background.customPaper
+       Value: "#ada8a828"
+       Usage: Special paper components
+
+    d) Cream Background
+       Key: palette.background.creme OR palette.custom.cream
+       Value: From palette (e.g., "#fef7c5")
+       Usage: Soft accent backgrounds
+
+    e) Sidebar Background
+       Key: palette.primary.dark
+       Value: From palette (e.g., "#132421")
+       Usage: Drawer/sidebar background
+
+    f) Card Button Background
+       Key: palette.card_button.paper
+       Value: "#f0f0f0"
+       Usage: Button-like cards
+
+3.4 TEXT COLORS
+
+    a) Primary Text
+       Key: palette.text.primary
+       Value: "#000000"
+       Usage: Main body text, headings
+       Example: color: theme.palette.text.primary
+
+    b) Secondary Text
+       Key: palette.text.secondary
+       Value: "#555555"
+       Usage: Subtext, descriptions, captions
+       Example: color: theme.palette.text.secondary
+
+    c) Custom Text (Light/White)
+       Key: palette.text.customtext
+       Value: "#ffffff"
+       Usage: Text on dark backgrounds (sidebar, dark buttons)
+       Example: color: theme.palette.text.customtext
+
+    d) Disabled Text
+       Key: palette.text.disabled (use MUI default)
+       Usage: Disabled form fields, inactive elements
+
+3.5 BUTTONS
+
+    a) Primary Action Button
+       Background Key: palette.primary.main
+       Text Key: palette.text.customtext OR "#ffffff"
+       Usage: Main CTAs (Submit, Save, Add, etc.)
+       Example:
+       sx={{
+         backgroundColor: theme.palette.primary.main,
+         color: "#ffffff",
+         '&:hover': { backgroundColor: theme.palette.primary.dark }
+       }}
+
+    b) Secondary Action Button
+       Background Key: palette.secondary.main
+       Text Key: palette.text.customtext
+       Usage: Secondary actions (Edit, Cancel, etc.)
+       Example:
+       sx={{
+         backgroundColor: theme.palette.secondary.main,
+         color: "#ffffff"
+       }}
+
+    c) Delete/Destructive Button
+       Background Key: "#d32f2f" OR error color
+       Text Key: "#ffffff"
+       Usage: Delete, Remove actions
+       Example:
+       sx={{
+         backgroundColor: "#d32f2f",
+         color: "#ffffff"
+       }}
+
+    d) Outlined Button
+       Border Key: palette.primary.main
+       Text Key: palette.primary.main
+       Usage: Secondary actions without strong emphasis
+
+    e) Text Button
+       Text Key: palette.primary.main
+       Usage: Tertiary actions, links
+
+    f) Icon Button
+       Icon Color Key: palette.primary.main OR palette.text.primary
+       Usage: Action icons
+
+    g) Disabled Button
+       Background Key: Use MUI default or rgba(0,0,0,0.12)
+       Text Key: Use MUI default or rgba(0,0,0,0.26)
+
+3.6 HEADINGS
+
+    Font Family Key: typography.h1.fontFamily (Raleway)
+    Color Key: palette.text.primary
+    Usage: All headings (H1-H6)
+    
+    Example:
+    Typography variant="h1" to "h6" automatically applies correct styling
+    sx={{ color: theme.palette.text.primary }}
+
+3.7 CARDS
+
+    Background Key: palette.background.paper
+    Border Key: Optional - "1px solid rgba(0,0,0,0.12)"
+    Shadow: Use MUI elevation prop
+    Text Key: palette.text.primary (heading), palette.text.secondary (body)
+
+    Example:
+    <Card sx={{
+      backgroundColor: theme.palette.background.paper,
+      border: '1px solid rgba(0,0,0,0.12)'
+    }}>
+
+3.8 BORDERS
+
+    a) Default Border
+       Key: "1px solid rgba(0,0,0,0.12)"
+       Usage: General borders
+
+    b) Divider Border
+       Key: "1px solid rgba(0,0,0,0.08)"
+       Usage: Section dividers
+
+    c) Input Border (Normal)
+       Key: "1px solid rgba(0,0,0,0.23)"
+       Usage: Input fields default state
+
+    d) Input Border (Focus)
+       Key: palette.primary.main
+       Usage: Input fields focused state
+
+    e) Card Border
+       Key: "1px solid rgba(0,0,0,0.12)" OR none
+       Usage: Card outlines
+
+3.9 DIVIDERS
+
+    Color Key: "rgba(0,0,0,0.08)" OR "rgba(0,0,0,0.12)"
+    Usage: Section separators
+    Component: <Divider sx={{ borderColor: 'rgba(0,0,0,0.08)' }} />
+
+3.10 FORM INPUTS
+
+     Background Key: palette.background.paper OR transparent
+     Border Key: See 3.8 (Borders)
+     Text Key: palette.text.primary
+     Label Key: palette.text.secondary
+     Error Key: Use MUI error color
+
+3.11 TAGS/CHIPS
+
+     a) Category Tag
+        Background Key: palette.tagTask.categatory
+        Value: '#449e7d28'
+        Text Key: palette.tagTask.color (#000000ff)
+
+     b) Location Tag
+        Background Key: palette.tagTask.location
+        Value: '#e2ece26c'
+        Text Key: palette.tagTask.color
+
+     c) Quantity Tag
+        Background Key: palette.tagTask.quantity
+        Value: '#9cdae252'
+        Text Key: palette.tagTask.color
+
+     d) Lower Limit Tag
+        Background Key: palette.tagTask.lower_limit
+        Value: '#f4433628'
+        Text Key: palette.tagTask.color
+
+3.12 TASK STATUS COLORS
+
+     a) Pending
+        Key: palette.taskStatus.pending
+        Value: '#607D8B'
+
+     b) In Progress
+        Key: palette.taskStatus.in_progress
+        Value: '#2196F3'
+
+     c) Completed
+        Key: palette.taskStatus.completed
+        Value: '#4CAF50'
+
+     d) Cancelled
+        Key: palette.taskStatus.cancelled
+        Value: '#9E9E9E'
+
+     e) Overdue
+        Key: palette.taskStatus.overdue
+        Value: '#F44336'
+
+3.13 TASK TYPE COLORS
+
+     a) Inspection
+        Key: palette.taskType.inspection
+        Value: '#0288D1'
+
+     b) Maintenance
+        Key: palette.taskType.maintenance
+        Value: '#6D4C41'
+
+     c) Delivery
+        Key: palette.taskType.delivery
+        Value: '#00796B'
+
+     d) Repair
+        Key: palette.taskType.repair
+        Value: '#546E7A'
+
+     e) Cleaning
+        Key: palette.taskType.cleaning
+        Value: '#7E57C2'
+
+     f) Other
+        Key: palette.taskType.other
+        Value: '#9E9E9E'
+
+3.14 LINKS
+
+     Color Key: palette.primary.main
+     Hover Key: palette.primary.dark
+     Visited Key: palette.primary.main (no change)
+
+3.15 TOOLTIPS
+
+     Background Key: Use MUI default (dark gray)
+     Text Key: "#ffffff"
+
+3.16 MODALS/DIALOGS
+
+     Background Key: palette.background.paper
+     Backdrop Key: rgba(0,0,0,0.5)
+     Border/Shadow: Use MUI elevation
+
+3.17 TABLES
+
+     Header Background Key: palette.background.customPaper OR palette.primary.light
+     Row Background Key: palette.background.paper
+     Alternate Row Key: "rgba(0,0,0,0.02)"
+     Border Key: "1px solid rgba(0,0,0,0.12)"
+
+3.18 GRADIENTS
+
+     Right Gradient Key: theme.customGradients.right
+     Value: 'linear-gradient(to right, rgba(255,255,255,0.95), transparent)'
+
+     Left Gradient Key: theme.customGradients.left
+     Value: 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)'
+
+===============================================================================
+                        4. USAGE GUIDELINES
+===============================================================================
+
+4.1 ACCESSING THEME COLORS IN COMPONENTS
+
+    Method 1 - Using useTheme Hook:
+    ```javascript
+    import { useTheme } from '@mui/material/styles';
+    
+    const MyComponent = () => {
+      const theme = useTheme();
+      
+      return (
+        <Box sx={{ backgroundColor: theme.palette.primary.main }}>
+          Content
+        </Box>
+      );
+    };
+    ```
+
+    Method 2 - Using sx prop with theme callback:
+    ```javascript
+    <Box sx={(theme) => ({
+      backgroundColor: theme.palette.primary.main,
+      color: theme.palette.text.primary
+    })}>
+      Content
+    </Box>
+    ```
+
+    Method 3 - Direct palette access:
+    ```javascript
+    <Box sx={{
+      backgroundColor: 'primary.main',
+      color: 'text.primary'
+    }}>
+      Content
+    </Box>
+    ```
+
+4.2 THEME CONSISTENCY RULES
+
+    ✅ DO:
+    - Always use theme color keys instead of hardcoded colors
+    - Use semantic color names (primary, secondary, text.primary)
+    - Follow the established key structure
+    - Test colors in all theme variations (green, blue, purple)
+
+    ❌ DON'T:
+    - Don't hardcode hex colors directly in components
+    - Don't create new color keys without documentation
+    - Don't mix color systems (stick to theme palette)
+
+4.3 ADDING NEW COLORS
+
+    To add new colors, update colorPalettes.js:
+    
+    ```javascript
+    export const colorPalettes = {
+      green: {
+        colors: {
+          // Add new color here
+          newColor: "#hexvalue",
+        }
+      },
+      // Add to all palette variations
+    };
+    ```
+
+    Then reference in theme.js palette section.
+
+4.4 COMPONENT-SPECIFIC STYLING PRIORITY
+
+    1. Use theme palette colors first
+    2. Use component-specific palette keys (taskStatus, taskType, etc.)
+    3. Use custom colors only when necessary
+    4. Document any new custom colors
+
+===============================================================================
+                    5. IMPLEMENTATION EXAMPLES
+===============================================================================
+
+5.1 SIDEBAR IMPLEMENTATION
+```javascript
+<Drawer
+  sx={{
+    '& .MuiDrawer-paper': {
+      backgroundColor: theme.palette.primary.dark,
+      color: '#ffffff'
+    }
+  }}
+>
+  {/* Sidebar content */}
+</Drawer>
+```
+
+5.2 ACTION BUTTON IMPLEMENTATION
+```javascript
+// Primary Action
+<Button
+  variant="contained"
+  sx={{
+    backgroundColor: theme.palette.primary.main,
+    color: '#ffffff',
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark
+    }
+  }}
+>
+  Save
+</Button>
+
+// Delete Action
+<Button
+  variant="contained"
+  sx={{
+    backgroundColor: '#d32f2f',
+    color: '#ffffff',
+    '&:hover': {
+      backgroundColor: '#b71c1c'
+    }
+  }}
+>
+  Delete
+</Button>
+```
+
+5.3 CARD IMPLEMENTATION
+```javascript
+<Card
+  sx={{
+    backgroundColor: theme.palette.background.paper,
+    border: '1px solid rgba(0,0,0,0.12)',
+    boxShadow: 2
+  }}
+>
+  <CardContent>
+    <Typography variant="h6" color="text.primary">
+      Card Title
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      Card description text
+    </Typography>
+  </CardContent>
+</Card>
+```
+
+5.4 TASK STATUS CHIP
+```javascript
+<Chip
+  label="In Progress"
+  sx={{
+    backgroundColor: theme.palette.taskStatus.in_progress,
+    color: '#ffffff'
+  }}
+/>
+```
+
+5.5 TEXT IMPLEMENTATION
+```javascript
+{/* Primary Text - Headings */}
+<Typography variant="h4" color="text.primary">
+  Main Heading
+</Typography>
+
+{/* Secondary Text - Descriptions */}
+<Typography variant="body2" color="text.secondary">
+  Supporting description text
+</Typography>
+
+{/* Custom White Text - On dark backgrounds */}
+<Typography sx={{ color: theme.palette.text.customtext }}>
+  Sidebar Text
+</Typography>
+```
+
+5.6 INPUT FIELD
+```javascript
+<TextField
+  sx={{
+    '& .MuiOutlinedInput-root': {
+      backgroundColor: theme.palette.background.paper,
+      '& fieldset': {
+        borderColor: 'rgba(0,0,0,0.23)'
+      },
+      '&:hover fieldset': {
+        borderColor: theme.palette.primary.main
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: theme.palette.primary.main
+      }
+    }
+  }}
+/>
+```
+
+5.7 TABLE IMPLEMENTATION
+```javascript
+<Table>
+  <TableHead>
+    <TableRow sx={{ backgroundColor: theme.palette.background.customPaper }}>
+      <TableCell>Header</TableCell>
+    </TableRow>
+  </TableHead>
+  <TableBody>
+    <TableRow
+      sx={{
+        '&:nth-of-type(odd)': {
+          backgroundColor: 'rgba(0,0,0,0.02)'
+        }
+      }}
+    >
+      <TableCell>Data</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+```
+
+===============================================================================
+                        QUICK REFERENCE TABLE
+===============================================================================
+
+SEMANTIC COLOR NAMING - QUICK LOOKUP
+═══════════════════════════════════════════════════════════════════════════
+
+SEMANTIC NAME    | HEX VALUE  | OLD NAME   | USAGE DESCRIPTION
+───────────────────────────────────────────────────────────────────────────
+primary          | #132421    | dark       | Sidebar, dark headers, dark surfaces
+secondary        | #407f68    | primary    | Main brand color, primary buttons
+tertiary         | #6b603f    | accent     | Secondary buttons, accents
+quaternary       | #96d980    | lightGreen | Highlights, hover states, success
+surface          | #fef7c5    | cream      | Soft backgrounds, card accents
+
+═══════════════════════════════════════════════════════════════════════════
+
+COMPONENT-WISE COLOR KEYS (with Semantic Mapping)
+═══════════════════════════════════════════════════════════════════════════
+
+COMPONENT              | SEMANTIC KEY PATH                    | MAPS TO
+─────────────────────────────────────────────────────────────────────────
+Sidebar Background     | palette.primary.dark                 | primary (#132421)
+                       | palette.custom.primary               | primary (#132421)
+─────────────────────────────────────────────────────────────────────────
+Header Background      | palette.primary.main                 | secondary (#407f68)
+                       | palette.custom.secondary             | secondary (#407f68)
+─────────────────────────────────────────────────────────────────────────
+Primary Action Button  | palette.primary.main                 | secondary (#407f68)
+       Background      | palette.custom.secondary             | secondary (#407f68)
+─────────────────────────────────────────────────────────────────────────
+Secondary Action       | palette.secondary.main               | tertiary (#6b603f)
+       Button BG       | palette.custom.tertiary              | tertiary (#6b603f)
+─────────────────────────────────────────────────────────────────────────
+Highlight/Success      | palette.primary.light                | quaternary (#96d980)
+                       | palette.custom.quaternary            | quaternary (#96d980)
+─────────────────────────────────────────────────────────────────────────
+Soft Background        | palette.background.surface           | surface (#fef7c5)
+                       | palette.custom.surface               | surface (#fef7c5)
+─────────────────────────────────────────────────────────────────────────
+Page Background        | palette.background.default           | #f9f9f9
+─────────────────────────────────────────────────────────────────────────
+Card Background        | palette.background.paper             | #ffffff
+─────────────────────────────────────────────────────────────────────────
+Primary Text           | palette.text.primary                 | #000000
+─────────────────────────────────────────────────────────────────────────
+Secondary Text         | palette.text.secondary               | #555555
+─────────────────────────────────────────────────────────────────────────
+White Text (on dark)   | palette.text.customtext              | #ffffff
+─────────────────────────────────────────────────────────────────────────
+Delete Button BG       | #d32f2f (MUI error)                  | Red error
+─────────────────────────────────────────────────────────────────────────
+Border Default         | rgba(0,0,0,0.12)                     | Light gray
+─────────────────────────────────────────────────────────────────────────
+Divider                | rgba(0,0,0,0.08)                     | Very light
+─────────────────────────────────────────────────────────────────────────
+Task - Completed       | palette.taskStatus.completed         | #4CAF50
+Task - Pending         | palette.taskStatus.pending           | #607D8B
+Task - In Progress     | palette.taskStatus.in_progress       | #2196F3
+─────────────────────────────────────────────────────────────────────────
+Link Color             | palette.primary.main                 | secondary (#407f68)
+─────────────────────────────────────────────────────────────────────────
+
+═══════════════════════════════════════════════════════════════════════════
+
+ACTION BUTTON COLOR KEYS (Most Common Use Case)
+═══════════════════════════════════════════════════════════════════════════
+
+BUTTON TYPE          | BACKGROUND KEY              | TEXT COLOR | SEMANTIC
+───────────────────────────────────────────────────────────────────────────
+Primary Action       | palette.primary.main        | #ffffff    | secondary
+(Save, Submit, Add)  | palette.custom.secondary    | #ffffff    | (brand)
+───────────────────────────────────────────────────────────────────────────
+Secondary Action     | palette.secondary.main      | #ffffff    | tertiary
+(Edit, Cancel)       | palette.custom.tertiary     | #ffffff    | (accent)
+───────────────────────────────────────────────────────────────────────────
+Delete/Destructive   | #d32f2f (error)            | #ffffff    | error
+(Delete, Remove)     |                             |            |
+───────────────────────────────────────────────────────────────────────────
+Success Action       | palette.primary.light       | #000000    | quaternary
+(Complete, Approve)  | palette.custom.quaternary   | #000000    | (highlight)
+───────────────────────────────────────────────────────────────────────────
+Outlined Button      | transparent                 | primary    | secondary
+                     | border: palette.primary.main|            |
+───────────────────────────────────────────────────────────────────────────
+Text Button          | transparent                 | primary    | secondary
+(Link-style)         |                             | .main      |
+───────────────────────────────────────────────────────────────────────────
+
+===============================================================================
+                            END OF DOCUMENT
+===============================================================================
+
+Last Updated: January 14, 2026
+Version: 2.0 (Semantic Naming Update)
+Maintained by: Beck Holiday Homes Development Team
+
+For questions or additions to this document, please contact the development team.

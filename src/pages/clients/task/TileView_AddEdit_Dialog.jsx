@@ -268,7 +268,6 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
 
     return (
         <>
-
             <Dialog
                 open={open}
                 fullWidth
@@ -291,11 +290,13 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                     </IconButton>
 
                 </DialogTitle>
+
                 <DialogContent dividers>
 
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
 
                         <Grid size={{ xs: 12 }}>
+
                             <TextField
                                 label="Title"
                                 value={formData.title}
@@ -306,6 +307,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                 error={!!validationErrors.title}
                                 helperText={validationErrors.title}
                             />
+
                         </Grid>
 
                         <Grid size={{ xs: 12 }}>
@@ -353,6 +355,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                     </RadioGroup>
                                 </FormControl>
                             </Grid>
+
                             {taskScheduleType === 'recurring' && (
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <FormControl component="fieldset">
@@ -381,9 +384,11 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
 
                                 </Grid>
                             )}
+
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
+
                             <Autocomplete
                                 size="small"
                                 options={properties}
@@ -422,6 +427,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
+
                             <Autocomplete
                                 size="small"
                                 options={inventoryOptions}
@@ -461,6 +467,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                 )}
                                 isOptionEqualToValue={(option, value) => option.id === value.id}
                             />
+                            
                         </Grid>
 
                         {taskScheduleType === 'recurring' && (
@@ -619,6 +626,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                                 required
                                 error={!!validationErrors.task_type}
                                 helperText={validationErrors.task_type}
+
                             >
                                 {taskTypesOptions.map((type) => (
                                     <MenuItem key={type.value} value={type.value} dense>
@@ -702,17 +710,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 </DialogContent>
 
                 <DialogActions sx={{ px: 3, py: 2 }}>
-
-                    <Button
-                        variant='text'
-                        size='medium'
-                        sx={{ textTransform: 'none', mr: 2 }}
-                        onClick={onClose}
-                        disabled={loading}
-                    >
-                        Cancel
-                    </Button>
-
+                    
                     <Button
                         variant='contained'
                         disableElevation

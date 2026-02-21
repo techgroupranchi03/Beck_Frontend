@@ -1,7 +1,7 @@
 import { Close, Inventory, CloudUpload, ExpandMore } from '@mui/icons-material';
 import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Accordion, AccordionSummary, AccordionDetails, Checkbox, FormControlLabel, Radio, RadioGroup, FormLabel } from '@mui/material'
 import React, { useState, useEffect } from 'react'
-import { categories, taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, categoriess, taskTypesOptions } from '../../../constant';
+import { scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, categoriess, taskTypesOptions } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 
@@ -501,6 +501,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             borderRadius: 2,
                                             border: '1px solid',
                                             borderColor: 'divider',
+
                                         }}
                                     />
                                     <IconButton
@@ -510,11 +511,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             position: 'absolute',
                                             top: -8,
                                             right: -8,
-                                            bgcolor: 'error.main',
-                                            color: 'white',
-                                            '&:hover': {
-                                                bgcolor: 'error.dark',
-                                            },
+                                            bgcolor: palette.secondary.main,
+                                            color: '#ffffff',
                                         }}
                                     >
                                         <Close sx={{ fontSize: 18 }} />
@@ -526,7 +524,15 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                 variant="outlined"
                                 component="label"
                                 startIcon={<CloudUpload />}
-                                sx={{ textTransform: 'none' }}
+                                sx={{
+                                    textTransform: 'none',
+                                    borderColor: palette.primary.main,
+                                    color: palette.primary.main,
+                                    '&:hover': {
+                                        borderColor: palette.secondary.main,
+                                        color: palette.secondary.main,
+                                    }
+                                }}
                             >
                                 Upload Image
                                 <input
@@ -879,14 +885,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             </DialogContent>
 
             <DialogActions sx={{ px: 2, py: 2 }}>
-                <Button
-                    variant="text"
-                    size='medium'
-                    sx={{ textTransform: 'none', mr: 2 }}
-                    onClick={onClose}
-                >
-                    Cancel
-                </Button>
+
                 <Button
                     variant="contained"
                     size='small'

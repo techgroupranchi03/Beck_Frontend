@@ -57,8 +57,8 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
       <DialogTitle sx={{ pb: 1 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Warning sx={{ color: '#FF9800', fontSize: 28 }} />
-            <Typography variant="h6" fontWeight={600} color={palette.error.main}>
+            <Warning sx={{ color: palette.error.main }} />
+            <Typography variant="body1" fontWeight={600} color={palette.error.main}>
               Cannot Delete Team Member
             </Typography>
           </Stack>
@@ -79,7 +79,7 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
 
       <DialogContent>
         <Stack spacing={2.5}>
-          <Typography variant="body1" color={palette.text.secondary}>
+          <Typography variant="body2" color={palette.text.secondary}>
             {message || 'This team member has assigned tasks and cannot be deleted.'}
           </Typography>
 
@@ -149,22 +149,6 @@ const NavigateToTask = ({ open, onClose, deleteResponse }) => {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-        <Button
-          onClick={onClose}
-          variant="outlined"
-          sx={{
-            textTransform: 'none',
-            borderRadius: 2,
-            color: palette.text.primary,
-            borderColor: palette.text.secondary,
-            '&:hover': {
-              borderColor: palette.primary.main,
-              bgcolor: 'transparent',
-            }
-          }}
-        >
-          Cancel
-        </Button>
         <Button
           onClick={handleNavigateToTasks}
           variant="contained"

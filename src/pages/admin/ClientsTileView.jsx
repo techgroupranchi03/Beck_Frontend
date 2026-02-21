@@ -2,6 +2,7 @@ import { Clear, FilterList, Search, SearchOff, Edit, Delete, MoreVert, Phone, Bu
 import { Container, Divider, IconButton, Stack, TextField, useTheme, Grid, Card, CardHeader, CardContent, Typography, Box, Avatar, Chip, Menu, MenuItem, ListItemIcon, ListItemText, Button } from '@mui/material'
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { useSnackbar } from '../../resuable_components/Snackbar';
+import { useViewMode } from '../../context/ViewModeContext';
 import CardSkeleton from '../../resuable_components/CardSkeleton';
 import IconLabel from '../../resuable_components/IconLabel';
 import { formatDate } from '../../utils/dateFormat';
@@ -14,6 +15,7 @@ const ClientsTileView = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
+  const { viewMode } = useViewMode();
 
   const {
     clientsData,
@@ -151,7 +153,7 @@ const ClientsTileView = () => {
     }
   };
   return (
-    <Container maxWidth="mx" disableGutters sx={{ mt: 2, px: 1 }}>
+    <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} disableGutters sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 1 }}>
 
       {/* Add Client Button with Filter and Search */}
       <Stack direction="row" display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -241,13 +243,13 @@ const ClientsTileView = () => {
       <Grid container spacing={2}>
         {loading ? (
           Array.from({ length: 6 }).map((_, index) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} item key={`skeleton-${index}`}>
+            <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} item key={`skeleton-${index}`}>
               <CardSkeleton />
             </Grid>
           ))
         ) : (
           clientsData.map((client) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} item key={client.id}>
+            <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} item key={client.id}>
               <Card
                 elevation={0}
                 sx={{
@@ -357,7 +359,7 @@ const ClientsTileView = () => {
       {isLoadingMore && (
         <Grid container spacing={2} sx={{ mt: 2 }}>
           {Array.from({ length: 3 }).map((_, index) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} item key={`loading-more-${index}`}>
+            <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} item key={`loading-more-${index}`}>
               <CardSkeleton />
             </Grid>
           ))}

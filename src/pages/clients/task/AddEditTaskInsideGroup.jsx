@@ -31,7 +31,6 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
     const isEdit = !!task && !!task.id;
     const isDuplicate = !!task && !task.id;
 
-    console.log('groupTaskId in AddEditTaskInsideGroup:', groupTaskId);
     
     const {
         inventoryItems,
@@ -170,7 +169,9 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
     };
 
     return (
+
         <Dialog open={open} fullWidth maxWidth="md" TransitionComponent={Transition}>
+
             <DialogTitle>
                 {isEdit ? (isDuplicate ? 'Duplicate Task' : 'Edit Task') : 'Add Task'}
                 <IconButton
@@ -181,8 +182,11 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                     <CloseIcon />
                 </IconButton>
             </DialogTitle>
+
             <DialogContent dividers>
+
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
+
                     {/* Title */}
                     <Grid size={{ xs: 12 }}>
                         <TextField
@@ -399,18 +403,10 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                     </Grid>
                     
                 </Grid>
+
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2 }}>
-                <Button
-                    variant="text"
-                    size="medium"
-                    sx={{ textTransform: 'none', mr: 2 }}
-                    onClick={onClose}
-                    disabled={loading}
-                >
-                    Cancel
-                </Button>
 
                 <Button
                     variant="contained"
@@ -427,7 +423,9 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                 >
                     {loading ? 'Saving...' : isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Add Task'}
                 </Button>
+
             </DialogActions>
+
         </Dialog>
     );
 };

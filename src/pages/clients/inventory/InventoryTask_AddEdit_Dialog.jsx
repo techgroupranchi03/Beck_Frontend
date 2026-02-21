@@ -641,16 +641,6 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                 <DialogActions sx={{ px: 3, py: 2 }}>
 
                     <Button
-                        variant='text'
-                        size='medium'
-                        sx={{ textTransform: 'none', mr: 2 }}
-                        onClick={onClose}
-                        disabled={loading}
-                    >
-                        Cancel
-                    </Button>
-
-                    <Button
                         variant='contained'
                         disableElevation
                         size='medium'

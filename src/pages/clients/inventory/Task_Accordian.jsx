@@ -1298,6 +1298,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
 
     return (
         <React.Fragment>
+
             <Box>
                 <MaterialReactTable
                     columns={viewMode === 'taskPlanner' ? TaskPlannercolumns : ActiveTaskcolumns}
@@ -1387,7 +1388,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                     <IconButton
                                         onClick={() => table.setEditingRow(row)}
                                         size="small"
-                                        sx={{ color: palette.primary.main }}
+                                        sx={{ color: palette.secondary.main }}
                                     >
                                         <EditIcon fontSize="small" />
                                     </IconButton>
@@ -1415,7 +1416,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                             table.setCreatingRow(newCreatingRow);
                                         }}
                                         size="small"
-                                        sx={{ color: palette.primary.light }}
+                                        sx={{ color: palette.secondary.main }}
                                     >
                                         <FileCopy fontSize="small" />
                                     </IconButton>
@@ -1495,6 +1496,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 />
 
             </Box>
+
             <ConfirmationDialog
                 open={openDeleteConfirm}
                 onCancel={handleCancelDelete}
@@ -1502,6 +1504,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                 title="Delete Task"
                 message="Are you sure you want to delete this task? This action cannot be undone."
             />
+
             <TaskCompletionDialog
                 open={showcompletionDialog}
                 onClose={handleCompletionDialogClose}
@@ -1510,6 +1513,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     isTeamUser ? updateTeamTaskStatusCompleted : updateClientTaskStatusCompleted
                 }
             />
+            
             <ImageViewer
                 open={openImage}
                 onClose={() => setOpenImage(false)}

@@ -27,7 +27,11 @@ export const ViewModeProvider = ({ children }) => {
     }, [viewMode]);
 
     const toggleViewMode = () => {
-        setViewMode(prev => prev === 'table' ? 'tile' : 'table');
+        setViewMode(prev => {
+            if (prev === 'table') return 'tile';
+            if (prev === 'tile') return 'center';
+            return 'table';
+        });
     };
 
     // Force tile view on mobile devices

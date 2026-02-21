@@ -72,6 +72,7 @@ const Tileview_addEdit_Clients = ({ open, onClose, client, createClient, updateC
             ...prev,
             [field]: value
         }));
+        
         // Clear validation error for this field
         if (validationErrors[field]) {
             setValidationErrors(prev => ({

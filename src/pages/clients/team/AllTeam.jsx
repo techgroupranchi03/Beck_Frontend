@@ -50,7 +50,7 @@ const AllTeam = () => {
   const handleCreateTeamMember = async ({ values, table }) => {
     try {
       const res = await createTeam(values);
-      showSnackbar(res.message || "Team member created successfully", "success");
+      showSnackbar(res.message, "success");
       table.setCreatingRow(null);
       setValidationErrors({});
     } catch (error) {
@@ -88,7 +88,7 @@ const AllTeam = () => {
   const handleSaveTeamMember = async ({ values, table, row }) => {
     try {
       const res = await updateTeam(row.original.id, values);
-      showSnackbar(res.message || "Team member updated successfully", "success");
+      showSnackbar(res.message, "success");
       table.setEditingRow(null);
       setValidationErrors({});
     } catch (error) {
@@ -132,13 +132,13 @@ const AllTeam = () => {
     if (teamMemberToDelete != null) {
       try {
         const res = await deleteTeam(teamMemberToDelete);
-        showSnackbar(res.message || "Team member deleted successfully", "success");
+        showSnackbar(res.message, "success");
       } catch (error) {
         if (error.actionRequired === 'reassign_tasks') {
           setDeleteResponse(error);
           setOpenNavigateDialog(true);
         } else {
-          showSnackbar(error.message || "Failed to delete team member", "error");
+          showSnackbar(error.message, "error");
           console.error("Error deleting team member:", error);
         }
       }

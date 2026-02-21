@@ -36,7 +36,8 @@ export const createClientTask = async (taskData) => {
     console.log('Creating task with data:', taskData);
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/tasks-planner`,
+            // `${BASE_URL}/client/tasks-planner`,
+            `${BASE_URL}/tasks`,
             taskData,
             {
                 headers: {
@@ -272,8 +273,6 @@ export const updateClientTaskStatusCompleted = async (taskId, formData) => {
     }
 };
 
-
-
 export const getClientGroupTasksById = async (groupTaskId) => {
     const token = getClientToken();
     try {
@@ -291,7 +290,6 @@ export const getClientGroupTasksById = async (groupTaskId) => {
         return Promise.reject(error.response?.data || { message: 'Fetching group task failed' });
     }
 };
-
 
 export const createClientGroupTask = async (groupTaskData) => {
     const token = getClientToken();
@@ -356,6 +354,7 @@ export const createClientSubGroupTask = async (groupId, subGroupTaskData) => {
     try {
         const response = await axios.post(
             `${BASE_URL}/client/groups/${groupId}/tasks`,
+            
             subGroupTaskData,
             {
                 headers: {
@@ -374,7 +373,7 @@ export const updateClientSubGroupTask = async (groupId, subGroupTaskId, subGroup
     const token = getClientToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/groups/${groupId}/tasks/${subGroupTaskId}`,
+            `${BASE_URL}/client/groups/tasks/${subGroupTaskId}`,
             subGroupTaskData,
             {
                 headers: {
@@ -407,8 +406,7 @@ export const deleteClientSubGroupTask = async (groupId, subGroupTaskId) => {
     }
 };
 
-
-export const addExistingTaskInsideGroupTask = async (groupId, taskData) => {
+export const addClientExistingTaskInsideGroupTask = async (groupId, taskData) => {
     const token = getClientToken();
     console.log('Adding existing task to group with data:', groupId, taskData);
     try {

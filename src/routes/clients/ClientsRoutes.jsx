@@ -10,6 +10,7 @@ import ProtectedRoute from '../ProtectedRoute.jsx';
 import TaskManagement from '../../pages/clients/task/TaskManagement.jsx';
 import InventoryManagement from '../../pages/clients/inventory/InventoryManagement.jsx';
 import GroupTaskDetails from '../../pages/clients/task/GroupTaskDetails.jsx';
+import ThemeSettings from '../../pages/ThemeSettings.jsx';
 
 const ClientsRoutes = () => (
   <Routes>
@@ -33,6 +34,7 @@ const ClientsRoutes = () => (
       <Route path="task-management" element={<TaskManagement />} />
       <Route path="task-management/:groupTaskName" element={<GroupTaskDetails />} />
       <Route path="team-management" element={<TeamManagement />} />
+      <Route path="themeSetting" element={<ThemeSettings />} />
       <Route path="*" element={<Navigate to="dashboard" replace />} />
       {/* <Route path="all-task" element={<TaskList />} /> */}
       {/* <Route path="task-management" element={<AllTask />} /> */}

@@ -632,6 +632,7 @@ const All_Inventory = () => {
           px: { xs: 1, sm: 2, md: 2 },
 
         }}>
+
         <Box
           sx={{
             mt: 2,
@@ -742,7 +743,7 @@ const All_Inventory = () => {
                               disabled={!hasNameAndCategory || isEditing}
                               size="small"
                               sx={{
-                                color: hasNameAndCategory ? palette.primary.main : palette.grey[400],
+                                color: hasNameAndCategory ? palette.secondary.main : palette.grey[400],
                               }}
                             >
                               <Assignment fontSize="small" />
@@ -796,7 +797,7 @@ const All_Inventory = () => {
                   <IconButton
                     onClick={() => table.setEditingRow(row)}
                     size="small"
-                    sx={{ color: palette.primary.main }}
+                    sx={{ color: palette.secondary.main }}
                   >
                     <EditIcon fontSize="small" />
                   </IconButton>
@@ -818,7 +819,7 @@ const All_Inventory = () => {
                       disabled={hasAnyEditingRow}
                       size="small"
                       sx={{
-                        color: hasAnyEditingRow ? palette.grey[400] : palette.primary.main,
+                        color: hasAnyEditingRow ? palette.grey[400] : palette.secondary.main,
                         cursor: hasAnyEditingRow ? 'not-allowed' : 'pointer'
                       }}
                     >

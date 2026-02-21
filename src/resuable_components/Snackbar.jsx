@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState } from "react";
-import { Snackbar, Alert, Slide } from "@mui/material";
+import { Snackbar, Alert, Slide, useTheme } from "@mui/material";
 
 const SnackbarContext = createContext();
 
 function SlideTransition(props) {
-  return <Slide {...props} direction="left" />; // enters from right side
+  return <Slide {...props} direction="left" />; 
 }
 
 export const SnackbarProvider = ({ children }) => {
+  const theme = useTheme();
+  const { palette } = theme;
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -40,7 +42,7 @@ export const SnackbarProvider = ({ children }) => {
         <Alert
           severity={snackbar.severity}
           sx={{
-            bgcolor: "#6b603f !important",
+            bgcolor: palette.primary.light,
             color: "white",
             fontWeight: 500,
             boxShadow: 3,

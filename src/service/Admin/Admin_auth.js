@@ -41,7 +41,7 @@ export const getAllClients = async (filters = {}, searchText = "", page = 1) => 
     try {
         
         const response = await axios.get(
-            `${BASE_URL}/clients`,
+            `${BASE_URL}/admin/clients`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -58,7 +58,7 @@ export const addClient = async (clientData) => {
     const token = getAdminToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/clients`,
+            `${BASE_URL}/admin/clients`,
             clientData,
             {
                 headers: {
@@ -77,7 +77,7 @@ export const getClientbyId = async (clientData) => {
     const token = getAdminToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/clients/${clientData.id}`,
+            `${BASE_URL}/admin/clients/${clientData.id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -94,7 +94,7 @@ export const editClient = async (clientData) => {
     const token = getAdminToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/clients/${clientData.id}`,
+            `${BASE_URL}/admin/clients/${clientData.id}`,
             clientData,
             {
                 headers: {
@@ -112,7 +112,7 @@ export const deleteClient = async (clientData) => {
     const token = getAdminToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/clients/${clientData.id}`,
+            `${BASE_URL}/admin/clients/${clientData.id}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

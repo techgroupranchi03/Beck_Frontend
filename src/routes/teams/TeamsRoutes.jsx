@@ -9,6 +9,7 @@ import InventoryManagement from '../../pages/clients/inventory/InventoryManageme
 import PropertyManagement from '../../pages/clients/property/PropertyManagement'
 import TeamManagement from '../../pages/clients/team/TeamManagement'
 import GroupTaskDetails from '../../pages/clients/task/GroupTaskDetails'
+import ThemeSettings from '../../pages/ThemeSettings.jsx'
 
 const TeamsRoutes = () => {
     return (
@@ -33,6 +34,7 @@ const TeamsRoutes = () => {
                 <Route path="inventory-management" element={<InventoryManagement />} />
                 <Route path="property-management" element={<PropertyManagement />} />
                 <Route path="team-management" element={<TeamManagement />} />
+                <Route path="themeSetting" element={<ThemeSettings />} />
                 <Route path="*" element={<Navigate to="dashboard" replace />} />
             </Route>
         </Routes>

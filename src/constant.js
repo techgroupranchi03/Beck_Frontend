@@ -12,13 +12,13 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { Handyman } from '@mui/icons-material';
 
 export const categoriess = [
-  { label: 'Electronics', value: 'electronics', icon: ElectricalServicesIcon },
-  { label: 'Furniture', value: 'furniture', icon: WeekendIcon },
-  { label: 'Applicances', value: 'applicances', icon: KitchenIcon },
-  { label: 'Safety', value: 'safety', icon: HealthAndSafetyIcon },
-  { label: 'Maintenance', value: 'maintenace', icon: BuildIcon },
-  { label: 'Outdoor', value: 'outdoor', icon: NaturePeopleIcon },
-  { label: 'Cleaning', value: 'cleaning', icon: CleaningServicesIcon },
+    { label: 'Electronics', value: 'electronics', icon: ElectricalServicesIcon },
+    { label: 'Furniture', value: 'furniture', icon: WeekendIcon },
+    { label: 'Applicances', value: 'applicances', icon: KitchenIcon },
+    { label: 'Safety', value: 'safety', icon: HealthAndSafetyIcon },
+    { label: 'Maintenance', value: 'maintenace', icon: BuildIcon },
+    { label: 'Outdoor', value: 'outdoor', icon: NaturePeopleIcon },
+    { label: 'Cleaning', value: 'cleaning', icon: CleaningServicesIcon },
 ];
 export const categories = [
     'electronics',
@@ -32,12 +32,12 @@ export const categories = [
 
 // task
 
-export  const taskTypesOptions = [
-    { label: 'Cleaning', value: 'cleaning' , icon: CleaningServicesIcon },
-    { label: 'Maintenance', value: 'maintenance' , icon: BuildIcon },
-    { label: 'Inspection', value: 'inspection' , icon: HealthAndSafetyIcon },
-    { label: 'Repair', value: 'repair' , icon: Handyman },
-    { label: 'Others', value: 'others' , icon: MoreHorizIcon },
+export const taskTypesOptions = [
+    { label: 'Cleaning', value: 'cleaning', icon: CleaningServicesIcon },
+    { label: 'Maintenance', value: 'maintenance', icon: BuildIcon },
+    { label: 'Inspection', value: 'inspection', icon: HealthAndSafetyIcon },
+    { label: 'Repair', value: 'repair', icon: Handyman },
+    { label: 'Others', value: 'others', icon: MoreHorizIcon },
 ];
 
 export const taskTypes = [
@@ -136,3 +136,13 @@ export const containerOptions = [
     { label: "Quarter", value: "25%" },
     { label: "Empty", value: "empty" }
 ];
+
+export const palette = {
+    layout: '#132421',
+    active: '#407f68',
+    interactive: '#6b603f',
+    notifications: '#96d980',
+    surface: '#fef7c5',
+};
+
+

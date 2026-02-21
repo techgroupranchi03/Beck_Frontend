@@ -15,6 +15,7 @@ import {
 import ActionMenu from "../../../resuable_components/ActionMenu";
 import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog";
 import Add_property from "./Add_property";
+import PropertyCardSkeleton from "./PropertyCardSkeleton";
 import { getClientProperties, deleteClientProperty } from "../../../service/Clients/Properties";
 import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { useAuth } from "../../../context/AuthContext";
@@ -32,15 +33,17 @@ const PropertyManagement = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const isTeamMember = user?.role === 'team';
 
 
-  // console.log("Properties List:", propertiesList);
+  console.log("Properties List:", propertiesList);
 
   // getclient properties call api 
   const getAllProperties = async () => {
     try {
+      setLoading(true);
       const res = isTeamMember
         ? await getTeamProperties(page)
         : await getClientProperties(page);
@@ -49,20 +52,20 @@ const PropertyManagement = () => {
       setTotalPages(res.pagination.total_pages || 1);
     } catch (error) {
       console.error("Error fetching properties:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
   useEffect(() => {
     getAllProperties();
   }, [page]);
-
-
 
   const handleEdit = (property) => {
     setSelectedProperty(property);
     setIsEdit(true);
     setAddPropertyOpen(true);
   };
-
 
   const handleDelete = async () => {
     //console.log("Delete property:", selectedProperty);
@@ -85,7 +88,7 @@ const PropertyManagement = () => {
 
   return (
     <React.Fragment>
-      <Container maxWidth="mx" sx={{ mt: 4, mb: 4 , px:0}}>
+      <Container maxWidth="mx" sx={{ mt: 4, mb: 4, px: 0 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
           <Typography variant="h5" component="h5" gutterBottom>
             List of Properties
@@ -106,50 +109,71 @@ const PropertyManagement = () => {
           </Button>
         </Stack>
 
-        <Grid container spacing={3}>
-          {propertiesList.map((property) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={property.id}>
-              <Card
-                sx={{
-                  borderRadius: 3,
-                  boxShadow: 1,
-                  overflow: "hidden",
-                  position: "relative",
 
-                }}
-              >
-                <CardMedia
-                  component="img"
-                  height="250"
-                  image={property.property_image_url }
-                  alt={property.name}
-                  sx={{ objectFit: "cover" }}
-                />
-                <CardContent
+        {!loading && propertiesList.length === 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <Typography variant="body2" color="text.secondary">
+              No properties found.
+            </Typography>
+          </Box>
+        )}
+
+
+
+        {loading ? (
+          <PropertyCardSkeleton count={6} />
+        ) : (
+          <Grid container spacing={3}>
+            {propertiesList.map((property) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={property.id}>
+                <Card
                   sx={{
+                    borderRadius: 3,
+                    boxShadow: 1,
+                    overflow: "hidden",
+                    position: "relative",
 
                   }}
                 >
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h5" >
-                      {property.name}
+                  <CardMedia
+                    component="img"
+                    height="250"
+                    image={property.property_image_url}
+                    alt={property.name}
+                    sx={{ objectFit: "cover" }}
+                  />
+                  <CardContent
+                    sx={{
+
+                    }}
+                  >
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="h5" >
+                        {property.name}
+                      </Typography>
+                      <ActionMenu
+                        onEdit={() => handleEdit(property)}
+                        onDelete={() => {
+                          setSelectedProperty(property);
+                          setDeleteDialogOpen(true);
+                        }}
+                      />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ pb: 0 }}>
+                      {property.address}
                     </Typography>
-                    <ActionMenu
-                      onEdit={() => handleEdit(property)}
-                      onDelete={() => {
-                        setSelectedProperty(property);
-                        setDeleteDialogOpen(true);
-                      }}
-                    />
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary"  sx={{ pb:0  }}>
-                    {property.address}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                    <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                      <a href={property.google_map_link} target="_blank" rel="noopener noreferrer">
+                        View on Google Maps
+                      </a>
+                    </Typography>
+
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
 
         {totalPages > 1 &&
           <Stack spacing={2} mt={4} alignItems="center">

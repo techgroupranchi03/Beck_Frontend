@@ -614,7 +614,7 @@ const ActiveTask = () => {
                 <IconButton
                   onClick={() => table.setEditingRow(row)}
                   size="small"
-                  sx={{ color: palette.primary.main }}
+                  sx={{ color: palette.secondary.main }}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -634,7 +634,7 @@ const ActiveTask = () => {
               <Tooltip title="Duplicate">
                 <IconButton
                   size="small"
-                  sx={{ color: palette.primary.light }}
+                  sx={{ color: palette.secondary.light }}
                   onClick={() => {
                     const duplicatedData = { ...row.original };
                     delete duplicatedData.id; 

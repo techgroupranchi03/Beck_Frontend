@@ -276,7 +276,7 @@ const GroupTaskDetails = () => {
                         onClick={handleBack}
                         sx={{ mb: 2, color: palette.text.primary }}
                     >
-                        Back
+                        Back to Task Management
                     </Button>
 
                     <Card
@@ -665,19 +665,19 @@ const GroupTaskDetails = () => {
                 >
                     <MenuItem onClick={handleEdit} dense>
                         <ListItemIcon>
-                            <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+                            <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
                         </ListItemIcon>
                         <ListItemText>Edit</ListItemText>
                     </MenuItem>
                     <MenuItem onClick={handleDelete} dense>
                         <ListItemIcon>
-                            <Delete fontSize="small" sx={{ color: palette.primary.main }} />
+                            <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
                         </ListItemIcon>
                         <ListItemText>Delete</ListItemText>
                     </MenuItem>
                     <MenuItem onClick={handleDuplicate} dense>
                         <ListItemIcon>
-                            <FileCopy fontSize="small" sx={{ color: palette.primary.main }} />
+                            <FileCopy fontSize="small" sx={{ color: palette.secondary.main }} />
                         </ListItemIcon>
                         <ListItemText>Duplicate Task</ListItemText>
                     </MenuItem>

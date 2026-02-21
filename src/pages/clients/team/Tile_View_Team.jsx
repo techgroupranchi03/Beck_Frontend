@@ -14,13 +14,16 @@ import {
   ListItemIcon,
   ListItemText,
   Stack,
-  Chip,
   Button,
   TextField,
-  Snackbar,
+  CircularProgress,
 } from "@mui/material";
 import {
-  MoreVert, Edit, Delete, Phone, CheckCircle,
+  MoreVert,
+  Edit,
+  Delete,
+  Phone,
+  CheckCircle,
   Search,
   SearchOff,
   Clear
@@ -30,20 +33,15 @@ import { useSnackbar } from '../../../resuable_components/Snackbar';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import TileView_addEdit_team from "./TileView_addEdit_team";
 import NavigateToTask from "./NavigateToTask";
-import CardSkeleton from "../../../resuable_components/CardSkeleton";
 import { useViewMode } from "../../../context/ViewModeContext";
+import TeamCardSkeleton from "./TeamCardSkeleton";
 
+// Main Tile View Team Component
 const Tile_View_Team = () => {
   const theme = useTheme();
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
   const { viewMode } = useViewMode();
-
-  const statusColors = {
-    active: "#4CAF50",
-    inactive: "#d8cecdd1",
-    pending: "#FF9800",
-  };
 
   const {
     teamData,
@@ -171,7 +169,8 @@ const Tile_View_Team = () => {
   };
 
   return (
-    <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? {xs: 2, sm: 3, md: 4} : 0 }}>
+
+    <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
 
       <Stack direction="row" display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Button
@@ -224,6 +223,12 @@ const Tile_View_Team = () => {
         />
       )}
 
+      {/* Show skeleton when loading initial data */}
+      {loading && teamData.length === 0 && (
+        <TeamCardSkeleton count={6} viewMode={viewMode} />
+      )}
+
+      {/* Show empty state when no data and not loading */}
       {teamData.length === 0 && !loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <Typography variant="body2" color="text.secondary">
@@ -232,18 +237,12 @@ const Tile_View_Team = () => {
         </Box>
       )}
 
-      <Grid container spacing={2}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, width: '100%' }}>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Grid size={ viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
-                <CardSkeleton />
-              </Grid>
-            ))}
-          </Box>
-        ) : (
-          teamData.map((member) => (
-            <Grid size={ viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={member.id}>
+      {/* Show team member cards */}
+      {teamData.length > 0 && (
+
+        <Grid container spacing={2}>
+          {teamData.map((member) => (
+            <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={member.id}>
               <Card
                 sx={{
                   mb: 2,
@@ -273,15 +272,6 @@ const Tile_View_Team = () => {
                       </Box>
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      {/* <Chip
-                      label={member.status}
-                      size="small"
-                      sx={{
-                        padding: "4px 8px",
-                        bgcolor: member.status === "Active" ? palette.primary.light : palette.error.main,
-                        color: palette.text.primary,
-                      }}
-                    /> */}
                       <IconButton
                         aria-label="settings"
                         onClick={(e) => {
@@ -293,7 +283,6 @@ const Tile_View_Team = () => {
                         <MoreVert />
                       </IconButton>
                     </Stack>
-
                   </Stack>
                   <Stack direction="row" spacing={1} mt={2} justifyContent="space-evenly">
                     <Stack
@@ -303,7 +292,6 @@ const Tile_View_Team = () => {
                       justifyContent="center"
                       sx={{
                         width: "200px",
-                        // bgcolor: palette.background.creme,
                         bgcolor: palette.card_button.paper,
                         p: 1,
                         borderRadius: 2
@@ -317,9 +305,8 @@ const Tile_View_Team = () => {
                           padding: "2px",
                           width: "20px",
                           height: "20px",
-
                         }} />
-                      <Typography variant="body2" color="#E91E63">
+                      <Typography variant="body2" color="text.primary">
                         {member.phone}
                       </Typography>
                     </Stack>
@@ -334,8 +321,8 @@ const Tile_View_Team = () => {
                         p: 1,
                         borderRadius: 2
                       }}>
-                      <CheckCircle sx={{ color: statusColors[member.status.toLowerCase()] }} />
-                      <Typography variant="body1" color={statusColors[member.status.toLowerCase()]}>
+                      <CheckCircle sx={{ color: palette.primary.light }} />
+                      <Typography variant="body1" color="text.primary">
                         {member.status}
                       </Typography>
                     </Stack>
@@ -343,30 +330,35 @@ const Tile_View_Team = () => {
                 </CardContent>
               </Card>
             </Grid>
-          ))
-        )}
-      </Grid>
-
-      {isLoadingMore && (
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`loading-skeleton-${index}`}>
-              <CardSkeleton />
-            </Grid>
           ))}
         </Grid>
+
+      )}
+
+      {/* Loading more indicator */}
+      {isLoadingMore && (
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+
       )}
 
       <div ref={observerTarget} style={{ height: '20px' }} />
 
+      {/* Pagination info */}
       {teamPagination.totalPages > 9 && (
+
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
           <Typography variant="body2" color="text.secondary">
             Page {teamPagination.page} of {teamPagination.totalPages} • Total: {teamPagination.total} members
           </Typography>
         </Box>
+
       )}
 
+      {/* Context Menu */}
+      
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -412,12 +404,13 @@ const Tile_View_Team = () => {
         </MenuItem>
         <MenuItem onClick={() => openDeleteDialog(selectedMember)} dense>
           <ListItemIcon>
-            <Delete fontSize="small" sx={{ color: palette.error.main }} />
+            <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
           </ListItemIcon>
           <ListItemText>Delete</ListItemText>
         </MenuItem>
       </Menu>
 
+      {/* Dialogs */}
       <ConfirmationDialog
         open={openConfirm}
         onCancel={handleCancelDelete}

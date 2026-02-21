@@ -129,11 +129,11 @@ const trackEventInternal = async (eventName, eventProps = {}) => {
         await axios.post(`https://api.taskbnb.in/api/track`, payload);
 
         if (process.env.NODE_ENV === 'development') {
-            console.log('Tracked event:', eventName, {
-                distinctId,
-                sessionId,
-                isAnonymous: !user
-            });
+            // console.log('Tracked event:', eventName, {
+            //     distinctId,
+            //     sessionId,
+            //     isAnonymous: !user
+            // });
         }
     } catch (error) {
         console.error('Tracking error:', error);

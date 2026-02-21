@@ -14,6 +14,7 @@ import {
 import { People, TrendingUp, Menu as MenuIcon, Business, Inventory, Assignment } from "@mui/icons-material";
 import ProfileMenu from "./resuable_components/profile_menu.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
+import { useThemeMode } from "./context/ThemeContext.jsx";
 
 const getPageTitle = (pathname) => {
   const path = pathname.split(/[?#]/)[0];
@@ -45,11 +46,19 @@ export default function Layout({ role }) {
   const theme = useTheme();
   const location = useLocation();
   const { user } = useAuth();
+  const { syncUserTheme } = useThemeMode();
   const pageTitle = getPageTitle(location.pathname);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   // const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // sync user theme form profile
+  useEffect(() => {
+    if (user?.theme) {
+      syncUserTheme(user.theme);
+    }
+  }, [user, syncUserTheme]);
 
 
   // Auto-close drawer on mobile when route changes
@@ -168,15 +177,20 @@ export default function Layout({ role }) {
           }}
         >
           <Avatar
-            src="/images/logo.png"
+            src="/images/new_logo.gif"
             alt="TaskBnb Logo"
             sx={{
-              width: isMobile ? 40 : 45,
-              height: isMobile ? 40 : 45,
-              border: "2px solid #fff"
+              width: isMobile ? 40 : 60,
+              height: isMobile ? 40 : 60,
+              '& img': {
+                objectFit: 'cover',
+                width: '100%',
+                height: '100%',
+              }
             }}
           />
           {(isMobile || drawerOpen) && (
+            <Stack>
             <Typography
               variant={isMobile ? "body2" : "body1"}
               sx={{
@@ -187,6 +201,16 @@ export default function Layout({ role }) {
             >
               TaskBnb
             </Typography>
+            <Typography
+              variant={isMobile ? "caption" : "body1"}
+              sx={{
+                whiteSpace: "nowrap",
+                fontSize: isMobile ? '0.7rem' : '0.875rem',
+              }}
+            >
+              Property Management
+            </Typography>
+            </Stack>
           )}
         </Stack>
 
@@ -262,11 +286,15 @@ export default function Layout({ role }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            px: isMobile ? 0 : 2,
+            px: isMobile ? 1.5 : 3,
             boxShadow: theme.palette.mode === "light"
-              ? "0 1px 3px rgba(0,0,0,0.05)"
-              : "0 1px 3px rgba(0,0,0,0.3)",
-            transition: "left 0.3s ease",
+              ? "0 2px 8px rgba(0,0,0,0.08)"
+              : "0 2px 8px rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            background: theme.palette.mode === "light"
+              ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`
+              : `linear-gradient(135deg, ${theme.palette.background.paper} 0%, rgba(26,26,26,0.95) 100%)`,
+            transition: "all 0.3s ease",
             zIndex: 1100,
           }}
         >
@@ -278,20 +306,42 @@ export default function Layout({ role }) {
             >
               <MenuIcon sx={{ color: theme.palette.text.primary }} />
             </IconButton>
-            <Typography
-              variant={isMobile ? "h6" : "h5"}
-              fontWeight={600}
-              color={theme.palette.text.primary}
-              sx={{
-                fontSize: isMobile ? '1.4rem' : '1.5rem',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: isMobile ? '150px' : 'none'
-              }}
-            >
-              {pageTitle}
-            </Typography>
+            <Box>
+              <Typography
+                variant={isMobile ? "h6" : "h5"}
+                fontWeight={700}
+                sx={{
+                  fontSize: isMobile ? '1.1rem' : '1.5rem',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: isMobile ? '150px' : 'none',
+                }}
+              >
+                {pageTitle}
+              </Typography>
+              {!isMobile && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  {new Date().toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </Typography>
+              )}
+            </Box>
           </Stack>
 
           {/* Profile Menu */}

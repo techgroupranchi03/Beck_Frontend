@@ -25,7 +25,7 @@ import { getClientProperties } from '../../../service/Clients/Properties';
 import { getInventoryItems } from '../../../service/Clients/Inventory';
 import { getTeamMembers } from '../../../service/Clients/Team';
 import { useAuth } from '../../../context/AuthContext';
-import { createTeamActiveTask, createTeamTask, deleteTeamOneTimeTask, deleteTeamRecurringTask, getActiveTasks, getAllTeamTasks, getPlannerTasks, getTeamGrooupTasksById, getTeamInventoryByPropertyId, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
+import { createTeamActiveTask, createTeamGroupTask, createTeamSubGroupTask, createTeamTask, deleteTeamGroupTask, deleteTeamOneTimeTask, deleteTeamRecurringTask, deleteTeamSubGroupTask, getActiveTasks, getAllTeamTasks, getPlannerTasks, getTeamGrooupTasksById, getTeamInventoryByPropertyId, getTeamsInventoryItems, getTeamsTeamMembers, updateTeamGroupTask, updateTeamsActiveTask, updateTeamsTaskPlanner, updateTeamSubGroupTask, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
 import { getTeamProperties } from '../../../service/Teams/Team_Properties';
 
 export const useTaskData = () => {
@@ -491,7 +491,7 @@ export const useTaskData = () => {
     const createGroupTask = async (values) => {
         try {
             const res = isTeamUser
-                ? await createTeamTask(values)// need to change the api for team group task creation
+                ? await createTeamGroupTask(values)
                 : await createClientGroupTask(values);
             // After creating group task, refresh the all tasks data
             await fetchAllTasks();
@@ -505,7 +505,7 @@ export const useTaskData = () => {
     const updateGroupTask = async (id, values) => {
         try {
             const res = isTeamUser
-                ? await updateTeamsTaskPlanner(id, values) // need to change the api for team group task update
+                ? await updateTeamGroupTask(id, values) 
                 : await updateClientGroupTask(id, values);
             // After updating group task, refresh the all tasks data
             await fetchAllTasks();
@@ -515,10 +515,11 @@ export const useTaskData = () => {
             throw err;
         }
     };
+
     const deleteGroupTask = async (id) => {
         try {
             const res = isTeamUser
-                ? await deleteTeamRecurringTask(id) // need to change the api for team group task deletion
+                ? await deleteTeamGroupTask(id) 
                 : await deleteClientGroupTask(id);
             // After deleting group task, refresh the all tasks data
             await fetchAllTasks();
@@ -530,10 +531,10 @@ export const useTaskData = () => {
     };
 
     const createSubTaskInsideGroup = async (groupId, values) => {
-        console.log("Creating Sub Task inside Group ID:", groupId, "with values:", values);
+
         try {
             const res = isTeamUser
-                ? await createTeamTask(groupId, values) // need to change the api for team sub task creation inside group
+                ? await createTeamSubGroupTask(groupId, values) 
                 : await createClientSubGroupTask(groupId, values);
             // After creating sub task, refresh the all tasks data
             await fetchAllTasks();
@@ -548,7 +549,7 @@ export const useTaskData = () => {
         console.log("Updating Sub Task inside Group ID:", groupId, "Sub Group Task ID:", subGroupTaskId, "with values:", values);
         try {
             const res = isTeamUser
-                ? await updateTeamsTaskPlanner(groupId, subGroupTaskId, values) // need to change the api for team sub task update inside group
+                ? await updateTeamSubGroupTask(groupId, subGroupTaskId, values)
                 : await updateClientSubGroupTask(groupId, subGroupTaskId, values);
             // After updating sub task, refresh the all tasks data
             await fetchAllTasks();
@@ -562,7 +563,7 @@ export const useTaskData = () => {
     const deleteSubTaskInsideGroup = async (groupId, subGroupTaskId) => {
         try {
             const res = isTeamUser
-                ? await deleteTeamOneTimeTask(groupId, subGroupTaskId) // need to change the api for team sub task deletion inside group
+                ? await deleteTeamSubGroupTask(groupId, subGroupTaskId) 
                 : await deleteClientSubGroupTask(groupId, subGroupTaskId);
             // After deleting sub task, refresh the all tasks data
             await fetchAllTasks();
@@ -573,10 +574,7 @@ export const useTaskData = () => {
         }
     };
 
-    
-
     return {
-
         allTasksData,
         taskPlannerData,
         activeTasksData,

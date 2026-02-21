@@ -276,6 +276,7 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
+
                 <DialogContent dividers>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
 
@@ -476,9 +477,6 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                             </>
                         )}
 
-                        {/* specific date should be multiple select */}
-                        {/* specific date should be multiple select */}
-
                         {taskScheduleType === 'specific_dates' && (
                             <Grid size={{ xs: 12, }}>
                                 <TextField
@@ -557,16 +555,6 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
 
                 <DialogActions sx={{ px: 3, py: 2 }}>
                     <Button
-                        variant='text'
-                        size='medium'
-                        sx={{ textTransform: 'none', mr: 2 }}
-                        onClick={onClose}
-                        disabled={loading}
-                    >
-                        Cancel
-                    </Button>
-
-                    <Button
                         variant='contained'
                         disableElevation
                         size='small'
@@ -582,6 +570,7 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                         {loading ? 'Saving...' : (isEdit ? 'Update Group Task' : isDuplicate ? 'Duplicate Group Task' : 'Create Group Task')}
                     </Button>
                 </DialogActions>
+                
             </Dialog>
         </>
     )

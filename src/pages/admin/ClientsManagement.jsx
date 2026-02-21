@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Box } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import ClientsTileView from './ClientsTileView.jsx';
 import Clients from './Clients.jsx';
 import { useViewMode } from '../../context/ViewModeContext.jsx';
@@ -20,6 +20,8 @@ export const useClientContext = () => {
 
 const ClientsManagement = () => {
     const { viewMode } = useViewMode();
+    const theme = useTheme();
+    const { palette } = theme;
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -54,11 +56,15 @@ const ClientsManagement = () => {
             <Box>
                 {/* View Toggle Button */}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: -2 }}>
-                    <ViewToggle />
+                    <ViewToggle showCenterView={true} />
                 </Box>
                 
                 {/* Conditional Rendering based on view mode */}
-                {viewMode === 'tile' ? <ClientsTileView /> : <Clients />}
+                {viewMode === 'table' ? (
+                    <Clients />
+                ) : (
+                    <ClientsTileView />
+                )}
             </Box>
         </ClientContext.Provider>
     );

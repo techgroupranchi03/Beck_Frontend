@@ -324,14 +324,11 @@ const Teams_login = () => {
                             variant="contained"
                             disableElevation
                             onClick={handleSendOTP}
-                            // disabled={loading || !phoneNumber || phoneNumber.length < 10}
                             sx={{
                                 mt: 3,
                                 py: 1.2,
                                 backgroundColor: theme.palette.primary.main,
-                                "&:hover": { backgroundColor: "#326655" },
-                                "&:disabled": { backgroundColor: "#9db5a9" },
-                                fontWeight: "bold",
+                                "&:hover": { backgroundColor: theme.palette.secondary.main },
                                 borderRadius: 2,
                                 textTransform: "none",
                             }}
@@ -345,7 +342,7 @@ const Teams_login = () => {
                         <Box sx={{ mb: 2 }}>
                             <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 2,  }}>
                             
-                               {accountMessage || "Multiple accounts found. Please select one to continue."}
+                               {accountMessage}
                             </Typography>
 
                             {accountData?.accounts?.map((account) => (
@@ -361,13 +358,12 @@ const Teams_login = () => {
                                         onClick={
                                             () => !loading && account.is_active_subscription !== false && handleAccountSelection(account)
                                         }
-                                        // disabled={loading || account.is_active_subscription === false}
                                         sx={{
                                             border: `2px solid ${theme.palette.divider}`,
                                             borderRadius: 2,
                                             cursor: account.is_active_subscription === false ? 'not-allowed' : 'pointer',
                                             '&:hover': {
-                                                borderColor: account.is_active_subscription === false ? theme.palette.divider : theme.palette.primary.main,
+                                                borderColor: theme.palette.secondary.main,
                                                 backgroundColor: theme.palette.action.hover,
                                             },
                                         }}
@@ -426,7 +422,6 @@ const Teams_login = () => {
                     </>
                 ) : (
                     <>
-                        {/* OTP Verification Step */}
                         {/* OTP Input Fields */}
                         <Box
                             sx={{
@@ -466,7 +461,7 @@ const Teams_login = () => {
                                                 borderWidth: "2px",
                                             },
                                             "&:hover fieldset": {
-                                                borderColor: digit ? theme.palette.primary.main : theme.palette.primary.light,
+                                                borderColor: digit ? theme.palette.primary.main : theme.palette.secondary.main,
                                             },
                                             "&.Mui-focused fieldset": {
                                                 borderColor: theme.palette.primary.main,
@@ -518,8 +513,7 @@ const Teams_login = () => {
                                 mt: 2,
                                 py: 1.2,
                                 backgroundColor: theme.palette.primary.main,
-                                "&:hover": { backgroundColor: "#326655" },
-                                "&:disabled": { backgroundColor: "#9db5a9" },
+                                "&:hover": { backgroundColor: theme.palette.secondary.main },
                                 fontWeight: "bold",
                                 borderRadius: 2,
                                 textTransform: "none",

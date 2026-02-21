@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThemeProvider } from './ThemeContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

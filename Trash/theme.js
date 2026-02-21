@@ -41,7 +41,6 @@ export const lightTheme = createTheme({
       main: palette.accent,
     },
     background: {
-      // add background creme
       creme: palette.cream,
       default: "#f9f9f9",
       paper: "#ffffff",

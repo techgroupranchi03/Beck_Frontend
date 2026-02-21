@@ -29,7 +29,6 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
     const { showSnackbar } = useSnackbar();
     const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
-
     const isTeamMember = user?.role === 'team';
 
     //Form State
@@ -235,9 +234,9 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
     };
 
     return (
+
         <Dialog
             open={open}
-            // onClose={onClose}
             fullWidth
             maxWidth="md"
             TransitionComponent={Transition}
@@ -255,14 +254,18 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
             <DialogTitle variant="h5">
                 {mode === "edit" ? "Edit Property" : "Add New Property"}
             </DialogTitle>
+
             <IconButton
                 onClick={onClose}
                 sx={{ position: "absolute", top: 10, right: 10 }}
             >
+
                 <CloseIcon />
+
             </IconButton>
 
             <DialogContent dividers sx={{ pt: 3 }}>
+
                 <Grid container spacing={3}>
                     {/* Property Name */}
                     <Grid size={{ xs: 12 }}>
@@ -305,17 +308,65 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                             value={formData.address}
                             onChange={handleChange}
                             multiline
-                            rows={3}
+                            rows={2}
                             variant="outlined"
                             size="small"
                             error={!!errors.address}
-                            helperText={errors.address}
                             required
+                            inputProps={{ maxLength: 200 }}
+                            helperText={
+                                <>
+                                    <span>{errors.address}</span>
+                                    <span>{formData.address.length}/200</span>
+                                </>
+                            }
+                            slotProps={{
+                                formHelperText: {
+                                    sx: {
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                    },
+                                },
+                            }}
                         />
                     </Grid>
 
                     {/* Property Image */}
                     <Grid size={{ xs: 12 }}>
+
+                        {/* Image Preview */}
+                        {formData.image && (
+                            <Box mt={2} position="relative" display="inline-block" width="100%">
+                                <img
+                                    src={formData.image}
+                                    alt="Preview"
+                                    style={{
+                                        width: "100%",
+                                        maxHeight: "200px",
+                                        objectFit: "contain",
+                                        borderRadius: "8px",
+                                        border: `1px solid ${palette.divider}`,
+                                    }}
+                                />
+                                <IconButton
+                                    onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
+                                    sx={{
+                                        position: "absolute",
+                                        top: 8,
+                                        right: 8,
+                                        backgroundColor: palette.secondary.main,
+                                        color: "#ffffff",
+                                    }}
+                                    size="small"
+                                >
+                                    <CloseIcon
+                                        fontSize="small"
+                                        onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
+                                    />
+                                </IconButton>
+                            </Box>
+                        )}
+
                         <Button
                             variant="outlined"
                             component="label"
@@ -346,63 +397,14 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                             </FormHelperText>
                         )}
 
-                        {/* Image Preview */}
-                        {formData.image && (
-                            <Box mt={2} position="relative" display="inline-block" width="100%">
-                                <img
-                                    src={formData.image}
-                                    alt="Preview"
-                                    style={{
-                                        width: "100%",
-                                        maxHeight: "200px",
-                                        objectFit: "contain",
-                                        borderRadius: "8px",
-                                        border: `1px solid ${palette.divider}`,
-                                    }}
-                                />
-                                <IconButton
-                                    onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
-                                    sx={{
-                                        position: "absolute",
-                                        top: 8,
-                                        right: 8,
-                                        backgroundColor: palette.background.paper,
-                                        "&:hover": {
-                                            backgroundColor: palette.error?.light || "#ffebee",
-                                        },
-                                    }}
-                                    size="small"
-                                >
-                                    {/* when i click on the close icon image should be removed from preview and form data */}
-                                    <CloseIcon
-                                        fontSize="small"
-                                        onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
-                                    />
-                                </IconButton>
-                            </Box>
-                        )}
+
                     </Grid>
+
                 </Grid>
 
 
                 {/* Buttons */}
                 <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
-                    <Button
-                        disableElevation
-                        onClick={onClose}
-                        sx={{
-                            textTransform: "none",
-                            color: palette.primary.main,
-                            borderColor: palette.primary.main,
-                            "&:hover": {
-                                borderColor: palette.secondary.main,
-                                color: palette.secondary.main,
-                            },
-                        }}
-                    >
-                        Cancel
-                    </Button>
-
                     <Button
                         variant="contained"
                         disableElevation
@@ -420,8 +422,11 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                         {isSubmitting ? "Saving..." : mode === "edit" ? "Save changes" : "Create"}
                     </Button>
                 </Box>
+
             </DialogContent>
+
         </Dialog>
+
     );
 };
 
