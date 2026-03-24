@@ -2,36 +2,36 @@ import axios from "axios";
 import BASE_URL from "../../config";
 
 const getToken = () => {
-    return localStorage.getItem('client_token');
+    return localStorage.getItem('team_token');
 };
 
 
-export const fetchClientTheme = async () => {
+export const fetchTeamsTheme = async () => {
     const token = getToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/client/themes`,
+            `${BASE_URL}/team/themes`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
             }
         );
-        //console.log('Fetch client theme response:', response.data);
+        //console.log('Fetch team theme response:', response.data);
         return response.data;
 
     } catch (error) {
-        console.error('Fetch client theme error:', error);
+        console.error('Fetch team theme error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching theme failed' });
     }
 };
 
 
-export const switchClientTheme = async (light_theme_id, dark_theme_id) => {
+export const switchTeamTheme = async (light_theme_id, dark_theme_id) => {
     const token = getToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/themes/select`,
+            `${BASE_URL}/team/themes/select`,
             { light_theme_id, dark_theme_id },
             {
                 headers: {
@@ -41,16 +41,16 @@ export const switchClientTheme = async (light_theme_id, dark_theme_id) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Switch client theme error:', error);
+        console.error('Switch team theme error:', error);
         return Promise.reject(error.response?.data || { message: 'Switching theme failed' });
     }
 };
 
-export const getClientCustomThemes = async () => {
+export const getTeamCustomThemes = async () => {
     const token = getToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/client/themes/custom`,
+            `${BASE_URL}/team/themes/custom`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -59,17 +59,17 @@ export const getClientCustomThemes = async () => {
         );
         return response.data;
     } catch (error) {
-        console.error('Fetch client custom themes error:', error);
+        console.error('Fetch team custom themes error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching custom themes failed' });
     }
 };
 
 
-export const CreateClientCustomTheme = async (themeData) => {
+export const CreateTeamCustomTheme = async (themeData) => {
     const token = getToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/themes`,
+            `${BASE_URL}/team/themes`,
             themeData,
             {
                 headers: {
@@ -79,17 +79,17 @@ export const CreateClientCustomTheme = async (themeData) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Create client custom theme error:', error);
+        console.error('Create team custom theme error:', error);
         return Promise.reject(error.response?.data || { message: 'Creating custom theme failed' });
     }
 };
 
 
-export const UpdateClientCustomTheme = async (themeData) => {
+export const UpdateTeamCustomTheme = async (themeData) => {
     const token = getToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/themes/${themeData.id}`,
+            `${BASE_URL}/team/themes/${themeData.id}`,
             themeData,
             {
                 headers: {
@@ -99,17 +99,17 @@ export const UpdateClientCustomTheme = async (themeData) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Update client custom theme error:', error);
+        console.error('Update team custom theme error:', error);
         return Promise.reject(error.response?.data || { message: 'Updating custom theme failed' });
     }
 };
 
 
-export const DeleteClientCustomTheme = async (themeId, themeName) => {
+export const DeleteTeamCustomTheme = async (themeId, themeName) => {
     const token = getToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/client/themes/${themeId}`,
+            `${BASE_URL}/team/themes/${themeId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -119,7 +119,7 @@ export const DeleteClientCustomTheme = async (themeId, themeName) => {
         );
         return response.data;
     } catch (error) {
-        console.error('Delete client custom theme error:', error);
+        console.error('Delete team custom theme error:', error);
         return Promise.reject(error.response?.data || { message: 'Deleting custom theme failed' });
     }
 };

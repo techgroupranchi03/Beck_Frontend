@@ -14,7 +14,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-export default function ConfirmationDialog({ open, onCancel, onDelete, title, message }) {
+export default function ConfirmationDialog({ open, onCancel, onDelete, title, message, }) {
     const theme = useTheme();
     const palette = theme.palette;
     return (

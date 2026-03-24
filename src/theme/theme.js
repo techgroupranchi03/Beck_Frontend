@@ -29,9 +29,9 @@ export const createCustomTheme = (mode, customPalette) => {
       },
       background: {
         creme: customPalette.surface,
-        default: isLight ? "#f9f9f9" : "#1a1a1a",
-        paper: isLight ? "#ffffff" : "#3c3c3c",
-        customPaper: isLight ? "#ada8a828" : "#e9dfdf18",
+        default: isLight ? "#eeeeee" : "#1a1a1a",
+        paper: isLight ? "#ffffff" : "#1a1a1a",
+        customPaper: isLight ? "#ada8a828" : "#000000a8",
       },
       text: {
         primary: customPalette.text_primary || (isLight ? "#000000" : "#ffffff"),
@@ -44,7 +44,7 @@ export const createCustomTheme = (mode, customPalette) => {
       },
 
       card_button: {
-        paper: isLight ? "#f0f0f0" : "#3c3c3c",
+        paper: isLight ? "#f0f0f0" : "#252525",
       },
 
       taskType: {
@@ -57,11 +57,11 @@ export const createCustomTheme = (mode, customPalette) => {
       },
 
       taskStatus: {
-        pending: '#607D8B',
-        in_progress: isLight ? '#2196F3' : "#42a5f5",
+        pending: isLight ? '#FFCA28' : '#FFCA28',
+        in_progress: isLight ? '#2196F3' : '#42A5F5',
         cancelled: isLight ? '#9E9E9E' : "#e66c6aff",
-        completed: isLight ? '#4CAF50' : "#66bb6a",
-        overdue: isLight ? '#F44336' : "#e53935",
+        completed: isLight ? '#4CAF50' : '#66BB6A',     
+         skipped: isLight ? '#9E9E9E' : '#BDBDBD',
       },
 
       tagTask: {
@@ -146,11 +146,11 @@ export const lightTheme = createTheme({
 
     // Status colors
     taskStatus: {
-      pending: '#607D8B',
+      pending: '#FFCA28',
       in_progress: '#2196F3',
       cancelled: '#9E9E9E',
       completed: '#4CAF50',
-      overdue: '#F44336',
+      skipped: '#9E9E9E',
     },
 
     tagTask: {
@@ -196,8 +196,8 @@ export const darkTheme = createTheme({
     background: {
       creme: defaultColors.surface,
       default: "#1a1a1a",
-      paper: "#3c3c3c",
-      customPaper: "#e9dfdf18",
+      paper: "#000000",
+      customPaper: "#000000",
     },
     text: {
       primary: '#ffffff',
@@ -208,7 +208,7 @@ export const darkTheme = createTheme({
       lightGreen: defaultColors.notifications,
     },
     card_button: {
-      paper: "#3c3c3c",
+      paper: "#000000",
     },
     // Task type colors
     taskType: {
@@ -221,11 +221,11 @@ export const darkTheme = createTheme({
     },
     // Status colors
     taskStatus: {
-      pending: "#607D8B",
-      in_progress: "#42a5f5",
+      pending: "#FFCA28",
+      in_progress: "#42A5F5",
       cancelled: "#e66c6aff",
-      completed: "#66bb6a",
-      overdue: "#e53935",
+      completed: "#66BB6A",
+      skipped: "#BDBDBD",
     },
     tagTask: {
       categatory: '#81c78428',

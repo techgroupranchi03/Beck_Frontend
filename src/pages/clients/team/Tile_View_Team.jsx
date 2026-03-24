@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import {
   useTheme,
+  useMediaQuery,
   Box,
   Container,
   Typography,
@@ -35,6 +37,9 @@ import TileView_addEdit_team from "./TileView_addEdit_team";
 import NavigateToTask from "./NavigateToTask";
 import { useViewMode } from "../../../context/ViewModeContext";
 import TeamCardSkeleton from "./TeamCardSkeleton";
+import { useAuth } from "../../../context/AuthContext";
+import { canCreate, canUpdate, canDelete, RESOURCES } from "../../../utils/permissions";
+import { useTopBar } from "../../../context/TopBarContext";
 
 // Main Tile View Team Component
 const Tile_View_Team = () => {
@@ -42,6 +47,8 @@ const Tile_View_Team = () => {
   const { palette } = theme;
   const { showSnackbar } = useSnackbar();
   const { viewMode } = useViewMode();
+  const { user } = useAuth();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const {
     teamData,
@@ -63,6 +70,28 @@ const Tile_View_Team = () => {
   const [openNavigateDialog, setOpenNavigateDialog] = useState(false);
   const [deleteResponse, setDeleteResponse] = useState(null);
   const observerTarget = useRef(null);
+  const location = useLocation();
+
+  // Register search action in top bar for mobile
+  const { registerActions, clearActions } = useTopBar();
+  useEffect(() => {
+    if (isMobile) {
+      registerActions({
+        onSearchToggle: () => setIsSearchVisible((prev) => !prev),
+        isSearchActive: isSearchVisible,
+      });
+    }
+    return () => { if (isMobile) clearActions(); };
+  }, [isMobile, isSearchVisible]);
+
+  // Auto-open add dialog from mobile FAB navigation
+  useEffect(() => {
+    if (location.state?.openAdd) {
+      setSelectedMember(null);
+      setOpenAddEditDialog(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.openAdd]);
 
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -85,13 +114,13 @@ const Tile_View_Team = () => {
     if (memberToDelete) {
       try {
         const res = await deleteTeam(memberToDelete.id);
-        showSnackbar(res.message || 'Team member deleted successfully', 'success');
+        showSnackbar(res.message, 'success');
       } catch (error) {
         if (error.actionRequired === 'reassign_tasks') {
           setDeleteResponse(error);
           setOpenNavigateDialog(true);
         } else {
-          showSnackbar(error.message || 'Failed to delete team member', 'error');
+          showSnackbar(error.message, 'error');
           console.error('Error deleting team member:', error);
         }
       }
@@ -168,29 +197,43 @@ const Tile_View_Team = () => {
     setDeleteResponse(null);
   };
 
+  console.log('user in tile view team:', user);
+
+  // get teamRole then we need to give the access based on the role
+  const teamRole = user?.teamRole;
+
+  // Check permissions for team resource
+  const canCreateTeam = canCreate(teamRole, RESOURCES.TEAM);
+  const canUpdateTeam = canUpdate(teamRole, RESOURCES.TEAM);
+  const canDeleteTeam = canDelete(teamRole, RESOURCES.TEAM);
+
   return (
 
     <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
 
-      <Stack direction="row" display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Button
-          variant="contained"
-          disableElevation
-          size="medium"
-          onClick={() => {
-            setSelectedMember(null);
-            setOpenAddEditDialog(true);
-          }}
-          sx={{
-            bgcolor: palette.primary.main,
-            "&:hover": { bgcolor: palette.secondary.main },
-            textTransform: "none",
-            borderRadius: 10,
-          }}
-        >
-          Add Team Member
-        </Button>
-        <IconButton
+      <Stack direction="row" display="flex" justifyContent={isMobile ? "flex-end" : "space-between"} alignItems="center" mb={2} sx={{ py: 1 }}>
+
+        {canCreateTeam && !isMobile && (
+          <Button
+            variant="contained"
+            disableElevation
+            size="medium"
+            onClick={() => {
+              setSelectedMember(null);
+              setOpenAddEditDialog(true);
+            }}
+            sx={{
+              bgcolor: palette.primary.main,
+              "&:hover": { bgcolor: palette.secondary.main },
+              textTransform: "none",
+              borderRadius: 10,
+            }}
+          >
+            Add Team Member
+          </Button>
+        )}
+        {!canCreateTeam && !isMobile && <Box />}
+        {!isMobile && <IconButton
           onClick={() => setIsSearchVisible((prev) => !prev)}
           sx={{
             bgcolor: isSearchVisible ? palette.secondary.main : "transparent",
@@ -199,7 +242,7 @@ const Tile_View_Team = () => {
           }}
         >
           {isSearchVisible ? <SearchOff /> : <Search />}
-        </IconButton>
+        </IconButton>}
       </Stack>
 
       {isSearchVisible && (
@@ -245,7 +288,6 @@ const Tile_View_Team = () => {
             <Grid size={viewMode === 'center' ? { xs: 12 } : { xs: 12, sm: 6, md: 4 }} key={member.id}>
               <Card
                 sx={{
-                  mb: 2,
                   borderRadius: 3,
                   boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
                   bgcolor: palette.background.paper,
@@ -263,25 +305,28 @@ const Tile_View_Team = () => {
                         {member.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                       </Avatar>
                       <Box>
-                        <Typography variant="h6" >
+                        <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
                           {member.name}
                         </Typography>
-                        <Typography variant="body2" >
+                        <Typography variant="body2" sx={{ textTransform: 'capitalize', }}>
                           {member.role}
                         </Typography>
                       </Box>
                     </Stack>
+
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <IconButton
-                        aria-label="settings"
-                        onClick={(e) => {
-                          setSelectedMember(member);
-                          setAnchorEl(e.currentTarget);
-                        }}
-                        sx={{ color: palette.text.primary }}
-                      >
-                        <MoreVert />
-                      </IconButton>
+                      {(canUpdateTeam || canDeleteTeam) && (
+                        <IconButton
+                          aria-label="settings"
+                          onClick={(e) => {
+                            setSelectedMember(member);
+                            setAnchorEl(e.currentTarget);
+                          }}
+                          sx={{ color: palette.text.primary }}
+                        >
+                          <MoreVert />
+                        </IconButton>
+                      )}
                     </Stack>
                   </Stack>
                   <Stack direction="row" spacing={1} mt={2} justifyContent="space-evenly">
@@ -322,7 +367,7 @@ const Tile_View_Team = () => {
                         borderRadius: 2
                       }}>
                       <CheckCircle sx={{ color: palette.primary.light }} />
-                      <Typography variant="body1" color="text.primary">
+                      <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
                         {member.status}
                       </Typography>
                     </Stack>
@@ -358,7 +403,7 @@ const Tile_View_Team = () => {
       )}
 
       {/* Context Menu */}
-      
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -396,18 +441,22 @@ const Tile_View_Team = () => {
           horizontal: 'right',
         }}
       >
-        <MenuItem onClick={() => handleEdit(selectedMember)} dense>
-          <ListItemIcon>
-            <Edit fontSize="small" sx={{ color: palette.primary.main }} />
-          </ListItemIcon>
-          <ListItemText>Edit</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => openDeleteDialog(selectedMember)} dense>
-          <ListItemIcon>
-            <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
-          </ListItemIcon>
-          <ListItemText>Delete</ListItemText>
-        </MenuItem>
+        {canUpdateTeam && (
+          <MenuItem onClick={() => handleEdit(selectedMember)} dense>
+            <ListItemIcon>
+              <Edit fontSize="small" sx={{ color: palette.primary.main }} />
+            </ListItemIcon>
+            <ListItemText>Edit</ListItemText>
+          </MenuItem>
+        )}
+        {canDeleteTeam && (
+          <MenuItem onClick={() => openDeleteDialog(selectedMember)} dense>
+            <ListItemIcon>
+              <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
+            </ListItemIcon>
+            <ListItemText>Delete</ListItemText>
+          </MenuItem>
+        )}
       </Menu>
 
       {/* Dialogs */}

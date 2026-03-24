@@ -20,6 +20,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
       if (onScrollStateChange) {
         onScrollStateChange({ canScrollLeft: newCanScrollLeft, canScrollRight: newCanScrollRight });
       }
+
     }
   };
 
@@ -45,8 +46,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
       });
     }
   };
-
-  //console.log("PropertyDisplay property:", property);
+  
   // Handle array of properties
   if (Array.isArray(property)) {
     return (
@@ -111,7 +111,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
                 elevation={1}
                 sx={{
                   p: 2,
-                  minWidth: 200,
+                  minWidth: 250,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
@@ -137,7 +137,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
                 </Avatar>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography
-                    variant="body2"
+                    variant="body1"
                     sx={{
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
@@ -149,8 +149,8 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
                   </Typography>
                   {prop.address && (
                     <Typography
-                      variant="caption"
-                      color="text.secondary"
+                      variant="body2"
+                      // color="text.secondary"
                       sx={{
                         display: 'block',
                         whiteSpace: 'nowrap',
@@ -194,6 +194,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
       >
         {!imageUrl && <Business />}
       </Avatar>
+
       <Box
         sx={{
           flex: 1,
@@ -201,9 +202,8 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
         }}
       >
         <Typography
-          variant="body2"
+          variant="h6"
           sx={{
-            fontWeight: 500,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -216,9 +216,10 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
         >
           {propertyName || 'N/A'}
         </Typography>
+
         {address && (
           <Typography
-            variant="caption"
+            variant="body1"
             color="text.secondary"
             sx={{
               whiteSpace: 'nowrap',
@@ -235,6 +236,7 @@ const PropertyDisplay = ({ property, onScrollStateChange }) => {
             {address}
           </Typography>
         )}
+
       </Box>
     </Stack>
   );

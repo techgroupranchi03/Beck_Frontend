@@ -12,6 +12,7 @@ import {
     Chip,
     Box,
     Divider,
+    useTheme,
 } from '@mui/material';
 
 const activities = [
@@ -21,7 +22,7 @@ const activities = [
         detail: 'Property inspection at Oak Street',
         time: '5 min ago',
         type: 'task',
-        avatarColor: '#e91e63', // pinkish
+        avatarColor: 'success.main',
     },
     {
         name: 'Mike Chen',
@@ -29,7 +30,7 @@ const activities = [
         detail: 'Sunset Villa - 3BR',
         time: '23 min ago',
         type: 'property',
-        avatarColor: '#009688', // teal
+        avatarColor: 'primary.main',
     },
     {
         name: 'Emily Davis',
@@ -37,7 +38,7 @@ const activities = [
         detail: 'Kitchen appliances stock',
         time: '1 hour ago',
         type: 'inventory',
-        avatarColor: '#607d8b', // blue-grey
+        avatarColor: 'warning.dark',
     },
     {
         name: 'Alex Turner',
@@ -45,24 +46,26 @@ const activities = [
         detail: 'Maintenance Crew',
         time: '2 hours ago',
         type: 'team',
-        avatarColor: '#3f51b5', // indigo
+        avatarColor: 'secondary.main',
     },
 
 ];
 
 const RecentActivity = () => {
+    const theme = useTheme();
+
     const getChipColor = (type) => {
         switch (type) {
             case 'task':
-                return { bgcolor: 'success.main', color: 'white' };
+                return { bgcolor: 'success.main', color: 'common.white' };
             case 'property':
-                return { bgcolor: 'info.main', color: 'white' };
+                return { bgcolor: 'info.main', color: 'common.white' };
             case 'inventory':
-                return { bgcolor: 'warning.main', color: 'white' };
+                return { bgcolor: 'warning.main', color: 'common.white' };
             case 'team':
-                return { bgcolor: 'secondary.main', color: 'white' };
+                return { bgcolor: 'secondary.main', color: 'common.white' };
             default:
-                return { bgcolor: 'grey.500', color: 'white' };
+                return { bgcolor: 'grey.500', color: 'common.white' };
         }
     };
 
@@ -85,7 +88,7 @@ const RecentActivity = () => {
         >
             <CardHeader
                 title={
-                    <Typography variant="h6" component="div" fontWeight={600}>
+                    <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }} gutterBottom>
                         Recent Activity
                     </Typography>
                 }
@@ -114,10 +117,10 @@ const RecentActivity = () => {
                                 <ListItemText
                                     primary={
                                         <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography component="span" variant="subtitle2">
+                                            <Typography  variant="body1" color="text.primary" fontWeight={500}>
                                                 {activity.name}
                                             </Typography>
-                                            <Typography component="span" variant="body2" color="text.secondary">
+                                            <Typography  variant="body1" color="text.secondary">
                                                 {activity.action}
                                             </Typography>
                                         </Box>
@@ -125,16 +128,14 @@ const RecentActivity = () => {
                                     secondary={
                                         <>
                                             <Typography
-                                                component="span"
-                                                variant="body2"
+                                                variant="body1"
                                                 color="text.primary"
                                                 sx={{ display: 'block' }}
                                             >
                                                 {activity.detail}
                                             </Typography>
                                             <Typography
-                                                component="span"
-                                                variant="caption"
+                                                variant="body2"
                                                 color="text.secondary"
                                                 sx={{ display: 'block', mt: 0.5 }}
                                             >

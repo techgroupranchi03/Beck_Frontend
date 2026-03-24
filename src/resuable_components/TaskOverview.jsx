@@ -31,6 +31,11 @@ export default function TaskOverview() {
   const theme = useTheme();
   const completedColor = theme.palette.primary.main;
   const pendingColor = theme.palette.secondary.main;
+  const tickColor = theme.palette.text.secondary;
+  const tooltipBg = theme.palette.background.paper;
+  const tooltipBorder = theme.palette.divider;
+  const tooltipLabelColor = theme.palette.text.primary;
+  const cursorFill = theme.palette.action?.hover || 'rgba(0, 0, 0, 0.04)';
 
   return (
     <Card
@@ -51,7 +56,7 @@ export default function TaskOverview() {
     >
       <CardHeader
         title={
-          <Typography variant="h6" component="div" fontWeight={600}>
+         <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }} gutterBottom>
             Task Overview
           </Typography>
         }
@@ -73,23 +78,23 @@ export default function TaskOverview() {
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }} 
+                tick={{ fontSize: 12, fill: tickColor }} 
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 12, fill: tickColor }}
               />
               <Tooltip
-                cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }}
+                cursor={{ fill: cursorFill }}
                 contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: tooltipBg,
+                  border: `1px solid ${tooltipBorder}`,
                   borderRadius: 8,
-                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                  boxShadow: theme.shadows[3],
                   padding: '12px 16px',
                 }}
-                labelStyle={{ fontWeight: 600, color: '#111827', marginBottom: 6 }}
+                labelStyle={{ fontWeight: 600, color: tooltipLabelColor, marginBottom: 6 }}
                 itemStyle={{ paddingTop: 2 }}
               />
               <Bar

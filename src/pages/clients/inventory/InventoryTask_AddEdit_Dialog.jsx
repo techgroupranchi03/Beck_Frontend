@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
     Dialog,
     DialogTitle,
@@ -10,7 +10,6 @@ import {
     useTheme,
     TextField,
     Grid,
-    MenuItem,
     Checkbox,
     FormControlLabel,
     Box,
@@ -21,7 +20,7 @@ import {
     FormLabel,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close';
-import { taskTypes, scheduleTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, taskTypesOptions } from '../../../constant';
+import { scheduleTypes, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog';
@@ -33,7 +32,6 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
     const isEdit = !!task && !!task.id;
     const isDuplicate = !!task && !task.id;
-    const [taskScheduleType, setTaskScheduleType] = useState('one_time');
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
@@ -42,109 +40,143 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
     const {
         inventoryData,
         properties,
+        propertyPagination,
+        inventoryPagination,
         teamMembers,
         createTask,
-        updateTaskPlannerData,
-        updateActiveTaskData,
-        updateTaskCompletionStatus
+        updateTask,
+        updateTaskCompletionStatus,
+        fetchProperties,
+        fetchInventoryItems,
     } = useInventoryContext();
     const [loading, setLoading] = useState(false);
     const [validationErrors, setValidationErrors] = useState({});
+    const [isLoadingMoreProperties, setIsLoadingMoreProperties] = useState(false);
+    const [isLoadingMoreInventory, setIsLoadingMoreInventory] = useState(false);
+    const [propertyOptions, setPropertyOptions] = useState(properties || []);
+    const [inventoryOptions, setInventoryOptions] = useState(inventoryData || []);
+    const [propertySearchText, setPropertySearchText] = useState('');
+    const [inventorySearchText, setInventorySearchText] = useState('');
+    const propertySearchTimer = useRef(null);
+    const inventorySearchTimer = useRef(null);
+
+    // console.log('task in dialog:', task);
+    // console.log('inventoryData :', inventoryData);
 
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        inventory_id: inventoryId || '',
-        property_id: '',
-        schedule_type: '',
-        repeat_on: '{}',
+        property_id: null,
+        inventory_id: inventoryId || null,
+        schedule_type: 'weekly',
         start_date: '',
-        scheduled_date: '',
-        task_type: '',
+        end_date: '',
         assigned_to: '',
-        is_photo_required: 0,
-        update_inventory: 0,
-        status: ''
+        requires_photo: false,
+        allows_inventory_update: false,
     });
     const [repeatData, setRepeatData] = useState({});
 
     useEffect(() => {
         if ((isEdit || isDuplicate) && task) {
+            const schedule = task.schedule || {};
+            const recurrenceRule = schedule.recurrence_rule || {};
+
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
-                inventory_id: task.inventory_id || '',
-                property_id: task.property_id || '',
-                schedule_type: task.schedule_type || '',
-                repeat_on: task.repeat_on || '{}',
-                start_date: task.start_date || '',
-                scheduled_date: task.scheduled_date || '',
-                task_type: task.task_type || '',
-                assigned_to: task.assigned_to || '',
-                is_photo_required: task.is_photo_required || 0,
-                update_inventory: task.update_inventory || 0,
-                status: task.status || ''
+                property_id: task.property?.id || task.property_id || task.inventory?.property_id || '',
+                inventory_id: task.inventory_details?.id || task.inventory?.id || task.inventory_id || inventoryId || null,
+                schedule_type: schedule.type || task.schedule_type || 'weekly',
+                start_date: schedule.start_date ? schedule.start_date.split('T')[0] : (task.start_date || ''),
+                end_date: schedule.end_date ? schedule.end_date.split('T')[0] : '',
+                assigned_to: task.assigned_to?.id || task.assigned_to || '',
+                requires_photo: !!task.requires_photo,
+                allows_inventory_update: !!task.allows_inventory_update,
             });
 
-            // Derive taskScheduleType from existing task's schedule_type
-            const taskSchedule = task.schedule_type;
-            if (taskSchedule && taskSchedule !== 'one_time') {
-                setTaskScheduleType('recurring');
-            } else {
-                setTaskScheduleType('one_time');
-            }
-
-            // Parse repeat_on for edit/duplicate mode
-            try {
-                const repeatOnValue = task.repeat_on;
-                if (repeatOnValue) {
-                    const parsed = typeof repeatOnValue === 'string' ? JSON.parse(repeatOnValue) : repeatOnValue;
-                    setRepeatData(parsed);
-                } else {
-                    setRepeatData({});
-                }
-            } catch {
-                setRepeatData({});
-            }
+            setRepeatData(recurrenceRule);
         } else {
             // Reset form for new task
             const selectedInventory = inventoryId ? inventoryData.find(item => item.id === inventoryId) : null;
             setFormData({
                 title: '',
                 description: '',
-                inventory_id: inventoryId || '',
                 property_id: selectedInventory?.property_id || '',
-                schedule_type: '',
-                repeat_on: '{}',
+                inventory_id: inventoryId || null,
+                schedule_type: 'weekly',
                 start_date: '',
-                task_type: '',
+                end_date: '',
                 assigned_to: '',
-                is_photo_required: 0,
-                update_inventory: 0,
-                status: ''
+                requires_photo: false,
+                allows_inventory_update: false,
             });
             setRepeatData({});
-            setTaskScheduleType('one_time');
         }
         setValidationErrors({});
     }, [task, isEdit, isDuplicate, open, inventoryId, inventoryData]);
 
+    // Sync propertyOptions with properties from context, merging in selected property when editing
     useEffect(() => {
-        if (formData.schedule_type && formData.schedule_type !== 'one_time') {
-            setTaskScheduleType('recurring');
-        } else {
-            setTaskScheduleType('one_time');
+        let merged = [...(properties || [])];
+        if ((isEdit || isDuplicate) && task?.property) {
+            const selectedProp = task.property;
+            if (selectedProp?.id && !merged.find(p => p.id === selectedProp.id)) {
+                merged = [selectedProp, ...merged];
+            }
         }
-    }, [formData.schedule_type]);
+        setPropertyOptions(merged);
+    }, [properties, task, isEdit, isDuplicate]);
 
+    // Sync inventoryOptions with inventoryData, merging in selected inventory when editing
     useEffect(() => {
-        if (['weekly', 'monthly', 'yearly'].includes(formData.schedule_type)) {
-            setFormData(prev => ({
-                ...prev,
-                repeat_on: JSON.stringify(repeatData)
-            }));
+        let merged = [...(inventoryData || [])];
+        if ((isEdit || isDuplicate) && task?.inventory) {
+            const selectedInv = task.inventory;
+            if (selectedInv?.id && !merged.find(i => i.id === selectedInv.id)) {
+                merged = [selectedInv, ...merged];
+            }
         }
-    }, [repeatData, formData.schedule_type]);
+        setInventoryOptions(merged);
+    }, [inventoryData, task, isEdit, isDuplicate]);
+
+    // Cleanup search timers on unmount
+    useEffect(() => {
+        return () => {
+            if (propertySearchTimer.current) clearTimeout(propertySearchTimer.current);
+            if (inventorySearchTimer.current) clearTimeout(inventorySearchTimer.current);
+        };
+    }, []);
+
+    // Debounced search handler for property dropdown
+    const handlePropertySearchInput = useCallback((event, value, reason) => {
+        if (reason === 'input') {
+            setPropertySearchText(value);
+            if (propertySearchTimer.current) clearTimeout(propertySearchTimer.current);
+            propertySearchTimer.current = setTimeout(() => {
+                fetchProperties(1, false, value);
+            }, 400);
+        }
+        if (reason === 'clear') {
+            setPropertySearchText('');
+            fetchProperties(1, false, '');
+        }
+    }, [fetchProperties]);
+
+    // Debounced search handler for inventory dropdown
+    const handleInventorySearchInput = useCallback((event, value, reason) => {
+        if (reason === 'input') {
+            setInventorySearchText(value);
+            if (inventorySearchTimer.current) clearTimeout(inventorySearchTimer.current);
+            inventorySearchTimer.current = setTimeout(() => {
+                fetchInventoryItems({}, value, 1, false);
+            }, 400);
+        }
+        if (reason === 'clear') {
+            setInventorySearchText('');
+            fetchInventoryItems({}, '', 1, false);
+        }
+    }, [fetchInventoryItems]);
 
     const handleChange = (field) => (event) => {
         const value = event.target.value;
@@ -152,7 +184,6 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
             ...prev,
             [field]: value
         }));
-        // Clear validation error for this field
         if (validationErrors[field]) {
             setValidationErrors(prev => ({
                 ...prev,
@@ -161,18 +192,45 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
         }
     };
 
-    const handleCheckboxChange = (event) => {
+    const handlePhotoChange = (event) => {
         setFormData(prev => ({
             ...prev,
-            is_photo_required: event.target.checked ? 1 : 0
+            requires_photo: event.target.checked
         }));
     };
 
     const handleInventoryChange = (event) => {
         setFormData(prev => ({
             ...prev,
-            update_inventory: event.target.checked ? 1 : 0
+            allows_inventory_update: event.target.checked
         }));
+    };
+
+    const buildPayload = () => {
+        const isFixedDates = formData.schedule_type === 'fixed_dates';
+
+        let recurrenceRule = null;
+        if (Object.keys(repeatData).length > 0) {
+            recurrenceRule = repeatData;
+        }
+
+        const schedule = {
+            schedule_type: formData.schedule_type,
+            recurrence_rule: recurrenceRule,
+            start_date: isFixedDates ? null : (formData.start_date || null),
+            end_date: isFixedDates ? null : (formData.end_date || null),
+        };
+
+        return {
+            title: formData.title,
+            description: formData.description,
+            property_id: formData.property_id,
+            requires_photo: formData.requires_photo,
+            allows_inventory_update: formData.allows_inventory_update,
+            assigned_to: formData.assigned_to,
+            inventory_id: formData.inventory_id || null,
+            schedule,
+        };
     };
 
     const handleCreateUpdate = async () => {
@@ -180,36 +238,13 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
         setLoading(true);
         try {
             if (isEdit) {
-                let res;
-                if (taskScheduleType === 'one_time') {
-                    res = await updateActiveTaskData(task.id, formData);
-                } else {
-                    const plannerPayload = { ...formData };
-                    delete plannerPayload.status;
-                    res = await updateTaskPlannerData(task.id, plannerPayload);
-                }
+                const payload = buildPayload();
+                const res = await updateTask(task.id, payload);
                 showSnackbar(res.message || 'Task updated successfully', 'success');
             } else {
-                let res;
-                if (taskScheduleType === 'one_time') {
-                    const oneTimePayload = {
-                        ...formData,
-                        schedule_type: 'one_time',
-                        repeat_on: '{}',
-                        start_date: formData.scheduled_date || formData.start_date
-                    };
-                    delete oneTimePayload.scheduled_date;
-                    res = await createTask(oneTimePayload);
-                } else {
-                    const recurringPayload ={
-                        ...formData,
-                        start_date: formData.start_date || formData.scheduled_date,
-                    };
-                    delete recurringPayload.scheduled_date;
-                    delete recurringPayload.status;
-                    res = await createTask(recurringPayload);
-                }
-                showSnackbar(res.message, 'success');
+                const payload = buildPayload();
+                const res = await createTask(payload);
+                showSnackbar(res.message || 'Task created successfully', 'success');
             }
             onClose();
         } catch (error) {
@@ -242,7 +277,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
         }
     };
 
-    const handleCompletionDialogClose = () => {
+    const handleCompletionDialogClose = (success) => {
         setShowCompletionDialog(false);
         setPendingTask(null);
         if (success) {
@@ -301,68 +336,86 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 multiline
                                 rows={3}
                                 error={!!validationErrors.description}
-                                helperText={validationErrors.description}
+                                inputProps={{ maxLength: 500 }}
+                                helperText={
+                                    <>
+                                        <span>{validationErrors.description}</span>
+                                        <span>{formData.description.length}/500</span>
+                                    </>
+                                }
+                                slotProps={{
+                                    formHelperText: {
+                                        sx: {
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                        },
+                                    },
+                                }}
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12 }} container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControl component="fieldset" disabled={isEdit && !isDuplicate}>
-                                    <FormLabel component="legend">Task Schedule</FormLabel>
-                                    <RadioGroup
-                                        row
-                                        value={taskScheduleType}
-                                        onChange={(e) => setTaskScheduleType(e.target.value)}
-                                    >
-                                        <FormControlLabel value="one_time" control={<Radio />} label="One Time" />
-                                        <FormControlLabel value="recurring" control={<Radio />} label="Recurring" />
-                                    </RadioGroup>
-                                </FormControl>
-                            </Grid>
-
-                            {/* Schedule Type - Show when creating new task OR editing Task Planner */}
-                            {taskScheduleType === 'recurring' && (
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <FormControl component="fieldset">
-                                        <FormLabel component="legend"
-                                            sx={{
-                                                color: validationErrors.schedule_type ? 'error.main' : 'inherit'
-                                            }}
-                                        >
-                                            Schedule Type
-                                        </FormLabel>
-                                        <RadioGroup
-                                            row
-                                            value={formData.schedule_type}
-                                            onChange={handleChange('schedule_type')}
-                                        >
-                                            {scheduleTypes.filter(type => type !== 'one_time').map((type) => (
-                                                <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1)} />
-                                            ))}
-                                        </RadioGroup>
-                                        {validationErrors.schedule_type && (
-                                            <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
-                                                {validationErrors.schedule_type}
-                                            </Box>
-                                        )}
-                                    </FormControl>
-                                </Grid>
-                            )}
-
+                        <Grid size={{ xs: 12 }}>
+                            <FormControl component="fieldset">
+                                <FormLabel component="legend"
+                                    sx={{
+                                        color: validationErrors.schedule_type ? 'error.main' : 'inherit'
+                                    }}
+                                >
+                                    Schedule Type
+                                </FormLabel>
+                                <RadioGroup
+                                    row
+                                    value={formData.schedule_type}
+                                    onChange={(e) => {
+                                        handleChange('schedule_type')(e);
+                                        setRepeatData({});
+                                    }}
+                                >
+                                    {scheduleTypes.map((type) => (
+                                        <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} />
+                                    ))}
+                                </RadioGroup>
+                                {validationErrors.schedule_type && (
+                                    <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
+                                        {validationErrors.schedule_type}
+                                    </Box>
+                                )}
+                            </FormControl>
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <Autocomplete
                                 size="small"
-                                options={properties}
+                                options={propertyOptions}
                                 getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={properties.find((item) => item.id === formData.property_id) || null}
+                                value={propertyOptions.find((item) => item.id === formData.property_id) || null}
+                                onInputChange={handlePropertySearchInput}
+                                filterOptions={(x) => x}
                                 onChange={(e, newValue) => {
                                     handleChange("property_id")({
                                         target: { value: newValue ? newValue.id : "" }
                                     });
                                 }}
                                 disabled={!!formData.inventory_id}
+                                ListboxProps={{
+                                    onScroll: async (event) => {
+                                        const listboxNode = event.currentTarget;
+                                        if (
+                                            listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
+                                            propertyPagination?.hasNextPage &&
+                                            !isLoadingMoreProperties
+                                        ) {
+                                            setIsLoadingMoreProperties(true);
+                                            try {
+                                                await fetchProperties((propertyPagination.page || 1) + 1, true, propertySearchText);
+                                            } catch (err) {
+                                                console.error('Error loading more properties:', err);
+                                            } finally {
+                                                setIsLoadingMoreProperties(false);
+                                            }
+                                        }
+                                    },
+                                }}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -378,15 +431,42 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <Autocomplete
                                 size="small"
-                                options={inventoryData}
+                                options={inventoryOptions}
                                 getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={inventoryData.find((item) => item.id === formData.inventory_id) || null}
+                                value={inventoryOptions.find((item) => item.id === formData.inventory_id) || null}
+                                onInputChange={handleInventorySearchInput}
+                                filterOptions={(x) => x}
                                 onChange={(e, newValue) => {
                                     handleChange("inventory_id")({
                                         target: { value: newValue ? newValue.id : "" }
                                     });
+                                    // Auto-select property when inventory is selected
+                                    if (newValue && newValue.property_id) {
+                                        handleChange("property_id")({
+                                            target: { value: newValue.property_id }
+                                        });
+                                    }
                                 }}
                                 disabled={(isEdit && !isDuplicate) || !!inventoryId}
+                                ListboxProps={{
+                                    onScroll: async (event) => {
+                                        const listboxNode = event.currentTarget;
+                                        if (
+                                            listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
+                                            inventoryPagination?.hasNextPage &&
+                                            !isLoadingMoreInventory
+                                        ) {
+                                            setIsLoadingMoreInventory(true);
+                                            try {
+                                                await fetchInventoryItems({}, inventorySearchText, (inventoryPagination.page || 1) + 1, true);
+                                            } catch (err) {
+                                                console.error('Error loading more inventory:', err);
+                                            } finally {
+                                                setIsLoadingMoreInventory(false);
+                                            }
+                                        }
+                                    },
+                                }}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
@@ -400,44 +480,99 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                             />
                         </Grid>
 
-                        {taskScheduleType === 'recurring' && (
-                            <Grid size={{ xs: 12, sm: 6 }}>
+                        {formData.schedule_type && formData.schedule_type !== 'fixed_dates' && (
+                            <>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        type="date"
+                                        label="Start Date"
+                                        value={formData.start_date}
+                                        onChange={handleChange('start_date')}
+                                        fullWidth
+                                        size="small"
+                                        disabled={isEdit && !isDuplicate}
+                                        error={!!validationErrors.start_date}
+                                        helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
+                                        InputLabelProps={{
+                                            shrink: true,
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        type="date"
+                                        label="End Date"
+                                        value={formData.end_date}
+                                        onChange={handleChange('end_date')}
+                                        fullWidth
+                                        size="small"
+                                        error={!!validationErrors.end_date}
+                                        helperText={validationErrors.end_date}
+                                        InputLabelProps={{
+                                            shrink: true,
+                                        }}
+                                    />
+                                </Grid>
+                            </>
+                        )}
+
+                        {formData.schedule_type === 'fixed_dates' && (
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     type="date"
-                                    label="Start Date"
-                                    value={formData.start_date}
-                                    onChange={handleChange('start_date')}
+                                    label="Select Date"
                                     fullWidth
                                     size="small"
-                                    disabled={isEdit && !isDuplicate}
-                                    error={!!validationErrors.start_date}
-                                    helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
-                                    InputLabelProps={{
-                                        shrink: true,
+                                    InputLabelProps={{ shrink: true }}
+                                    onChange={(e) => {
+                                        const dateVal = e.target.value;
+                                        if (dateVal && !repeatData.dates?.includes(dateVal)) {
+                                            setRepeatData(prev => ({
+                                                ...prev,
+                                                dates: [...(prev.dates || []), dateVal].sort()
+                                            }));
+                                        }
                                     }}
+                                    error={!!validationErrors.repeat_on}
+                                    helperText={validationErrors.repeat_on || 'Pick dates to add them'}
                                 />
+                                {repeatData.dates && repeatData.dates.length > 0 && (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                        {repeatData.dates.map((date) => (
+                                            <Box
+                                                key={date}
+                                                sx={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    bgcolor: palette.background.customPaper,
+                                                    borderRadius: 2,
+                                                    px: 1,
+                                                    py: 0.3,
+                                                    fontSize: '0.8rem',
+                                                    gap: 0.5,
+                                                }}
+                                            >
+                                                {date}
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{ p: 0, ml: 0.5 }}
+                                                    onClick={() => {
+                                                        setRepeatData(prev => ({
+                                                            ...prev,
+                                                            dates: prev.dates.filter(d => d !== date)
+                                                        }));
+                                                    }}
+                                                >
+                                                    <CloseIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                )}
                             </Grid>
                         )}
 
-                        {taskScheduleType === 'one_time' && (
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextField
-                                    type="date"
-                                    label="Schedule Date"
-                                    value={formData.scheduled_date}
-                                    onChange={handleChange('scheduled_date')}
-                                    fullWidth
-                                    size="small"
-                                    error={!!validationErrors.scheduled_date}
-                                    helperText={validationErrors.scheduled_date}
-                                    InputLabelProps={{
-                                        shrink: true,
-                                    }}
-                                />
-                            </Grid>
-                        )}
-
-                        {taskScheduleType === 'recurring' && formData.schedule_type === 'weekly' && (
+                        {formData.schedule_type === 'weekly' && (
                             <Grid size={{ xs: 12 }}>
                                 <Autocomplete
                                     multiple
@@ -447,7 +582,6 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                     getOptionLabel={(option) => option.label}
                                     value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
                                     onChange={(event, newValue) => {
-                                        // Extract only the numeric values
                                         const dayValues = newValue.map(day => day.value);
                                         setRepeatData({ days: dayValues });
                                     }}
@@ -466,7 +600,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                             </Grid>
                         )}
 
-                        {taskScheduleType === 'recurring' && formData.schedule_type === 'monthly' && (
+                        {formData.schedule_type === 'monthly' && (
                             <Grid size={{ xs: 12 }}>
                                 <Autocomplete
                                     multiple
@@ -492,7 +626,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                             </Grid>
                         )}
 
-                        {taskScheduleType === 'recurring' && formData.schedule_type === 'yearly' && (
+                        {formData.schedule_type === 'yearly' && (
                             <>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Autocomplete
@@ -546,74 +680,33 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                         )}
 
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                select
-                                label="Task Type"
-                                value={formData.task_type}
-                                onChange={handleChange('task_type')}
-                                fullWidth
+                            <Autocomplete
                                 size="small"
-                                required
-                                error={!!validationErrors.task_type}
-                                helperText={validationErrors.task_type}
-                            >
-                                {taskTypesOptions.map((type) => (
-                                    <MenuItem key={type.value} value={type.value} dense>
-                                        <type.icon sx={{ mr: 1, color: 'text.secondary', fontSize: 16 }} />
-                                        {type.label}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
+                                options={teamMembers}
+                                getOptionLabel={(option) => option.name ? String(option.name) : ""}
+                                value={teamMembers.find((item) => item.id === formData.assigned_to) || null}
+                                onChange={(e, newValue) => {
+                                    handleChange("assigned_to")({ target: { value: newValue ? newValue.id : "" } });
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Assigned To"
+                                        error={!!validationErrors.assigned_to}
+                                        helperText={validationErrors.assigned_to}
+                                    />
+                                )}
+                                isOptionEqualToValue={(option, value) => option.id === value.id}
+                            />
                         </Grid>
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                select
-                                label="Assigned To"
-                                value={formData.assigned_to}
-                                onChange={handleChange('assigned_to')}
-                                fullWidth
-                                size="small"
-                                required
-                                error={!!validationErrors.assigned_to}
-                                helperText={validationErrors.assigned_to}
-                            >
-                                {teamMembers.map((member) => (
-                                    <MenuItem key={member.id} value={member.id} dense>
-                                        {member.name}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
-
-                        {(taskScheduleType === 'one_time' || (!isEdit && formData.schedule_type === 'one_time')) && (
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <TextField
-                                    select
-                                    label="Status"
-                                    value={formData.status}
-                                    onChange={handleChange('status')}
-                                    fullWidth
-                                    size="small"
-                                    error={!!validationErrors.status}
-                                    helperText={validationErrors.status}
-                                >
-                                    {statusOpts.map((status) => (
-                                        <MenuItem key={status.value} value={status.value} dense>
-                                            {status.label}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
-                            </Grid>
-                        )}
 
                         <Grid size={{ xs: 12 }} container spacing={2}>
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <FormControlLabel
                                     control={
                                         <Checkbox
-                                            checked={formData.is_photo_required === 1}
-                                            onChange={handleCheckboxChange}
+                                            checked={!!formData.requires_photo}
+                                            onChange={handlePhotoChange}
                                         />
                                     }
                                     label="A Photo Proof is Required"
@@ -624,7 +717,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 <FormControlLabel
                                     control={
                                         <Checkbox
-                                            checked={formData.update_inventory === 1}
+                                            checked={!!formData.allows_inventory_update}
                                             onChange={handleInventoryChange}
                                         />
                                     }

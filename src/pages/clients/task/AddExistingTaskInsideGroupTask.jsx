@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -17,7 +17,6 @@ import {
   Chip,
   IconButton,
   Stack,
-  Tooltip,
   Collapse,
   Divider,
   Avatar,
@@ -29,7 +28,6 @@ import {
   ExpandLess,
   Person,
   Home,
-  CheckCircle,
 } from '@mui/icons-material';
 import { useTaskData } from './useTaskData';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
@@ -37,7 +35,6 @@ import { addClientExistingTaskInsideGroupTask } from '../../../service/Clients/T
 import { formatSchedule } from '../../../utils/scheduleFormatter';
 import { useTheme } from '@mui/material/styles';
 import { formatDate } from '../../../utils/dateFormat';
-import { taskStatusFilter } from '../../../constant';
 import { useAuth } from '../../../context/AuthContext';
 import { addTeamExistingTaskInsideGroupTask } from '../../../service/Teams/Team_Task';
 
@@ -91,6 +88,8 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
     properties
   } = useTaskData();
 
+  console.log("All Tasks Data:", allTasksData);
+
   const { showSnackbar } = useSnackbar();
 
   const [selectedTasks, setSelectedTasks] = useState([]);
@@ -103,31 +102,22 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
   // Filter states
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
 
   const observerTarget = useRef(null);
   const searchTimeout = useRef(null);
 
-  // Filter tasks (excluding group tasks if needed)
-  const allTaskData = React.useMemo(() => {
-    let tasks = [];
-    if (Array.isArray(allTasksData)) {
-      tasks = allTasksData;
-    } else {
-      tasks = [
-        ...(allTasksData?.active_tasks || []),
-        ...(allTasksData?.recurring_tasks || [])
-      ];
-    }
-
+  // Filter tasks (only regular tasks, not group tasks)
+  const allTaskData = useMemo(() => {
+    if (!allTasksData) return [];
+    const tasks = allTasksData.tasks || [];
+    
     // Apply filters
     return tasks.filter((task) => {
-      const matchesUser = selectedUsers.length === 0 || selectedUsers.includes(task.assigned_to);
-      const matchesProperty = selectedProperties.length === 0 || selectedProperties.includes(task.property_id);
-      const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(task.status);
-      return matchesUser && matchesProperty && matchesStatus;
+      const matchesUser = selectedUsers.length === 0 || selectedUsers.includes(task.assigned_to?.id);
+      const matchesProperty = selectedProperties.length === 0 || selectedProperties.includes(task.property?.id);
+      return matchesUser && matchesProperty;
     });
-  }, [allTasksData, selectedUsers, selectedProperties, selectedStatuses]);
+  }, [allTasksData, selectedUsers, selectedProperties]);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -137,8 +127,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
       setCurrentPage(1);
       setSelectedUsers([]);
       setSelectedProperties([]);
-      setSelectedStatuses([]);
-      fetchAllTasks({}, '', 1, false);
+      fetchAllTasks({}, '', 1, false, 10);
     }
   }, [open, fetchAllTasks]);
 
@@ -155,7 +144,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
     // Debounce search
     searchTimeout.current = setTimeout(() => {
       setCurrentPage(1);
-      fetchAllTasks({}, value.trim(), 1, false);
+      fetchAllTasks({}, value.trim(), 1, false, 10);
     }, 400);
   };
 
@@ -166,7 +155,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
-      await fetchAllTasks({}, searchText.trim(), nextPage, true);
+      await fetchAllTasks({}, searchText.trim(), nextPage, true, 10);
       setCurrentPage(nextPage);
     } catch (error) {
       console.error('Error loading more tasks:', error);
@@ -219,31 +208,21 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
     );
   };
 
-  const handleStatusToggle = (statusId) => {
-    setSelectedStatuses((prev) =>
-      prev.includes(statusId) ? prev.filter((id) => id !== statusId) : [...prev, statusId]
-    );
-  };
-
   const clearAllFilters = () => {
     setSelectedUsers([]);
     setSelectedProperties([]);
-    setSelectedStatuses([]);
   };
 
   const activeFilterCount =
-    selectedUsers.length + selectedProperties.length + selectedStatuses.length;
+    selectedUsers.length + selectedProperties.length;
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const taskIds = selectedTasks.map((task) => ({
-        id: task.id,
-        source: task.is_recurring ? 'recurring' : 'tasks',
-      }));
+      const taskIds = selectedTasks.map((task) => task.id);
       console.log("Task Ids:", taskIds);
       const res = isTeamUser
-        ? await addTeamExistingTaskInsideGroupTask(groupId, { task_ids: taskIds }) 
+        ? await addTeamExistingTaskInsideGroupTask(groupId, { task_ids: taskIds })
         : await addClientExistingTaskInsideGroupTask(groupId, { task_ids: taskIds });
       showSnackbar(res?.message, 'success');
       onClose(true);
@@ -355,19 +334,6 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
                 />
               );
             })}
-            {selectedStatuses.map((statusId) => {
-              const status = taskStatusFilter.find((s) => s.value === statusId);
-              return (
-                <Chip
-                  key={statusId}
-                  label={status?.label || statusId}
-                  size="small"
-                  onDelete={() => handleStatusToggle(statusId)}
-                  color="primary"
-                  variant="outlined"
-                />
-              );
-            })}
             <Button size="small" onClick={clearAllFilters}>
               Clear all
             </Button>
@@ -420,32 +386,6 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
                   </Stack>
                 </FilterSection>
               )}
-
-              {/* Status Filter */}
-              <FilterSection title="Status" icon={<CheckCircle fontSize="small" color="primary" />}>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {taskStatusFilter.map((status) => (
-                    <Chip
-                      size="small"
-                      key={status.value}
-                      label={status.label}
-                      onClick={() => handleStatusToggle(status.value)}
-                      px={0.5}
-                      sx={{
-                        bgcolor: selectedStatuses.includes(status.value) ? palette.taskStatus?.[status.value] || palette.primary.main : 'transparent',
-                        color: selectedStatuses.includes(status.value) ? 'white' : 'text.primary',
-                        borderColor: palette.taskStatus?.[status.value] || palette.primary.main,
-                        '&:hover': {
-                          bgcolor: selectedStatuses.includes(status.value)
-                            ? palette.taskStatus?.[status.value] || palette.primary.main
-                            : `${palette.taskStatus?.[status.value] || palette.primary.main}20`,
-                        },
-                      }}
-                      variant={selectedStatuses.includes(status.value) ? 'filled' : 'outlined'}
-                    />
-                  ))}
-                </Stack>
-              </FilterSection>
             </Box>
           </Box>
         </Collapse>
@@ -473,7 +413,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
             <List disablePadding>
               {allTaskData.map((task) => {
                 const isSelected = selectedTasks.some((t) => t.id === task.id);
-                const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                const scheduleInfo = formatSchedule(task.schedule?.type, task.schedule?.recurrence_rule);
 
                 return (
                   <ListItem
@@ -521,34 +461,34 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
                             </Stack>
                           )}
 
-                          {task.scheduled_date && (
+                          {task.schedule?.recurrence_rule?.dates && (
                             <Typography
                               variant="body2"
                               sx={{
-                                color: palette.primary.main,
+                                color: palette.text.secondary,
                                 fontSize: '0.813rem',
                                 mt: 0.5,
                               }}
                             >
-                              Scheduled on: {formatDate(task.scheduled_date)}
+                              Dates: {task.schedule.recurrence_rule.dates.map((date) => formatDate(date)).join(', ')}
+                            </Typography>
+                          )}
+
+                          {task.schedule?.start_date && (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: palette.text.secondary,
+                                fontSize: '0.813rem',
+                                mt: 0.5,
+                              }}
+                            >
+                              Scheduled on: {formatDate(task.schedule.start_date)}
                             </Typography>
                           )}
                         </>
                       }
                     />
-                    <Tooltip placement="top" arrow title="Task Status">
-                      <Chip
-                        label={task.status.replace('_', ' ')}
-                        size="small"
-                        sx={{
-                          bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                          color: 'white',
-                          px: 1.5,
-                          borderRadius: 5,
-                          ml: 1,
-                        }}
-                      />
-                    </Tooltip>
                   </ListItem>
                 );
               })}

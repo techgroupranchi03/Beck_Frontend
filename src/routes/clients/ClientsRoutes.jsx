@@ -1,45 +1,56 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../../Layout.jsx';
-import ClientsDashboard from '../../pages/clients/ClientsDashboard.jsx';
-import PropertyManagement from '../../pages/clients/property/PropertyManagement.jsx';
-import TeamManagement from '../../pages/clients/team/TeamManagement.jsx';
-import Clients_login from '../../auth/clients/Clients_login.jsx';
-import TaskList from '../../../Trash/TaskList.jsx'
 import ProtectedRoute from '../ProtectedRoute.jsx';
-import TaskManagement from '../../pages/clients/task/TaskManagement.jsx';
-import InventoryManagement from '../../pages/clients/inventory/InventoryManagement.jsx';
-import GroupTaskDetails from '../../pages/clients/task/GroupTaskDetails.jsx';
-import ThemeSettings from '../../pages/ThemeSettings.jsx';
+import { CircularProgress, Box } from '@mui/material';
+
+const ClientsDashboard = lazy(() => import('../../pages/clients/ClientsDashboard.jsx'));
+const PropertyManagement = lazy(() => import('../../pages/clients/property/PropertyManagement.jsx'));
+const TeamManagement = lazy(() => import('../../pages/clients/team/TeamManagement.jsx'));
+const Clients_login = lazy(() => import('../../auth/clients/Clients_login.jsx'));
+const TaskManagement = lazy(() => import('../../pages/clients/task/TaskManagement.jsx'));
+const InventoryManagement = lazy(() => import('../../pages/clients/inventory/InventoryManagement.jsx'));
+const GroupTaskDetails = lazy(() => import('../../pages/clients/task/GroupTaskDetails.jsx'));
+const TaskDetails = lazy(() => import('../../pages/clients/task/TaskDetails.jsx'));
+const ThemeSettings = lazy(() => import('../../pages/ThemeSettings.jsx'));
+
+const Loader = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+    <CircularProgress />
+  </Box>
+);
 
 const ClientsRoutes = () => (
-  <Routes>
-    {/* Public route - Login page */}
-    <Route path="/login" element={<Clients_login />} />
+  <Suspense fallback={<Loader />}>
+    <Routes>
+      {/* Public route - Login page */}
+      <Route path="/login" element={<Clients_login />} />
 
-    {/* Protected routes - Require client authentication */}
-    <Route
-      path="/"
-      element={
-        <ProtectedRoute requiredRole="client">
-          <Layout role="client" />
-        </ProtectedRoute>
-      }
-    >
-      {/* Nested routes inside Layout */}
-      <Route index element={<Navigate to="dashboard" replace />} />
-      <Route path="dashboard" element={<ClientsDashboard />} />
-      <Route path="property-management" element={<PropertyManagement />} />
-      <Route path="inventory-management" element={<InventoryManagement />} />
-      <Route path="task-management" element={<TaskManagement />} />
-      <Route path="task-management/:groupTaskName" element={<GroupTaskDetails />} />
-      <Route path="team-management" element={<TeamManagement />} />
-      <Route path="themeSetting" element={<ThemeSettings />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
-      {/* <Route path="all-task" element={<TaskList />} /> */}
-      {/* <Route path="task-management" element={<AllTask />} /> */}
-    </Route>
-  </Routes>
+      {/* Protected routes - Require client authentication */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute requiredRole="client">
+            <Layout role="client" />
+          </ProtectedRoute>
+        }
+      >
+        {/* Nested routes inside Layout */}
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<ClientsDashboard />} />
+        <Route path="property-management" element={<PropertyManagement />} />
+        <Route path="inventory-management" element={<InventoryManagement />} />
+        <Route path="task-management" element={<TaskManagement />} />
+        <Route path="task-management/group/:groupTaskName" element={<GroupTaskDetails />} />
+        <Route path="task-management/task/:taskName" element={<TaskDetails />} />
+        <Route path="team-management" element={<TeamManagement />} />
+        <Route path="themeSetting" element={<ThemeSettings />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
+        {/* <Route path="all-task" element={<TaskList />} /> */}
+        {/* <Route path="task-management" element={<AllTask />} /> */}
+      </Route>
+    </Routes>
+  </Suspense>
 );
 
 export default ClientsRoutes;

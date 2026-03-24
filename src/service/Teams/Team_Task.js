@@ -5,16 +5,16 @@ const getTeamToken = () => {
     return localStorage.getItem('team_token');
 };
 
-export const getAllTeamTasks = async (filters = {}, searchText = "", page = 1) => {
+export const getAllTeamTasks = async (filters = {}, searchText = "", page = 1, limit = 10) => {
     const token = getTeamToken();
     try {
-        const params = { page };
+        const params = { page, limit };
         if (filters.assigned_to) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
         if (filters.property_id) params.property_id = filters.property_id;
         if (searchText) params.search = searchText;
         const response = await axios.get(
-            `${BASE_URL}/team/all-tasks`,
+            `${BASE_URL}/team/tasks`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -134,6 +134,43 @@ export const createTeamTask = async (taskData) => {
     }
 };
 
+export const updateTeamTask = async (taskId, taskData) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/team/tasks/${taskId}`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Task update failed' });
+    }
+};
+
+export const deleteTeamTask = async (taskId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.delete(
+            `${BASE_URL}/team/tasks/${taskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task deletion error:', error);
+        return Promise.reject(error.response?.data || { message: 'Task deletion failed' });
+    }
+};
+
 export const createTeamActiveTask = async (taskData) => {
     const token = getTeamToken();
     try {
@@ -189,15 +226,21 @@ export const getTeamInventoryByPropertyId = async (propertyId) => {
     }
 };
 
-export const getTeamsInventoryItems = async () => {
+export const getTeamsInventoryItems = async (filters = {}, searchText = "", page = 1) => {
     const token = getTeamToken();
     try {
+        const params = { page };
+        if (filters.category) params.category = filters.category;
+        if (filters.property_id) params.property_id = filters.property_id;
+        if (searchText) params.search = searchText;
+
         const response = await axios.get(
             `${BASE_URL}/team/inventory`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params,
             }
         );
         return response.data;
@@ -243,16 +286,16 @@ export const deleteTeamRecurringTask = async (taskId) => {
     }
 };
 
-export const updateTeamTaskStatusCompleted = async (taskId, formData) => {
+export const updateTeamTaskStatus = async (occurrenceId, status) => {
     const token = getTeamToken();
     try {  
         const response = await axios.put(
-            `${BASE_URL}/team/groups/tasks/${taskId}/status`,
-            formData,
+            `${BASE_URL}/team/tasks/occurrences/${occurrenceId}`,
+            { status },
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
+                    'Content-Type': 'application/json',
                 },
             }
         );
@@ -263,15 +306,59 @@ export const updateTeamTaskStatusCompleted = async (taskId, formData) => {
     }
 };
 
-export const getTeamGrooupTasksById = async (groupTaskId) => {
+export const addTeamConfirmationTaskImage = async (occurrenceId, formData) => {
+    const token = getTeamToken();
+    console.log('Updating task with formData:', formData);
+    try {
+        const response = await axios.post(
+            `${BASE_URL}/team/tasks/occurrences/${occurrenceId}/complete`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task update error:', error);
+        return Promise.reject(error.response?.data);
+    }
+};
+
+export const updateTeamConfirmationTaskImage = async (occurrenceId, formData) => {
+    const token = getTeamToken();
+    console.log('Updating task with formData:', formData);
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/team/tasks/occurrences/${occurrenceId}/proof`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task update error:', error);
+        return Promise.reject(error.response?.data);
+    }
+};
+
+export const getTeamGroupTasksById = async (groupTaskId, page = 1, limit = 3) => {
     const token = getTeamToken();
     try {
+        const params = { page, limit };
         const response = await axios.get(
-            `${BASE_URL}/team/groups/${groupTaskId}`,
+            `${BASE_URL}/team/task-groups/${groupTaskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params,
             }
         );
         return response.data;
@@ -285,7 +372,7 @@ export const createTeamGroupTask = async (taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/team/groups`,
+            `${BASE_URL}/team/task-groups`,
             taskData,
             {
                 headers: {
@@ -305,7 +392,7 @@ export const updateTeamGroupTask = async (groupTaskId, taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/team/groups/${groupTaskId}`,
+            `${BASE_URL}/team/task-groups/${groupTaskId}`,
             taskData,
             {
                 headers: {
@@ -324,7 +411,7 @@ export const deleteTeamGroupTask = async (groupTaskId) => {
     const token = getTeamToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/team/groups/${groupTaskId}`,
+            `${BASE_URL}/team/task-groups/${groupTaskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -342,7 +429,7 @@ export const createTeamSubGroupTask = async (groupTaskId, taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/team/groups/${groupTaskId}/tasks`,
+            `${BASE_URL}/team/task-groups/${groupTaskId}/tasks`,
             taskData,
             {
                 headers: {
@@ -357,11 +444,11 @@ export const createTeamSubGroupTask = async (groupTaskId, taskData) => {
     }
 };
 
-export const updateTeamSubGroupTask = async (groupId, subGroupTaskId, taskData) => {
+export const updateTeamSubGroupTask = async (groupId, groupTaskId,taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/team/groups/tasks/${subGroupTaskId}`,
+            `${BASE_URL}/team/task-groups/${groupId}/tasks/${groupTaskId}`,
             taskData,
             {
                 headers: {
@@ -380,7 +467,7 @@ export const deleteTeamSubGroupTask = async (groupId, subGroupTaskId) => {
     const token = getTeamToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/team/groups/${groupId}/tasks/${subGroupTaskId}`,
+            `${BASE_URL}/team/task-groups/${groupId}/tasks/${subGroupTaskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -398,7 +485,7 @@ export const addTeamExistingTaskInsideGroupTask = async (groupId, taskData) => {
     const token = getTeamToken();
     try {
         const response = await axios.post(
-            `${BASE_URL}/team/groups/${groupId}/tasks/bulk`,
+            `${BASE_URL}/team/task-groups/${groupId}/add-tasks`,
             taskData,
             {
                 headers: {
@@ -410,5 +497,63 @@ export const addTeamExistingTaskInsideGroupTask = async (groupId, taskData) => {
     } catch (error) {
         console.error('Adding existing tasks to group error:', error);
         return Promise.reject(error.response?.data || { message: 'Adding existing tasks to group failed' });
+    }
+};
+
+export const getTeamTaskById = async (taskId) => {
+    const token = getTeamToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/team/tasks/${taskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching task failed' });
+    }
+};
+
+export const getTeamTaskGroupOccurrecesByGroupId = async (groupId, page = 1, limit = 10) => {
+    const token = getTeamToken();
+    try {
+        const params = { page, limit };
+        const response = await axios.get(
+            `${BASE_URL}/team/task-groups/${groupId}/group-occurrences`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                params: params,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team group task occurrences fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching group task occurrences failed' });
+    }
+};
+
+export const getTeamTaskOccurrenceByTaskGroupOccurrrenceId = async (TaskGroupOccurrenceId, page = 1, limit = 5) => {
+    const token = getTeamToken();
+    try {
+        const params = { page, limit };
+        const response = await axios.get(
+            `${BASE_URL}/team/task-group-occurrences/${TaskGroupOccurrenceId}/task-occurrences`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                params: params,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Team task occurrence fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching task occurrence failed' });
     }
 };

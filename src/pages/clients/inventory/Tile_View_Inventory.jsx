@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Card,
     Container,
@@ -8,6 +9,7 @@ import {
     Stack,
     IconButton,
     useTheme,
+    useMediaQuery,
     TextField,
     CardMedia,
     CardContent,
@@ -18,10 +20,7 @@ import {
     ListItemIcon,
     Divider,
     Collapse,
-    Avatar,
-    Select,
     Chip,
-    Icon,
     Tooltip,
     CircularProgress
 } from '@mui/material';
@@ -41,44 +40,60 @@ import {
     HomeWorkOutlined,
     Person,
     Business,
-    CalendarMonth,
-    Task,
     Close,
     AssignmentTurnedIn,
     CameraAlt,
-    FileCopy
+    FileCopy,
+    CalendarMonth
 } from '@mui/icons-material';
 import InventoryFilter from './InventoryFilter';
 import { useInventoryContext } from './InventoryManagement';
 import Tag from '../../../resuable_components/Tag';
 import TileView_addEdit_Inventory from './TileView_addEdit_Inventory';
 import InventoryTask_AddEdit_Dialog from './InventoryTask_AddEdit_Dialog';
-import { formatDate } from '../../../utils/dateFormat';
 import ViewMoreText from '../../../resuable_components/ViewMore';
-import CardSkeleton from '../../../resuable_components/CardSkeleton';
 import InventoryCardSkeleton from './InventoryCardSkeleton';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import IconLabel from '../../../resuable_components/IconLabel';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import ImageViewer from '../../../resuable_components/ImageViewer';
-import formatSchedule from '../../../utils/scheduleFormatter';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
 import { useViewMode } from '../../../context/ViewModeContext';
+import formatSchedule from '../../../utils/scheduleFormatter';
+import { formatDate } from '../../../utils/dateFormat';
+import { useAuth } from '../../../context/AuthContext';
+import { canCreate, canUpdate, canDelete, RESOURCES } from '../../../utils/permissions';
+import { useTopBar } from '../../../context/TopBarContext';
+
 
 
 
 const Tile_View_Inventory = () => {
+    const { user } = useAuth();
     const theme = useTheme();
     const { palette } = theme;
     const { viewMode } = useViewMode();
     const { showSnackbar } = useSnackbar();
+    const location = useLocation();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+    // Check permissions for inventory resource
+    const canCreateInventory = canCreate(user?.teamRole, RESOURCES.INVENTORY);
+    const canUpdateInventory = canUpdate(user?.teamRole, RESOURCES.INVENTORY);
+    const canDeleteInventory = canDelete(user?.teamRole, RESOURCES.INVENTORY);
+
+    // Check permissions for task resource (tasks within inventory)
+    const canCreateTask = canCreate(user?.teamRole, RESOURCES.TASK);
+    const canUpdateTask = canUpdate(user?.teamRole, RESOURCES.TASK);
+    const canDeleteTask = canDelete(user?.teamRole, RESOURCES.TASK);
+
     const [filters, setFilters] = useState({});
     const [isFilterVisible, setIsFilterVisible] = useState(false);
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [anchorEl, setAnchorEl] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
-    const [expandedCards, setExpandedCards] = useState({});
+    const [expandedCardId, setExpandedCardId] = useState(null);
     const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
     const [openTaskDialog, setOpenTaskDialog] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
@@ -93,7 +108,36 @@ const Tile_View_Inventory = () => {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
     const observerTarget = useRef(null);
-    const [inventoryTaskData, setInventoryTaskData] = useState([]);
+    const [inventoryTaskDataMap, setInventoryTaskDataMap] = useState({});
+
+    // Register search actions in top bar for mobile
+    const { registerActions, clearActions } = useTopBar();
+    const hasActiveFilters = Object.keys(filters).some((key) => {
+        const val = filters[key];
+        return Array.isArray(val) ? val.length > 0 : val;
+    });
+    useEffect(() => {
+        if (isMobile) {
+            registerActions({
+                onSearchToggle: () => setIsSearchVisible((prev) => !prev),
+                isSearchActive: isSearchVisible,
+            });
+        }
+        return () => { if (isMobile) clearActions(); };
+    }, [isMobile, isSearchVisible]);
+
+    // Auto-open add dialog from mobile FAB navigation
+    useEffect(() => {
+        if (location.state?.openAdd) {
+            setOpenAddEditDialog(true);
+            setSelectedItem(null);
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state?.openAdd]);
+
+    console.log("Inventory Task Data Map:", inventoryTaskDataMap);
+    console.log("SlectedInventoryId:", selectedInventoryId);
+    console.log("selectedItem:", selectedItem);
 
     const {
         inventoryData,
@@ -107,6 +151,10 @@ const Tile_View_Inventory = () => {
         units,
         getInventoryDetails,
     } = useInventoryContext();
+
+
+    console.log("Inventory Data:", inventoryData);
+
 
     const handleFilterToggle = () => {
         setIsFilterVisible((prev) => !prev);
@@ -236,9 +284,9 @@ const Tile_View_Inventory = () => {
         if (selectedItem) {
             try {
                 const res = await deleteInventory(selectedItem.id);
-                showSnackbar(res.message || 'Inventory deleted successfully', 'success');
+                showSnackbar(res.message);
             } catch (error) {
-                showSnackbar(error.message || 'Failed to delete inventory', 'error');
+                showSnackbar(error.message);
                 console.error('Error deleting inventory:', error);
             }
         }
@@ -256,17 +304,17 @@ const Tile_View_Inventory = () => {
     };
 
     const handleCollapseToggle = async (cardId) => {
-        console.log("Toggling card:", cardId);
-        const isExpanding = !expandedCards[cardId];
+        const isExpanding = expandedCardId !== cardId;
 
-        setExpandedCards(prev => ({
-            ...prev,
-            [cardId]: isExpanding
-        }));
+        // Close previous, open new (or just close if same card)
+        setExpandedCardId(isExpanding ? cardId : null);
 
-        if (isExpanding) {
+        if (isExpanding && !inventoryTaskDataMap[cardId]) {
             const res = await getInventoryDetails(cardId);
-            setInventoryTaskData(res || []);
+            setInventoryTaskDataMap(prev => ({
+                ...prev,
+                [cardId]: res || { task_definitions: [] }
+            }));
         }
     };
 
@@ -330,7 +378,7 @@ const Tile_View_Inventory = () => {
 
             <Box
                 sx={{
-                    mb: 2,
+                    // mb: 2,
                     position: 'relative',
                     display: 'block',
                     visibility: 'visible',
@@ -371,26 +419,28 @@ const Tile_View_Inventory = () => {
                 />
             </Box>
 
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Button
-                    variant="contained"
-                    disableElevation
-                    size="medium"
-                    sx={{
-                        bgcolor: palette.primary.main,
-                        "&:hover": { bgcolor: palette.secondary.main },
-                        textTransform: "none",
-                        borderRadius: 10,
-                    }}
-                    onClick={() => {
-                        setOpenAddEditDialog(true);
-                        setSelectedItem(null);
-                    }}
-                >
-                    Add Inventory
-                </Button>
+            <Box display="flex" justifyContent={isMobile ? "flex-end" : "space-between"} alignItems="center" mb={2}>
+                {canCreateInventory && !isMobile ? (
+                    <Button
+                        variant="contained"
+                        disableElevation
+                        size="medium"
+                        sx={{
+                            bgcolor: palette.primary.main,
+                            "&:hover": { bgcolor: palette.secondary.main },
+                            textTransform: "none",
+                            borderRadius: 10,
+                        }}
+                        onClick={() => {
+                            setOpenAddEditDialog(true);
+                            setSelectedItem(null);
+                        }}
+                    >
+                        Add Inventory
+                    </Button>
+                ) : <Box />}
 
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ display: isMobile ? 'none' : 'flex' }}>
                     <IconButton
                         onClick={handleFilterToggle}
                         sx={{
@@ -465,7 +515,8 @@ const Tile_View_Inventory = () => {
                 />
             )}
 
-            <Divider sx={{ my: 2 }} />
+           
+            <Divider sx={{ my: 2 , display: { xs: 'none', md: 'block' }}} />
 
             {/* show skeleton when loading initial data */}
             {loading && inventoryData.length === 0 && (
@@ -486,6 +537,7 @@ const Tile_View_Inventory = () => {
                         <Grid
                             size={viewMode === 'center' ? { xs: 12, } : { xs: 12, sm: 6, md: 4 }}
                             item key={item.id}
+                            sx={{ display: 'flex' }}
                         >
                             <Card
                                 elevation={0}
@@ -493,90 +545,117 @@ const Tile_View_Inventory = () => {
                                     pt: 0,
                                     borderRadius: 3,
                                     position: "relative",
-                                    border: expandedCards[item.id]
+                                    width: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    border: expandedCardId === item.id
                                         ? `1px solid ${palette.primary.main}`
                                         : `1px solid ${palette.divider}`,
-                                    bgcolor: expandedCards[item.id]
+                                    bgcolor: expandedCardId === item.id
                                         ? palette.action.hover
                                         : palette.background.paper,
                                 }}
                             >
-                                <Box display="flex" alignItems="center">
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        p: 2,
+                                        gap: 2,
+                                        position: "relative",
+                                        flexGrow: 1,
+                                    }}
+                                >
+                                    {/* Image */}
                                     <CardMedia
                                         component="img"
-                                        sx={{
-                                            borderRadius: 3,
-                                            ml: 2,
-
-                                            width: 80,
-                                            height: 80,
-                                            objectFit: 'cover',
-                                            bgcolor: palette.background.default,
-                                        }}
                                         image={item.inventory_image_url}
-                                        alt={item.name || ''}
+                                        alt={item.name || ""}
+                                        sx={{
+                                            width: 70,
+                                            height: 70,
+                                            borderRadius: 2,
+                                            objectFit: "cover",
+                                            bgcolor: palette.background.default,
+                                            flexShrink: 0,
+                                        }}
                                     />
-                                    <CardContent sx={{ pl: 2, pb: 0, flex: 1 }}>
-                                        <Typography variant="body1" sx={{ fontWeight: 600, }}>
+
+                                    {/* Content */}
+                                    <CardContent
+                                        sx={{
+                                            p: 0,
+                                            flex: 1,
+                                        }}
+                                    >
+                                        <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
                                             {item.name}
                                         </Typography>
 
-                                        <Stack direction="row" flexWrap="wrap" gap={1} mb={2} mt={1}>
+                                        <Stack
+                                            direction="row"
+                                            flexWrap="wrap"
+                                            gap={1}
+                                            mt={1}
+                                        >
                                             <Tag
-                                                icon={<CategoryOutlined size="small" />}
+                                                icon={<CategoryOutlined fontSize="small" />}
                                                 label={item.category}
                                                 bgcolor={palette.tagTask.categatory}
                                                 color={palette.tagTask.color}
-
                                             />
 
                                             <Tag
-                                                icon={<Business size="small" />}
+                                                icon={<Business fontSize="small" />}
                                                 label={item.property_name}
                                                 bgcolor={palette.tagTask.location}
                                                 color={palette.tagTask.color}
                                             />
 
                                             <Tag
-                                                icon={<InventoryOutlined size="small" />}
+                                                icon={<InventoryOutlined fontSize="small" />}
                                                 label={`Qty: ${item.quantity} ${item.unit}`}
                                                 bgcolor={palette.tagTask.quantity}
                                                 color={palette.tagTask.color}
                                             />
-                                            {/* i want to add  located_at and lower_limit tags here */}
+
                                             <Tag
-                                                icon={<HomeWorkOutlined size="small" />}
-                                                label={item.located_at || 'N/A'}
+                                                icon={<HomeWorkOutlined fontSize="small" />}
+                                                label={item.located_at || "N/A"}
                                                 bgcolor={palette.tagTask.location}
                                                 color={palette.tagTask.color}
                                             />
+
                                             <Tag
-                                                icon={<AccessTime size="small" />}
+                                                icon={<AccessTime fontSize="small" />}
                                                 label={`Low Limit: ${item.lower_limit}`}
                                                 bgcolor={palette.tagTask.lower_limit}
                                                 color={palette.tagTask.color}
                                             />
-
                                         </Stack>
                                     </CardContent>
-                                    <IconButton
-                                        onClick={(event) => {
-                                            setSelectedItem(item)
-                                            setAnchorEl(event.currentTarget)
-                                        }}
 
-                                        sx={{
-                                            position: "absolute",
-                                            top: 8,
-                                            right: 8,
-                                        }}
-                                    >
-                                        <MoreVert />
-                                    </IconButton>
+                                    {/* Menu */}
+                                    {(canUpdateInventory || canDeleteInventory) && (
+                                        <IconButton
+                                            onClick={(event) => {
+                                                setSelectedItem(item);
+                                                setAnchorEl(event.currentTarget);
+                                            }}
+                                            sx={{
+                                                position: "absolute",
+                                                top: 8,
+                                                right: 8,
+                                            }}
+                                        >
+                                            <MoreVert />
+                                        </IconButton>
+                                    )}
                                 </Box>
 
                                 {/* Tasks Section */}
-                                <Divider sx={{ py: 0.5 }} />
+                                <Divider />
+
                                 <Box sx={{ px: 1, py: 0 }}>
                                     <Stack
                                         direction="row"
@@ -592,11 +671,11 @@ const Tile_View_Inventory = () => {
                                         }}
                                     >
                                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                            {expandedCards[item.id] ? 'Hide Tasks' : 'Show Tasks'}
+                                            {expandedCardId === item.id ? 'Hide Tasks' : 'Show Tasks'} {item.task_count > 0 && `(${item.task_count})`}
                                         </Typography>
                                         <Stack direction="row" alignItems="center" spacing={1}>
                                             {/* add task button is here it show when the Collapse is open */}
-                                            {expandedCards[item.id] && (
+                                            {expandedCardId === item.id && canCreateTask && (
                                                 <Button
                                                     size="small"
                                                     startIcon={<Add />}
@@ -618,7 +697,7 @@ const Tile_View_Inventory = () => {
                                             <ExpandMore
                                                 fontSize="medium"
                                                 sx={{
-                                                    transform: expandedCards[item.id] ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transform: expandedCardId === item.id ? 'rotate(180deg)' : 'rotate(0deg)',
                                                     transition: 'transform 0.3s'
                                                 }}
                                             />
@@ -626,23 +705,21 @@ const Tile_View_Inventory = () => {
                                     </Stack>
                                 </Box>
 
-                                <Collapse in={expandedCards[item.id]} timeout="auto" unmountOnExit>
+                                <Collapse in={expandedCardId === item.id} timeout="auto" unmountOnExit>
                                     {/* make scrollable area for tasks if more than 1 tasks */}
                                     <Box sx={{
                                         maxHeight: 250,
                                         overflowY: 'auto',
                                     }}>
                                         {(() => {
-                                            const allTasks = expandedCards[item.id] && inventoryTaskData ? [
-                                                ...(inventoryTaskData.task_instances || []).map(t => ({ ...t, taskSource: 'instance' })),
-                                                ...(inventoryTaskData.tasks_planner || []).map(t => ({ ...t, taskSource: 'planner' }))
-                                            ] : [];
+                                            const taskData = inventoryTaskDataMap[item.id];
+                                            const allTasks = taskData?.task_definitions || [];
 
                                             return allTasks.length > 0 ? (
                                                 <Stack spacing={1.5} sx={{ py: 1, px: 1 }}>
                                                     {allTasks.map((task) => (
                                                         <Card
-                                                            key={`${task.taskSource}-${task.id}`}
+                                                            key={`task-def-${task.id}`}
                                                             elevation={0}
                                                             sx={{
                                                                 position: 'relative',
@@ -652,25 +729,29 @@ const Tile_View_Inventory = () => {
                                                             }}
                                                         >
                                                             <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                                                <IconButton
-                                                                    size="small"
-                                                                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                                                                    onClick={(e) => handleTaskMenuOpen(e, task)}
-                                                                >
-                                                                    <MoreVert fontSize="small" />
-                                                                </IconButton>
+
+                                                                {(canUpdateTask || canDeleteTask) && (
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        sx={{ position: 'absolute', top: 8, right: 8 }}
+                                                                        onClick={(e) => handleTaskMenuOpen(e, task)}
+                                                                    >
+                                                                        <MoreVert fontSize="small" />
+                                                                    </IconButton>
+                                                                )}
 
                                                                 <Stack direction="row" spacing={1} alignItems="flex-start">
-                                                                    {/* Content */}
                                                                     <Box sx={{ flex: 1, pr: 3 }}>
+                                                                        {/* Title */}
                                                                         <Typography variant="body1" fontWeight={600} textTransform="capitalize" gutterBottom>
                                                                             {task.title}
                                                                         </Typography>
 
-                                                                        {/* Repeat Days for Recurring Tasks */}
+                                                                        {/* Schedule Information */}
                                                                         {(() => {
-                                                                            const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                                                                            const scheduleInfo = formatSchedule(task.schedule?.type, task.schedule?.recurrence_rule);
                                                                             if (!scheduleInfo) return null;
+
                                                                             return (
                                                                                 <Stack
                                                                                     direction="row"
@@ -710,29 +791,12 @@ const Tile_View_Inventory = () => {
                                                                                             {scheduleInfo.description}
                                                                                         </Typography>
                                                                                     </Stack>
-
-                                                                                    {/* add status chip here */}
-                                                                                    <Tooltip placement="top" arrow title="Task Status">
-                                                                                        <Chip
-                                                                                            label={task.status.replace('_', ' ')}
-                                                                                            size="small"
-                                                                                            sx={{
-                                                                                                bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                                                                color: 'white',
-                                                                                                px: 1.5,
-                                                                                                borderRadius: 5,
-
-                                                                                            }}
-                                                                                        />
-                                                                                    </Tooltip>
                                                                                 </Stack>
-                                                                            )
+                                                                            );
                                                                         })()}
 
-
-
-                                                                        {/* Task Type & Status */}
-                                                                        {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
+                                                                        {/* Task Type + Status should not be shown for weekly/monthly/yearly tasks */}
+                                                                        {!(task.schedule?.type === 'weekly' || task.schedule?.type === 'monthly' || task.schedule?.type === 'yearly') && (
                                                                             <Stack
                                                                                 spacing={1}
                                                                                 mb={1}
@@ -740,12 +804,13 @@ const Tile_View_Inventory = () => {
                                                                                 direction="row"
                                                                                 justifyContent="space-between"
                                                                             >
-
                                                                                 <IconLabel
                                                                                     icon={CalendarMonth}
                                                                                     label={
-                                                                                        task.scheduled_date || task.start_date
-                                                                                            ? formatDate(task.scheduled_date || task.start_date)
+                                                                                        task.schedule?.recurrence_rule?.dates?.length
+                                                                                            ? task.schedule.recurrence_rule.dates
+                                                                                                .map((date) => formatDate(date))
+                                                                                                .join(", ")
                                                                                             : "N/A"
                                                                                     }
                                                                                 />
@@ -766,92 +831,38 @@ const Tile_View_Inventory = () => {
                                                                                 )}
                                                                             </Stack>
                                                                         )}
-                                                                        {/* Task Description */}
-                                                                        <ViewMoreText text={task.description} limit={40} />
 
+                                                                        {/* Description */}
+                                                                        <ViewMoreText text={task.description} limit={100} />
 
-                                                                        {/* Task chips */}
-                                                                        <Stack direction="row" gap={1} flexWrap="wrap" mb={1} mt={1}>
-                                                                            {task.taskSource === 'planner' ? (
-                                                                                <>
-                                                                                    {task.task_type && (
-                                                                                        <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
-                                                                                    )}
-                                                                                    {task.assigned_to_name && (
-                                                                                        <IconLabel icon={Person} label={task.assigned_to_name} />
-                                                                                    )}
-                                                                                </>
-                                                                            ) : (
-                                                                                <>
-                                                                                    {task.task_type && (
-                                                                                        <IconLabel icon={Task} label={task.task_type.replace('_', ' ')} />
-                                                                                    )}
-                                                                                    {task.assigned_to_name && (
-                                                                                        <IconLabel icon={Person} label={task.assigned_to_name} />
-                                                                                    )}
-                                                                                </>
+                                                                        {/* Assigned To & Property */}
+                                                                        <Stack direction="row" flexWrap="wrap" gap={1} mt={1}>
+                                                                            {task.assigned_to?.name && (
+                                                                                <IconLabel
+                                                                                    icon={Person}
+                                                                                    label={task.assigned_to.name}
+                                                                                />
+                                                                            )}
+                                                                            {task.property?.name && (
+                                                                                <IconLabel
+                                                                                    icon={Business}
+                                                                                    label={task.property.name}
+                                                                                />
                                                                             )}
                                                                         </Stack>
 
-                                                                        {/* Icons for Photo Required & Update Inventory */}
-                                                                        <Stack direction="row" spacing={1} mt={1} alignItems="center"
-                                                                            justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}
-                                                                        >
-                                                                            {task.last_task?.scheduled_date && (
-                                                                                <Typography variant="body2"
-                                                                                    sx={{
-                                                                                        color: palette.primary.main,
-                                                                                        fontWeight: 500
-                                                                                    }}>
-                                                                                    Last Executed On: {formatDate(task.last_task.scheduled_date)}
-                                                                                </Typography>
-                                                                            )}
+                                                                        {/* Icons for Photo Required & Inventory Update */}
+                                                                        <Stack direction="row" spacing={1} mt={1} alignItems="center" justifyContent="space-between">
+                                                                            <Typography variant="body2" color="text.secondary">
+                                                                                {`Last Occurrence: ${task.last_occurrence_date ? formatDate(task.last_occurrence_date) : 'N/A'}`}
+                                                                            </Typography>
                                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                                {!!task.is_photo_required && task.completion_image_urls && (
-                                                                                    <Chip
-                                                                                        sx={{
-                                                                                            px: 0.5,
-                                                                                            height: 30,
-                                                                                            '& .MuiChip-label': {
-                                                                                                p: 0.5,
-                                                                                            },
-                                                                                        }}
-                                                                                        icon={<CameraAlt />}
-                                                                                        label={
-                                                                                            Array.isArray(task.completion_image_urls) &&
-                                                                                                task.completion_image_urls.length > 0 ? (
-                                                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
-                                                                                                    {task.completion_image_urls.map((url, index) => (
-                                                                                                        <Avatar
-                                                                                                            key={index}
-                                                                                                            src={url}
-                                                                                                            variant="rounded"
-                                                                                                            onClick={() => {
-                                                                                                                setSelectedImage(url);
-                                                                                                                setOpenImage(true);
-                                                                                                            }}
-                                                                                                            sx={{
-                                                                                                                width: 25,
-                                                                                                                height: 25,
-                                                                                                                borderRadius: 10,
-                                                                                                                cursor: 'pointer',
-                                                                                                                border: `1px solid ${palette.divider}`,
-                                                                                                                '&:hover': { opacity: 0.8 },
-                                                                                                            }}
-                                                                                                        />
-                                                                                                    ))}
-                                                                                                </Box>
-                                                                                            ) : null
-                                                                                        }
-                                                                                    />
-                                                                                )}
-
-                                                                                {!!task.is_photo_required && !task.completion_image_urls && (
+                                                                                {!!task.requires_photo && (
                                                                                     <Tooltip title="Photo Required" placement="top" arrow>
                                                                                         <CameraAlt color="action" sx={{ fontSize: 25 }} />
                                                                                     </Tooltip>
                                                                                 )}
-                                                                                {!!task.update_inventory && (
+                                                                                {!!task.allows_inventory_update && (
                                                                                     <Tooltip title="Inventory Update" placement="top" arrow>
                                                                                         <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
                                                                                     </Tooltip>
@@ -905,6 +916,7 @@ const Tile_View_Inventory = () => {
                 </Box>
             )}
 
+            {/* for task overview card */}
             <Menu
                 anchorEl={taskAnchorEl}
                 open={Boolean(taskAnchorEl)}
@@ -947,12 +959,14 @@ const Tile_View_Inventory = () => {
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
+
                 <MenuItem onClick={openTaskDeleteDialog} dense>
                     <ListItemIcon>
                         <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>
+
                 <MenuItem onClick={handleDuplicateTask} dense>
                     <ListItemIcon>
                         <FileCopy fontSize="small" sx={{ color: palette.secondary.main }} />
@@ -961,6 +975,7 @@ const Tile_View_Inventory = () => {
                 </MenuItem>
             </Menu>
 
+            {/* for inventory card menu */}
             <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
@@ -997,18 +1012,22 @@ const Tile_View_Inventory = () => {
                     horizontal: 'right',
                 }}
             >
-                <MenuItem onClick={() => handleEditEnventory(selectedItem)} dense>
-                    <ListItemIcon>
-                        <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
-                    </ListItemIcon>
-                    <ListItemText>Edit</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => openDeleteDialog(selectedItem)} dense>
-                    <ListItemIcon>
-                        <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
-                    </ListItemIcon>
-                    <ListItemText>Delete</ListItemText>
-                </MenuItem>
+                {canUpdateInventory && (
+                    <MenuItem onClick={() => handleEditEnventory(selectedItem)} dense>
+                        <ListItemIcon>
+                            <Edit fontSize="small" sx={{ color: palette.secondary.main }} />
+                        </ListItemIcon>
+                        <ListItemText>Edit</ListItemText>
+                    </MenuItem>
+                )}
+                {canDeleteInventory && (
+                    <MenuItem onClick={() => openDeleteDialog(selectedItem)} dense>
+                        <ListItemIcon>
+                            <Delete fontSize="small" sx={{ color: palette.secondary.main }} />
+                        </ListItemIcon>
+                        <ListItemText>Delete</ListItemText>
+                    </MenuItem>
+                )}
             </Menu>
 
             <TileView_addEdit_Inventory
@@ -1024,6 +1043,36 @@ const Tile_View_Inventory = () => {
                 inventoryId={selectedInventoryId}
             />
 
+            {/* Mobile floating filter tab */}
+            {isMobile && (
+                <Box
+                    onClick={handleFilterToggle}
+                    sx={{
+                        position: 'fixed',
+                        right: 0,
+                        top: '25%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 1100,
+                        bgcolor: hasActiveFilters ? palette.secondary.main : palette.secondary.main,
+                        color: '#fff',
+                        writingMode: 'vertical-rl',
+                        textOrientation: 'mixed',
+                        py: 1.5,
+                        px: 0.5,
+                        borderRadius: '8px 0 0 8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.5px',
+                        userSelect: 'none',
+                        '&:active': { opacity: 0.8 },
+                    }}
+                >
+                    Filter
+                </Box>
+            )}
+
             <InventoryFilter
                 open={isFilterVisible}
                 onClose={() => setIsFilterVisible(false)}
@@ -1035,7 +1084,15 @@ const Tile_View_Inventory = () => {
                 onCancel={handleCancelDelete}
                 onDelete={handleConfirmDelete}
                 title="Delete Inventory Item"
-                message="Are you sure you want to delete this inventory item? This action cannot be undone."
+                message={
+                    <>
+                        Deleting this inventory item will also remove{" "}
+                        <strong>
+                            {(selectedItem?.task_count || 0)}{" "}
+                            ASSOCIATED {selectedItem?.task_count === 1 ? "TASK" : "TASKS"}
+                        </strong>. This action cannot be undone.
+                    </>
+                }
             />
 
             <ConfirmationDialog
@@ -1052,7 +1109,7 @@ const Tile_View_Inventory = () => {
                 image={selectedImage}
             />
         </Container>
-        
+
     );
 };
 

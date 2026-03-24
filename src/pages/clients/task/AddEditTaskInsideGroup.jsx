@@ -10,33 +10,34 @@ import {
     useTheme,
     TextField,
     Button,
-    MenuItem,
     Checkbox,
     FormControlLabel,
     Autocomplete,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTaskContext } from './TaskManagement';
-import { taskTypesOptions, statusOpts } from '../../../constant';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
+import PaginatedAutocomplete from '../../../resuable_components/PaginatedAutocomplete';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
+const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId, groupData }) => {
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
     const isEdit = !!task && !!task.id;
     const isDuplicate = !!task && !task.id;
 
-    
     const {
         inventoryItems,
+        teamMembers,
         properties,
+        propertyPagination,
         createSubTaskInsideGroup,
         updateSubTaskInsideGroup,
+        fetchProperties,
         fetchInventoryByProperty,
     } = useTaskContext();
 
@@ -45,59 +46,69 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
         description: '',
         property_id: '',
         inventory_id: '',
-        task_type: '',
-        status: 'pending',
-        is_photo_required: 0,
-        update_inventory: 0,
+        assigned_to: '',
+        requires_photo: 0,
+        allows_inventory_update: 0,
     });
 
     const [validationErrors, setValidationErrors] = useState({});
     const [loading, setLoading] = useState(false);
-    const [inventoryOptions, setInventoryOptions] = useState(inventoryItems || []);
+    const [selectedProperty, setSelectedProperty] = useState(null);
+    const [selectedInventory, setSelectedInventory] = useState(null);
+    const [propertyInventoryItems, setPropertyInventoryItems] = useState([]);
 
     useEffect(() => {
         if ((isEdit || isDuplicate) && task) {
             setFormData({
                 title: task.title || '',
                 description: task.description || '',
-                property_id: task.property_id || '',
-                inventory_id: task.inventory_id || '',
-                task_type: task.task_type || '',
-                status: task.status || 'pending',
-                is_photo_required: task.is_photo_required || 0,
-                update_inventory: task.update_inventory || 0,
+                property_id: groupData?.property?.id || task.property?.id || '',
+                inventory_id: task.inventory?.id || '',
+                assigned_to: task.assigned_to?.id || '',
+                requires_photo: task.requires_photo || 0,
+                allows_inventory_update: task.allows_inventory_update || 0,
             });
 
-            // Fetch inventory for the task's property when editing/duplicating
-            if (task.property_id) {
-                fetchInventoryByProperty(task.property_id)
-                    .then((data) => setInventoryOptions(data || []))
-                    .catch(() => setInventoryOptions([]));
-            } else {
-                setInventoryOptions(inventoryItems || []);
+            // Set selected property
+            setSelectedProperty(groupData?.property || task.property || null);
+            
+            // Set selected inventory
+            setSelectedInventory(task.inventory || null);
+
+            // Fetch inventory for the property
+            const propertyId = groupData?.property?.id || task.property?.id;
+            if (propertyId) {
+                fetchInventoryByProperty(propertyId)
+                    .then((data) => setPropertyInventoryItems(data || []))
+                    .catch(() => setPropertyInventoryItems([]));
             }
         } else {
-            // Reset form for new task
             setFormData({
                 title: '',
                 description: '',
-                property_id: '',
+                property_id: groupData?.property?.id || '',
                 inventory_id: '',
-                task_type: '',
-                status: 'pending',
-                is_photo_required: 0,
-                update_inventory: 0,
+                assigned_to: '',
+                requires_photo: 0,
+                allows_inventory_update: 0,
             });
-            setInventoryOptions(inventoryItems || []);
-        }
-        setValidationErrors({});
-    }, [task, isEdit, isDuplicate, open]);
 
-    useEffect(() => {
-        if (!formData.property_id) {
-            setInventoryOptions(inventoryItems || []);
+            setSelectedProperty(groupData?.property || null);
+            setSelectedInventory(null);
+            
+            // Fetch initial data
+            fetchProperties(1, false, '');
+
+            // Fetch inventory for the property
+            if (groupData?.property?.id) {
+                fetchInventoryByProperty(groupData.property.id)
+                    .then((data) => setPropertyInventoryItems(data || []))
+                    .catch(() => setPropertyInventoryItems([]));
+            }
         }
-    }, [inventoryItems, formData.property_id]);
+
+        setValidationErrors({});
+    }, [task, isEdit, isDuplicate, open, groupData, fetchProperties, fetchInventoryByProperty]);
 
     const handleChange = (field) => (event) => {
         const value = event.target.value;
@@ -117,14 +128,14 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
     const handlePhotoChange = (event) => {
         setFormData((prev) => ({
             ...prev,
-            is_photo_required: event.target.checked ? 1 : 0,
+            requires_photo: event.target.checked ? 1 : 0,
         }));
     };
 
     const handleInventoryChange = (event) => {
         setFormData((prev) => ({
             ...prev,
-            update_inventory: event.target.checked ? 1 : 0,
+            allows_inventory_update: event.target.checked ? 1 : 0,
         }));
     };
 
@@ -132,17 +143,16 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
         setValidationErrors({});
         setLoading(true);
 
-        // console.log('Submitting form data:', formData);
-        
         try {
             if (isEdit) {
-                const res = await updateSubTaskInsideGroup(task.group_task_id, task.id, formData);
+                const res = await updateSubTaskInsideGroup(task.task_group_id, task.id, formData);
+               
                 showSnackbar(res.message, 'success');
             } else {
                 const res = await createSubTaskInsideGroup(groupTaskId, formData);
                 showSnackbar(res.message, 'success');
             }
-            onClose();
+            onClose(true);
         } catch (error) {
             if (error.errors) {
                 const apiErrors = {};
@@ -161,7 +171,6 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                 }
                 setValidationErrors(apiErrors);
             }
-            console.log('Error response:', error);
             showSnackbar(error.message, 'error');
         } finally {
             setLoading(false);
@@ -232,39 +241,29 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
 
                     {/* Property */}
                     <Grid size={{ xs: 12, sm: 6 }}>
-                        <Autocomplete
-                            size="small"
+                        <PaginatedAutocomplete
+                            label="Select Property"
+                            disabled
+                            value={selectedProperty}
                             options={properties}
-                            getOptionLabel={(option) => (option.name ? String(option.name) : '')}
-                            value={properties.find((prop) => prop.id === formData.property_id) || null}
-                            onChange={(e, newValue) => {
-                                const propId = newValue ? newValue.id : '';
-                                handleChange('property_id')({ target: { value: propId } });
-
-                                if (newValue) {
-                                    fetchInventoryByProperty(newValue.id)
-                                        .then((data) => {
-                                            setInventoryOptions(data || []);
-                                            // Clear inventory_id if it's not in the fetched list
-                                            if (!data || !data.find((it) => it.id === formData.inventory_id)) {
-                                                setFormData((prev) => ({ ...prev, inventory_id: '' }));
-                                            }
-                                        })
-                                        .catch(() => setInventoryOptions([]));
-                                } else {
-                                    setInventoryOptions(inventoryItems || []);
-                                    setFormData((prev) => ({ ...prev, inventory_id: '' }));
+                            getOptionLabel={(option) => option.name || ''}
+                            onChange={(event, newValue) => {
+                                setSelectedProperty(newValue);
+                                setFormData(prev => ({ 
+                                    ...prev, 
+                                    property_id: newValue ? newValue.id : '' 
+                                }));
+                                if (validationErrors.property_id) {
+                                    setValidationErrors(prev => ({
+                                        ...prev,
+                                        property_id: undefined,
+                                    }));
                                 }
                             }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Select Property"
-                                    error={!!validationErrors.property_id}
-                                    helperText={validationErrors.property_id}
-                                />
-                            )}
-                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            fetchData={fetchProperties}
+                            pagination={propertyPagination}
+                            error={!!validationErrors.property_id}
+                            helperText={validationErrors.property_id}
                         />
                     </Grid>
 
@@ -272,53 +271,20 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
-                            options={inventoryOptions}
-                            getOptionLabel={(option) => (option.name ? String(option.name) : '')}
-                            value={inventoryOptions.find((item) => item.id === formData.inventory_id) || null}
-                            renderOption={(props, option) => (
-                                <li
-                                    {...props}
-                                    key={option.id}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
-                                        {option.name}
-                                    </span>
-                                    {option.property_image_url && (
-                                        <img
-                                            src={option.property_image_url}
-                                            alt={option.name || ''}
-                                            style={{
-                                                width: 40,
-                                                height: 40,
-                                                objectFit: 'cover',
-                                                borderRadius: 100,
-                                                marginLeft: 8,
-                                            }}
-                                        />
-                                    )}
-                                </li>
-                            )}
-                            onChange={(e, newValue) => {
-                                handleChange('inventory_id')({
-                                    target: { value: newValue ? newValue.id : '' },
-                                });
-
-                                // Auto-select property when inventory is selected
-                                if (newValue && newValue.property_id) {
-                                    handleChange('property_id')({
-                                        target: { value: newValue.property_id },
-                                    });
+                            options={propertyInventoryItems}
+                            getOptionLabel={(option) => option.name || ''}
+                            value={selectedInventory}
+                            onChange={(event, newValue) => {
+                                setSelectedInventory(newValue);
+                                setFormData(prev => ({
+                                    ...prev,
+                                    inventory_id: newValue ? newValue.id : ''
+                                }));
+                                if (validationErrors.inventory_id) {
+                                    setValidationErrors(prev => ({
+                                        ...prev,
+                                        inventory_id: undefined,
+                                    }));
                                 }
                             }}
                             renderInput={(params) => (
@@ -326,53 +292,33 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                                     {...params}
                                     label="Select Inventory"
                                     error={!!validationErrors.inventory_id}
-                                    helperText={validationErrors.inventory_id}
+                                    helperText={validationErrors.inventory_id || 'Filtered by selected property'}
                                 />
                             )}
                             isOptionEqualToValue={(option, value) => option.id === value.id}
                         />
                     </Grid>
 
-                    {/* Task Type */}
+                    {/* Assigned To  use autocomplete with teamMembers */}
                     <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            select
-                            label="Task Type"
-                            value={formData.task_type}
-                            onChange={handleChange('task_type')}
-                            fullWidth
+                        <Autocomplete
                             size="small"
-                            required
-                            error={!!validationErrors.task_type}
-                            helperText={validationErrors.task_type}
-                        >
-                            {taskTypesOptions.map((type) => (
-                                <MenuItem key={type.value} value={type.value} dense>
-                                    <type.icon sx={{ mr: 1, color: 'text.secondary', fontSize: 16 }} />
-                                    {type.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    </Grid>
-
-                    {/* Status */}
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                            select
-                            label="Status"
-                            value={formData.status}
-                            onChange={handleChange('status')}
-                            fullWidth
-                            size="small"
-                            error={!!validationErrors.status}
-                            helperText={validationErrors.status}
-                        >
-                            {statusOpts.map((status) => (
-                                <MenuItem key={status.value} value={status.value} dense>
-                                    {status.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
+                            options={teamMembers}
+                            getOptionLabel={(option) => (option.name ? String(option.name) : '')}
+                            value={teamMembers.find((member) => member.id === formData.assigned_to) || null}
+                            onChange={(e, newValue) => {
+                                handleChange('assigned_to')({ target: { value: newValue ? newValue.id : '' } });
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Assign To"
+                                    error={!!validationErrors.assigned_to}
+                                    helperText={validationErrors.assigned_to}
+                                />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                        />
                     </Grid>
 
                     {/* Checkboxes */}
@@ -381,7 +327,7 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                             <FormControlLabel
                                 control={
                                     <Checkbox
-                                        checked={formData.is_photo_required === 1}
+                                        checked={formData.requires_photo === 1}
                                         onChange={handlePhotoChange}
                                     />
                                 }
@@ -393,7 +339,7 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                             <FormControlLabel
                                 control={
                                     <Checkbox
-                                        checked={formData.update_inventory === 1}
+                                        checked={formData.allows_inventory_update === 1}
                                         onChange={handleInventoryChange}
                                     />
                                 }
@@ -401,7 +347,7 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId }) => {
                             />
                         </Grid>
                     </Grid>
-                    
+
                 </Grid>
 
             </DialogContent>

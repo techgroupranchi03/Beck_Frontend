@@ -1,4 +1,4 @@
-import { Card, CardContent, Typography, Box } from '@mui/material';
+import { Card, CardContent, Typography, Box, useTheme } from '@mui/material';
 
 export function StatCard({
     title,
@@ -27,34 +27,32 @@ export function StatCard({
                 border: 1,
                 borderColor: 'divider',
                 boxShadow: 0,
+                height: '100%',
                 transition: 'transform 0.2s',
                 '&:hover': {
                     boxShadow: 3,
                     transform: 'scale(1.02)',
                 },
             }}>
-            <CardContent sx={{ p: 3 }}>
+            <CardContent>
                 <Box display="flex" alignItems="flex-start" justifyContent="space-between">
                     <Box>
                         <Typography
-                            variant="body2"
-                            fontWeight={500}
-                            color="text.secondary"
+                            variant="body1"
+                            sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }}
                             gutterBottom
                         >
                             {title}
                         </Typography>
                         <Typography
                             variant="h4"
-                            fontWeight={700}
                             sx={{ mb: change ? 1 : 0 }}
                         >
                             {value}
                         </Typography>
                         {change && (
                             <Typography
-                                variant="body2"
-                                fontWeight={500}
+                                variant="body1"
                                 color={getChangeColor()}
                                 display="flex"
                                 alignItems="center"
@@ -76,7 +74,7 @@ export function StatCard({
                             color: iconColor
                         }}
                     >
-                        <Icon sx={{ fontSize: 28, color: '#ffffff' }} />
+                        <Icon sx={{ fontSize: 28, color: 'inherit' }} />
                     </Box>
                 </Box>
             </CardContent>

@@ -51,29 +51,29 @@ export const taskTypes = [
 export const statusOpts = [
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
-    { value: 'cancelled', label: 'Cancelled' },
     { value: 'completed', label: 'Completed' },
-    { value: 'over_due', label: 'Overdue' },
-    { value: 'deleted', label: 'Deleted' },
+    { value: 'skipped', label: 'Skipped' },
 ];
 
 export const taskStatusFilter = [
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
-    { value: 'cancelled', label: 'Cancelled' },
     { value: 'completed', label: 'Completed' },
-    { value: 'over_due', label: 'Overdue' },
-    { value: 'deleted', label: 'Deleted' },
-    { value: 'active', label: 'Active' },
-    { value: 'archived', label: 'Archived' },
+    { value: 'skipped', label: 'Skipped' },
 ];
 
 export const scheduleTypes = [
-    'one_time',
-    'daily',
     'weekly',
     'monthly',
     'yearly',
+    'fixed_dates',
+];
+
+export const scheduleTypeOptions = [
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'yearly', label: 'Yearly' },
+    { value: 'fixed_dates', label: 'Fixed Dates' },
 ];
 
 export const daysOfWeek = [

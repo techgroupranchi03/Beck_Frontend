@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -11,7 +11,6 @@ import {
     Stack,
     CircularProgress,
     useTheme,
-    Tooltip,
     Container,
     CardHeader,
     Divider,
@@ -19,40 +18,41 @@ import {
     MenuItem,
     ListItemIcon,
     ListItemText,
-    Avatar,
+    Tabs,
+    Tab,
 } from '@mui/material';
 import {
     ArrowBack,
-    Person,
     CalendarMonth,
     Assignment,
     MoreVert,
     Edit,
     Delete,
     FileCopy,
-    Task,
     Business,
-    Inventory,
-    CameraAlt,
-    AssignmentTurnedIn,
 } from '@mui/icons-material';
 import { useTaskData } from './useTaskData';
 import { formatSchedule } from '../../../utils/scheduleFormatter';
 import { formatDate } from '../../../utils/dateFormat';
-import ViewMoreText from '../../../resuable_components/ViewMore';
 import IconLabel from '../../../resuable_components/IconLabel';
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
-import ImageViewer from '../../../resuable_components/ImageViewer';
 import TileVeiwAddEditGroupTaskDialog from './TileVeiwAddEditGroupTaskDialog';
 import { TaskContext } from './TaskManagement';
 import AddEditTaskInsideGroup from './AddEditTaskInsideGroup';
 import AddExistingTaskInsideGroupTask from './AddExistingTaskInsideGroupTask';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import { useAuth } from '../../../context/AuthContext';
-import TaskCompletionTabs from '../../../dialoge/clients/TaskCompletionTabs';
+import GroupTasksList from './GroupTasksList';
+import GroupOccurrences from './GroupOccurrences';
+import TaskProgressbar from '../../../resuable_components/TaskProgressbar';
+import { canUpdate, canDelete, RESOURCES } from '../../../utils/permissions';
 
 const GroupTaskDetails = () => {
     const { user } = useAuth();
+    
+    // Check permissions for task resource
+    const canUpdateTask = canUpdate(user?.teamRole, RESOURCES.TASK);
+    const canDeleteTask = canDelete(user?.teamRole, RESOURCES.TASK);
     const theme = useTheme();
     const { palette } = theme;
     const navigate = useNavigate();
@@ -60,9 +60,15 @@ const GroupTaskDetails = () => {
     const { showSnackbar } = useSnackbar();
     // Access task data functions from context
     const taskData = useTaskData();
-    const { fetchGroupTasksByGroupId, deleteGroupTask, deleteSubTaskInsideGroup, updateTaskCompletionStatus } = taskData;
+    const {
+        fetchGroupTasksByGroupId,
+        deleteGroupTask,
+        deleteSubTaskInsideGroup,
+    } = taskData;
+
     const [groupTaskData, setGroupTaskData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({ hasNextPage: false, page: 1 });
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [anchorEl, setAnchorEl] = useState(null);
     const [selectedTask, setSelectedTask] = useState(null);
@@ -71,32 +77,39 @@ const GroupTaskDetails = () => {
     const [openAddEditGroupTaskDialog, setOpenAddEditGroupTaskDialog] = useState(false);
     const [openAddExistingTaskDialog, setOpenAddExistingTaskDialog] = useState(false);
     const [selectedGroupTaskData, setSelectedGroupTaskData] = useState(null);
-    const [openImage, setOpenImage] = useState(false);
-    const [selectedImage, setSelectedImage] = useState(null);
-    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
     const [activeNameTab, setActiveNameTab] = useState(0);
-    const [markdoneClicked, setMarkdoneClicked] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const observerTarget = useRef(null);
+    const isFetchingRef = useRef(false);
 
-
-    console.log('groupTaskData:', groupTaskData);
-    console.log('user:', user);
-
+    console.log('Current Group Task Data:', groupTaskData);
 
 
     const groupId = location.state?.groupId;
 
+    // Initial fetch of group tasks
     useEffect(() => {
         const fetchData = async () => {
             if (!groupId) {
                 setError('No group ID provided');
-                setLoading(false);
                 return;
             }
 
             try {
                 setLoading(true);
-                const data = await fetchGroupTasksByGroupId(groupId);
-                setGroupTaskData(data);
+                setCurrentPage(1);
+                const res = await fetchGroupTasksByGroupId(groupId, 1, 3);
+
+                const { pagination: paginationData, ...groupData } = res.data;
+                setGroupTaskData(groupData);
+                setPagination({
+                    hasNextPage: paginationData?.hasNextPage || false,
+                    hasPreviousPage: paginationData?.hasPreviousPage || false,
+                    page: paginationData?.page || 1,
+                    total: paginationData?.total || 0,
+                    totalPages: paginationData?.totalPages || 1,
+                });
             } catch (err) {
                 console.error('Error fetching group task details:', err);
                 setError('Failed to load group task details');
@@ -108,12 +121,78 @@ const GroupTaskDetails = () => {
         fetchData();
     }, [groupId, fetchGroupTasksByGroupId]);
 
+    // Load more tasks for infinite scroll
+    const loadMoreTasks = useCallback(async () => {
+        if (!pagination?.hasNextPage || isLoadingMore || loading || isFetchingRef.current) {
+            return;
+        }
+
+        try {
+            isFetchingRef.current = true;
+            setIsLoadingMore(true);
+            const nextPage = currentPage + 1;
+
+            const res = await fetchGroupTasksByGroupId(groupId, nextPage, 3);
+            const { pagination: paginationData, ...groupData } = res.data;
+
+            // Append tasks to existing data
+            setGroupTaskData((prev) => ({
+                ...groupData,
+                tasks: [...(prev?.tasks || []), ...(groupData.tasks || [])],
+            }));
+
+            setPagination({
+                hasNextPage: paginationData?.hasNextPage || false,
+                hasPreviousPage: paginationData?.hasPreviousPage || false,
+                page: paginationData?.page || nextPage,
+                total: paginationData?.total || 0,
+                totalPages: paginationData?.totalPages || 1,
+            });
+
+            setCurrentPage(nextPage);
+        } catch (error) {
+            console.error("Error loading more tasks:", error);
+            showSnackbar('Failed to load more tasks', 'error');
+        } finally {
+            setIsLoadingMore(false);
+            isFetchingRef.current = false;
+        }
+    }, [pagination?.hasNextPage, isLoadingMore, loading, currentPage, fetchGroupTasksByGroupId, groupId, showSnackbar]);
+
+    // Intersection Observer for infinite scroll
+    useEffect(() => {
+        // Only set up observer for Group Tasks tab
+        if (activeNameTab !== 0) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && pagination?.hasNextPage && !isLoadingMore && !loading) {
+                    loadMoreTasks();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentTarget = observerTarget.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
+    }, [activeNameTab, pagination?.hasNextPage, isLoadingMore, loading, loadMoreTasks]);
+
     const handleBack = () => {
         navigate(user?.role === 'team' ? '/teams/task-management' : '/clients/task-management');
     };
 
     const handleMenuClick = (event, task, isSubTask = false) => {
-        console.log('Menu clicked for task:', task);
+        // console.log('Menu clicked for task:', task);
         setAnchorEl(event.currentTarget);
         if (isSubTask) {
             setSelectedGroupTaskData({ ...task, isSubTask: true });
@@ -165,9 +244,18 @@ const GroupTaskDetails = () => {
             if (selectedGroupTaskData?.isSubTask) {
                 const res = await deleteSubTaskInsideGroup(groupId, selectedGroupTaskData.id);
                 showSnackbar(res.message, 'success');
-                // Refresh the group task data to reflect the deleted sub-task
-                const data = await fetchGroupTasksByGroupId(groupId);
-                setGroupTaskData(data);
+                // Refresh data after delete
+                const refreshRes = await fetchGroupTasksByGroupId(groupId, 1, 3);
+                const { pagination: paginationData, ...groupData } = refreshRes.data;
+                setGroupTaskData(groupData);
+                setPagination({
+                    hasNextPage: paginationData?.hasNextPage || false,
+                    hasPreviousPage: paginationData?.hasPreviousPage || false,
+                    page: paginationData?.page || 1,
+                    total: paginationData?.total || 0,
+                    totalPages: paginationData?.totalPages || 1,
+                });
+                setCurrentPage(1);
             } else {
                 const res = await deleteGroupTask(selectedTask.id);
                 showSnackbar(res.message, 'success');
@@ -183,28 +271,51 @@ const GroupTaskDetails = () => {
         }
     };
 
-    const handleCloseGroupTaskDialog = async () => {
+    const handleCloseGroupTaskDialog = async (shouldRefresh) => {
         setOpenAddEditGroupTaskDialog(false);
         setSelectedTask(null);
 
         // Refresh the data after edit/duplicate
-        try {
-            const data = await fetchGroupTasksByGroupId(groupId);
-            setGroupTaskData(data);
-        } catch (error) {
-            console.error('Error refreshing data:', error);
+        if (shouldRefresh) {
+            try {
+                const res = await fetchGroupTasksByGroupId(groupId, 1, 3);
+                const { pagination: paginationData, ...groupData } = res.data;
+                setGroupTaskData(groupData);
+                setPagination({
+                    hasNextPage: paginationData?.hasNextPage || false,
+                    hasPreviousPage: paginationData?.hasPreviousPage || false,
+                    page: paginationData?.page || 1,
+                    total: paginationData?.total || 0,
+                    totalPages: paginationData?.totalPages || 1,
+                });
+                setCurrentPage(1);
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+            }
         }
     };
 
-    const handleCloseInsideGroupTaskDialog = async () => {
+    const handleCloseInsideGroupTaskDialog = async (shouldRefresh) => {
         setOpenInsideGroupTaskDialog(false);
         setSelectedGroupTaskData(null);
-        // Refresh the data after edit/duplicate
-        try {
-            const data = await fetchGroupTasksByGroupId(groupId);
-            setGroupTaskData(data);
-        } catch (error) {
-            console.error('Error refreshing data:', error);
+
+        // Refresh the data if task was added/edited successfully
+        if (shouldRefresh) {
+            try {
+                const res = await fetchGroupTasksByGroupId(groupId, 1, 3);
+                const { pagination: paginationData, ...groupData } = res.data;
+                setGroupTaskData(groupData);
+                setPagination({
+                    hasNextPage: paginationData?.hasNextPage || false,
+                    hasPreviousPage: paginationData?.hasPreviousPage || false,
+                    page: paginationData?.page || 1,
+                    total: paginationData?.total || 0,
+                    totalPages: paginationData?.totalPages || 1,
+                });
+                setCurrentPage(1);
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+            }
         }
     };
 
@@ -213,35 +324,24 @@ const GroupTaskDetails = () => {
         // Refresh the data if tasks were added successfully
         if (shouldRefresh) {
             try {
-                const data = await fetchGroupTasksByGroupId(groupId);
-                setGroupTaskData(data);
+                const res = await fetchGroupTasksByGroupId(groupId, 1, 3);
+                const { pagination: paginationData, ...groupData } = res.data;
+                setGroupTaskData(groupData);
+                setPagination({
+                    hasNextPage: paginationData?.hasNextPage || false,
+                    hasPreviousPage: paginationData?.hasPreviousPage || false,
+                    page: paginationData?.page || 1,
+                    total: paginationData?.total || 0,
+                    totalPages: paginationData?.totalPages || 1,
+                });
+                setCurrentPage(1);
             } catch (error) {
                 console.error('Error refreshing data:', error);
             }
         }
     };
 
-    const handleTaskClick = (task, tabIndex = 0) => {
-        setSelectedTask(task);
-        setActiveNameTab(tabIndex);
-        setShowCompletionDialog(true);
-        setMarkdoneClicked(false);
-    };
 
-    const handleCompletionDialogClose = async (success) => {
-        setShowCompletionDialog(false);
-        setSelectedTask(null);
-        setMarkdoneClicked(false);
-
-        if (success) {
-            try {
-                const data = await fetchGroupTasksByGroupId(groupId);
-                setGroupTaskData(data);
-            } catch (error) {
-                console.error('Error refreshing data:', error);
-            }
-        }
-    };
 
 
     if (loading) {
@@ -256,45 +356,49 @@ const GroupTaskDetails = () => {
         return (
             <Container maxWidth="md" sx={{ py: 4 }}>
                 <Typography color="error">{error || 'Group task not found'}</Typography>
-                <Button onClick={handleBack} sx={{ mt: 2 }}>Go Back</Button>
+                <Button
+                    onClick={handleBack} sx={{ mt: 2 }}
+                    // add back icon
+                    startIcon={<ArrowBack />}
+                >
+                    Back to Task Management
+                </Button>
             </Container>
         );
     }
 
-    const scheduleInfo = formatSchedule(
-        groupTaskData.repeat_on?.frequency,
-        groupTaskData.repeat_on
-    );
+    // Group scheduleInfo
+    const scheduleInfo = formatSchedule(groupTaskData.schedule?.type, groupTaskData.schedule?.recurrence_rule);
 
     return (
         <>
             <TaskContext.Provider value={taskData}>
-                <Container maxWidth="md" sx={{ py: 4 }}>
+                <Container maxWidth="md" disableGutters sx={{ py: 2 }}>
                     {/* Back Button */}
                     <Button
                         startIcon={<ArrowBack />}
                         onClick={handleBack}
-                        sx={{ mb: 2, color: palette.text.primary }}
                     >
                         Back to Task Management
                     </Button>
 
                     <Card
                         elevation={0}
+                        disableGutters
                         sx={{
                             bgcolor: palette.background.default,
                             position: 'relative',
-                            mb: 3,
                         }}
                     >
                         <CardHeader
+                            sx={{ px: 1, pt: 0, pb: 0 }}
                             title={
-                                <Typography variant="h5" color="text.primary" fontWeight={600}>
-                                    {groupTaskData.title}
+                                <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }} gutterBottom>
+                                    {groupTaskData.name}
                                 </Typography>
                             }
 
-                            action={(user?.role !== 'team' || user?.teamRole === 'Property Manager') ? (
+                            action={(canUpdateTask || canDeleteTask) ? (
                                 <IconButton
                                     aria-label="settings"
                                     onClick={(e) => handleMenuClick(e, groupTaskData)}
@@ -304,73 +408,34 @@ const GroupTaskDetails = () => {
                             ) : null}
                         />
 
-                        <CardContent sx={{ pt: 0.5 }}>
-                            {/* Schedule Information */}
-                            {scheduleInfo && (
-                                <Stack
-                                    direction="row"
-                                    gap={1}
-                                    flexWrap="wrap"
-                                    alignItems="center"
-                                    justifyContent="space-between"
-                                    mb={2}
-                                >
-                                    <Stack direction="row" gap={0.5} alignItems="center">
-                                        <Box
-                                            sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                color: palette.primary.main,
-                                            }}
-                                        >
-                                            <scheduleInfo.icon fontSize="small" />
-                                        </Box>
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                bgcolor: palette.background.customPaper,
-                                                color: palette.text.secondary,
-                                                px: 1,
-                                                borderRadius: 1,
-                                            }}
-                                        >
-                                            {scheduleInfo.description}
-                                        </Typography>
-                                    </Stack>
-
-                                    <Chip
-                                        label={groupTaskData.status.replace('_', ' ')}
-                                        size="small"
-                                        sx={{
-                                            bgcolor: palette.taskStatus?.[groupTaskData.status] || palette.grey[500],
-                                            color: 'white',
-                                            px: 1.5,
-                                            borderRadius: 5,
-                                        }}
-                                    />
-                                </Stack>
-                            )}
-
-                            {/* Description */}
-                            <ViewMoreText text={groupTaskData.description} limit={200} />
+                        <CardContent sx={{ p: 0, "&:last-child": { p: 1 } }}>
 
                             {/* Group Details */}
-                            <Stack direction="row" flexWrap="wrap" gap={1} mt={2}>
-                                <IconLabel
-                                    icon={Person}
-                                    label={groupTaskData.assigned_to_name || 'Unassigned'}
-                                />
-
-                                {groupTaskData.start_date && (
+                            <Stack direction="row" flexWrap="wrap" gap={1} >
+                                {groupTaskData.property && (
                                     <IconLabel
-                                        icon={CalendarMonth}
-                                        label={formatDate(groupTaskData.start_date)}
+                                        icon={Business}
+                                        label={groupTaskData.property.name}
                                     />
                                 )}
-                                {groupTaskData.total_tasks > 0 && (
+
+                                {groupTaskData.schedule?.start_date && (
+                                    <IconLabel
+                                        icon={CalendarMonth}
+                                        label={`Starts: ${formatDate(groupTaskData.schedule.start_date)}`}
+                                    />
+                                )}
+                                {groupTaskData.schedule?.end_date && (
+                                    <IconLabel
+                                        icon={CalendarMonth}
+                                        label={`Ends:  ${formatDate(groupTaskData.schedule.end_date)}`}
+                                    />
+                                )}
+
+                                {groupTaskData.statistics?.total_tasks > 0 && (
                                     <Chip
                                         icon={<Assignment sx={{ fontSize: 16 }} />}
-                                        label={`${groupTaskData.total_tasks || 0} Task${groupTaskData.total_tasks !== 1 ? 's' : ''}`}
+                                        label={`${groupTaskData.statistics.total_tasks} Task${groupTaskData.statistics.total_tasks !== 1 ? 's' : ''}`}
                                         size="small"
                                         sx={{
                                             bgcolor: palette.background.customPaper,
@@ -384,245 +449,58 @@ const GroupTaskDetails = () => {
 
                     </Card>
 
-                    <Divider sx={{ mb: 3 }} />
+                    <Divider sx={{ mb: 1 }} />
 
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                        <Typography variant="h6" fontWeight={600}>
-                            Tasks in this Group
-                        </Typography>
-                        {(user?.role !== 'team' || user?.teamRole === 'Property Manager') && (
-                            <Stack direction="row" gap={2} flexWrap="wrap">
-                                <Button
-                                    variant="contained"
-                                    disableElevation
-                                    sx={{
-                                        bgcolor: palette.primary.main,
-                                        '&:hover': { bgcolor: palette.secondary.main },
-                                        borderRadius: 10,
-                                        height: '32px',
-                                        fontSize: '0.75rem',
-                                        textTransform: 'none',
-                                    }}
-                                    onClick={() => {
-                                        setSelectedGroupTaskData(null);
-                                        setOpenInsideGroupTaskDialog(true);
-                                    }}
-                                >
-                                    Add New Task
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    disableElevation
-                                    onClick={() => setOpenAddExistingTaskDialog(true)}
-                                    sx={{
-                                        bgcolor: palette.secondary.main,
-                                        '&:hover': { bgcolor: palette.primary.main },
-                                        borderRadius: 10,
-                                        height: '32px',
-                                        fontSize: '0.75rem',
-                                        textTransform: 'none',
-                                    }}
-                                >
-                                    Add Existing Task
-                                </Button>
-                            </Stack>
-                        )}
-                    </Stack>
+                    {/* Add tabs for "Group tasks" "Occurrences" */}
 
-                    {/* Tasks List */}
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 1 }}>
+                        <Tabs
+                            value={activeNameTab}
+                            onChange={(e, newValue) => setActiveNameTab(newValue)}
+                            aria-label="Group Task Tabs"
+                            variant="scrollable"
+                            scrollButtons="auto"
+                           
+                        >
+                            <Tab label="Group Tasks" />
+                            <Tab label="Occurrences" />
+                        </Tabs>
+                    </Box>
 
-                    {groupTaskData.tasks && groupTaskData.tasks.length > 0 ? (
-                        <Stack spacing={2}>
-                            {groupTaskData.tasks.map((task) => (
-                                <Card
-                                    key={task.id}
-                                    elevation={0}
-                                    sx={{
-                                        borderRadius: 2,
-                                        border: `1px solid ${palette.divider}`,
-                                        bgcolor: palette.background.paper,
-                                    }}
-                                >
-                                    <CardHeader
-                                        sx={{ pb: 0.5 }}
-                                        title={
-                                            <Typography variant="h6" color="text.primary">
-                                                {task.title}
-                                            </Typography>
-                                        }
-                                        action={(user?.role !== 'team' || user?.teamRole === 'Property Manager') ? (
-                                            <IconButton
-                                                aria-label="settings"
-                                                onClick={(e) => handleMenuClick(e, task, true)}
-                                            >
-                                                <MoreVert fontSize="medium" />
-                                            </IconButton>
-                                        ) : null}
-                                    />
+                    {activeNameTab === 0 && (
+                        <GroupTasksList
+                            tasks={groupTaskData.tasks}
+                            onMenuClick={handleMenuClick}
+                            user={user}
+                            onAddNewTask={() => {
+                                setSelectedGroupTaskData(null);
+                                setOpenInsideGroupTaskDialog(true);
+                            }}
+                            onAddExistingTask={() => setOpenAddExistingTaskDialog(true)}
+                        />
+                    )}
 
-                                    <CardContent sx={{ pt: 0.5 }}>
-                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                                            <ViewMoreText text={task.description} limit={150} />
-                                            <Tooltip title={`Status: ${task.status}`} placement="top">
-                                                <Chip
-                                                    label={task.status.replace('_', ' ')}
-                                                    size="small"
-                                                    sx={{
-                                                        bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                        color: 'white',
-                                                        px: 1.5,
-                                                        borderRadius: 5,
-                                                    }}
-                                                />
-                                            </Tooltip>
-                                        </Stack>
-                                        <Stack direction="row" gap={1} mt={1} flexWrap="wrap">
-                                            {task.task_type && (
-                                                <IconLabel
-                                                    icon={Task}
-                                                    label={task.task_type.replace('_', ' ')}
-                                                />
-                                            )}
-                                            {task.property_name && (
-                                                <IconLabel
-                                                    icon={Business}
-                                                    label={task.property_name}
-                                                />
-                                            )}
-                                            {task.inventory_name && (
-                                                <IconLabel
-                                                    icon={Inventory}
-                                                    label={task.inventory_name}
-                                                />
-                                            )}
+                    {activeNameTab === 1 && (
+                        <GroupOccurrences
+                            groupId={groupId}
+                            updateTaskOccurrenceStatus={taskData.updateTaskOccurrenceStatus}
+                            addConfirmationImageInTask={taskData.addConfirmationImageInTask}
+                            updateConfirmationImageInTask={taskData.updateConfirmationImageInTask}
+                            completedOccurrences={groupTaskData.statistics?.completed_occurrences || 0}
+                            pendingOccurrences={groupTaskData.statistics?.pending_occurrences || 0}
+                        />
+                    )}
 
-                                        </Stack>
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1, mt: 1 }}>
-                                            {!!task.is_photo_required && task.completion_image_urls && (
-                                                <Chip
-                                                    sx={{
-                                                        px: 0.5,
-                                                        height: 30,
-                                                        '& .MuiChip-label': {
-                                                            p: 0.5,
-                                                        },
-                                                    }}
-                                                    icon={
-                                                        <CameraAlt
-                                                            sx={{
-                                                                cursor: task.is_recurring || task.status === 'completed' || user?.role !== 'team' || user?.teamRole === 'Property Manager' ? 'default' : 'pointer'
-                                                            }}
-                                                            onClick={(e) => {
-                                                                if (!task.is_recurring && task.status !== 'completed' && user?.role === 'team' && user?.teamRole !== 'Property Manager') {
-                                                                    e.stopPropagation();
-                                                                    handleTaskClick(task, 0);
-                                                                }
-                                                            }}
-                                                        />
-                                                    }
-                                                    label={
-                                                        Array.isArray(task.completion_image_urls) &&
-                                                            task.completion_image_urls.length > 0 ? (
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
-                                                                {task.completion_image_urls.map((url, index) => (
-                                                                    <Avatar
-                                                                        key={index}
-                                                                        src={url}
-                                                                        variant="rounded"
-                                                                        onClick={() => {
-                                                                            setSelectedImage(url);
-                                                                            setOpenImage(true);
-                                                                        }}
-                                                                        sx={{
-                                                                            width: 25,
-                                                                            height: 25,
-                                                                            borderRadius: 10,
-                                                                            cursor: 'pointer',
-                                                                            border: `1px solid ${palette.divider}`,
-                                                                            '&:hover': { opacity: 0.8 },
-                                                                        }}
-                                                                    />
-                                                                ))}
-                                                            </Box>
-                                                        ) : null
-                                                    }
-                                                />
-                                            )}
-
-                                            {!!task.is_photo_required && !task.completion_image_urls && (
-                                                <Tooltip title="Photo Required" placement="top" arrow>
-                                                    <CameraAlt
-                                                        color="action"
-                                                        sx={{ fontSize: 25, cursor: task.is_recurring || task.status === 'completed' || user?.role !== 'team' || user?.teamRole === 'Property Manager' ? 'default' : 'pointer' }}
-                                                        onClick={(e) => {
-                                                            if (!task.is_recurring && task.status !== 'completed' && user?.role === 'team' && user?.teamRole !== 'Property Manager') {
-                                                                e.stopPropagation();
-                                                                handleTaskClick(task, 0);
-                                                            }
-                                                        }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                            {!!task.update_inventory && (
-                                                <Tooltip title="Inventory Update" placement="top" arrow>
-                                                    <AssignmentTurnedIn
-                                                        color="action"
-                                                        sx={{
-                                                            fontSize: 22,
-                                                            cursor: task.is_recurring || task.status === 'completed' || user?.role !== 'team' || user?.teamRole === 'Property Manager' ? 'default' : 'pointer',
-                                                        }}
-                                                        onClick={
-                                                            !task.is_recurring && task.status !== 'completed' && user?.role === 'team' && user?.teamRole !== 'Property Manager'
-                                                                ? (e) => {
-                                                                    e.stopPropagation();
-                                                                    handleTaskClick(task, task.is_photo_required ? 1 : 0);
-                                                                }
-                                                                : undefined
-                                                        }
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-                                    </CardContent>
-
-                                    {/* Mark Done button for non-recurring tasks */}
-                                    {!task.is_recurring && user?.role === 'team' && user?.teamRole !== 'Property Manager' && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1, pr: 2 }}>
-                                            <Button
-                                                variant="contained"
-                                                size="small"
-                                                disableElevation
-                                                disabled={task.status === 'completed'}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleTaskClick(task);
-                                                    setMarkdoneClicked(true);
-                                                }}
-                                                sx={{
-                                                    textTransform: 'none',
-                                                    height: 22,
-                                                    borderRadius: 10,
-                                                    fontSize: '0.75rem',
-                                                    bgcolor: palette.primary.main,
-                                                    '&:hover': {
-                                                        bgcolor: palette.secondary.main,
-                                                    },
-                                                }}
-                                            >
-                                                Mark Done
-                                            </Button>
-                                        </Box>
-                                    )}
-
-                                </Card>
-                            ))}
-                        </Stack>
-                    ) : (
-                        <Box sx={{ textAlign: 'center', py: 4 }}>
-                            <Typography variant="body2" color="text.secondary">
-                                No tasks in this group yet.
-                            </Typography>
+                    {/* Loading More Indicator - Only for Group Tasks Tab */}
+                    {activeNameTab === 0 && isLoadingMore && (
+                        <Box display="flex" justifyContent="center" py={2}>
+                            <CircularProgress size={24} />
                         </Box>
+                    )}
+
+                    {/* Observer Target for Infinite Scroll - Only for Group Tasks Tab */}
+                    {activeNameTab === 0 && pagination?.hasNextPage && !isLoadingMore && (
+                        <Box ref={observerTarget} sx={{ height: 20, visibility: 'hidden' }} />
                     )}
                 </Container>
 
@@ -708,6 +586,7 @@ const GroupTaskDetails = () => {
                         onClose={handleCloseInsideGroupTaskDialog}
                         task={selectedGroupTaskData}
                         groupTaskId={groupTaskData.id}
+                        groupData={groupTaskData}
                     />
                 )}
 
@@ -717,24 +596,10 @@ const GroupTaskDetails = () => {
                         open={openAddExistingTaskDialog}
                         onClose={handleCloseAddExistingTaskDialog}
                         groupId={groupTaskData.id}
+
                     />
                 )}
 
-                {/* Image Viewer */}
-                <ImageViewer
-                    open={openImage}
-                    onClose={() => setOpenImage(false)}
-                    image={selectedImage}
-                />
-
-                <TaskCompletionTabs
-                    open={showCompletionDialog}
-                    onClose={handleCompletionDialogClose}
-                    task={selectedTask}
-                    updateTaskCompletionStatus={updateTaskCompletionStatus}
-                    activeTab={activeNameTab}
-                    markdoneClicked={markdoneClicked}
-                />
             </TaskContext.Provider>
         </>
     );

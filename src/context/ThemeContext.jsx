@@ -3,6 +3,8 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { lightTheme, darkTheme, createCustomTheme } from "../theme/theme";
 import { fetchClientTheme } from "../service/Clients/clientThemeService";
+import { fetchTeamsTheme } from "../service/Teams/TeamThemeService";
+import { useAuth } from "./AuthContext";
 
 const ThemeContext = createContext();
 
@@ -15,6 +17,8 @@ export const useThemeMode = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
+  const authContext = useAuth();
+  const user = authContext?.user;
   const [presetThemes, setPresetThemes] = useState([]);
   const [customThemes, setCustomThemes] = useState([]);
   const [themesLoading, setThemesLoading] = useState(true);
@@ -28,9 +32,14 @@ export const ThemeProvider = ({ children }) => {
   // Fetch themes from API
   useEffect(() => {
     const loadThemes = async () => {
+      if (!user) {
+        setThemesLoading(false);
+        return;
+      }
       try {
         setThemesLoading(true);
-        const response = await fetchClientTheme();
+        const isTeamUser = user?.role === 'team';
+        const response = isTeamUser ? await fetchTeamsTheme() : await fetchClientTheme();
         // Separate themes based on client_id
         const allThemes = response.data || [];
         const builtInThemes = allThemes.filter(theme => theme.client_id === null);
@@ -46,7 +55,7 @@ export const ThemeProvider = ({ children }) => {
     };
 
     loadThemes();
-  }, []);
+  }, [user]);
 
   const toggleTheme = () => {
     setMode((prev) => {
@@ -57,9 +66,11 @@ export const ThemeProvider = ({ children }) => {
   };
 
   const reloadThemes = async () => {
+    if (!user) return;
     try {
       setThemesLoading(true);
-      const response = await fetchClientTheme();
+      const isTeamUser = user?.role === 'team';
+      const response = isTeamUser ? await fetchTeamsTheme() : await fetchClientTheme();
       const allThemes = response.data || [];
       const builtInThemes = allThemes.filter(theme => theme.client_id === null);
       const clientCustomThemes = allThemes.filter(theme => theme.client_id !== null);

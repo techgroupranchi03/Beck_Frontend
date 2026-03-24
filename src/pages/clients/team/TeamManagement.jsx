@@ -28,7 +28,7 @@ const TeamManagement = () => {
         <TeamContext.Provider value={teamData}>
             <Box>
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: -2 }}>
                     <ViewToggle showCenterView={true} />
                 </Box>
                 

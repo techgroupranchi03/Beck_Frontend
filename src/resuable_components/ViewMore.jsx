@@ -8,7 +8,7 @@ const ViewMoreText = ({ text, limit = 60 }) => {
     const displayText = expanded ? text : text?.slice(0, limit);
 
     return (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{textTransform : "capitalize"}}>
             {displayText}
 
             {/* Show dots only when collapsed */}

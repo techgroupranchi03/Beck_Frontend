@@ -5,11 +5,11 @@ const getClientToken = () => {
     return localStorage.getItem('client_token');
 };
 
-export const getClientProperties = async (page) => {
+export const getClientProperties = async (page, search = '') => {
     const token = getClientToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/client/properties?page=${page}`,
+            `${BASE_URL}/client/properties?page=${page}&search=${encodeURIComponent(search)}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

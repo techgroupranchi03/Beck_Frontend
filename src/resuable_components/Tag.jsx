@@ -20,6 +20,7 @@ const Tag = ({
                 fontSize: '0.80rem',
                 bgcolor: bgcolor,
                 color: color || '#fff',
+                textTransform: 'capitalize',
             }}
         />
     );

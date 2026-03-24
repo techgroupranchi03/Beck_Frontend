@@ -9,14 +9,15 @@ import {
     Stack,
     useTheme,
 } from "@mui/material";
-import { taskStatusFilter, } from "../../../constant";
+import { taskStatusFilter, scheduleTypeOptions} from "../../../constant";
 import { useTaskContext } from "./TaskManagement";
 
 const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
-    const [AssignTo, setAssignTo] = useState([]);
+    // const [AssignTo, setAssignTo] = useState([]);
     const [selectedProperty, setSelectedProperty] = useState([]);
-    const [Status, setStatus] = useState([]);
+    // const [Status, setStatus] = useState([]);
     const [isFilter, setIsFilter] = useState(false);
+    const [ScheduleType, setScheduleType] = useState([]);
     const theme = useTheme();
     const { palette } = theme;
 
@@ -26,25 +27,30 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
     } = useTaskContext();
 
     useEffect(() => {
-        if (initialFilters.assigned_to > 0) {
-            setAssignTo(Array.isArray(initialFilters.assigned_to) ? initialFilters.assigned_to : [initialFilters.assigned_to]);
-            setIsFilter(true);
-        }
-        if (initialFilters.status > 0) {
-            setStatus(Array.isArray(initialFilters.status) ? initialFilters.status : [initialFilters.status]);
-            setIsFilter(true);
-        }
+        // if (initialFilters.assigned_to > 0) {
+        //     setAssignTo(Array.isArray(initialFilters.assigned_to) ? initialFilters.assigned_to : [initialFilters.assigned_to]);
+        //     setIsFilter(true);
+        // }
+        // if (initialFilters.status > 0) {
+        //     setStatus(Array.isArray(initialFilters.status) ? initialFilters.status : [initialFilters.status]);
+        //     setIsFilter(true);
+        // }
         if (initialFilters.property_id > 0) {
             setSelectedProperty(Array.isArray(initialFilters.property_id) ? initialFilters.property_id : [initialFilters.property_id]);
+            setIsFilter(true);
+        }
+        if (initialFilters.schedule_type > 0) {
+            setScheduleType(Array.isArray(initialFilters.schedule_type) ? initialFilters.schedule_type : [initialFilters.schedule_type]);
             setIsFilter(true);
         }
     }, [initialFilters]);
 
     const handleFilterApply = () => {
         const filters = {
-            assigned_to: AssignTo,
-            status: Status,
+            // assigned_to: AssignTo,
+            // status: Status,
             property_id: selectedProperty,
+            schedule_type: ScheduleType,
         };
         setIsFilter(true);
         onApplyFilters(filters);
@@ -52,18 +58,25 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
     };
 
     const handleClearFilters = () => {
-        setAssignTo([]);
-        setStatus([]);
+        // setAssignTo([]);
+        // setStatus([]);
         setSelectedProperty([]);
+        setScheduleType([]);
         setIsFilter(false);
-        onApplyFilters({ assigned_to: [], status: [], property_id: [] });
+        onApplyFilters({ property_id: [], schedule_type: [] });
+    };
+
+    const handleClose = () => {
+        // Reset filters when closing
+        //handleClearFilters();
+        onClose();
     };
 
     return (
         <Drawer
             anchor="right"
             open={open}
-            onClose={onClose}
+            onClose={handleClose}
             PaperProps={{
                 sx: { width: 280, padding: 2, bgcolor: palette.background.paper },
             }}
@@ -85,8 +98,25 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                         </Button>
                     )}
                 </Stack>
-
+                
+                {/* schedule type */}
                 <Autocomplete
+                    size="small"
+                    multiple
+                    limitTags={2}
+                    value={ScheduleType.map(id => scheduleTypeOptions.find(type => type.value === id)).filter(Boolean)}
+                    onChange={(event, newValue) => {
+                        setScheduleType(newValue.map(v => v.value));
+                    }}
+                    options={scheduleTypeOptions}
+                    getOptionLabel={(option) => option.label || ""}
+                    renderInput={(params) => (
+                        <TextField {...params} label="Schedule Type" placeholder="Select schedule type" />
+                    )}
+                    sx={{ mb: 3 }}
+                />
+
+                {/* <Autocomplete
                     size="small"
                     multiple
                     limitTags={2}
@@ -100,7 +130,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                         <TextField {...params} label="Assign To" />
                     )}
                     sx={{ mb: 3 }}
-                />
+                /> */}
 
                 <Autocomplete
                     size="small"
@@ -130,7 +160,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                     sx={{ mb: 3 }}
                 />
 
-                <Autocomplete
+                {/* <Autocomplete
                     size="small"
                     multiple
                     limitTags={2}
@@ -147,7 +177,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                         <TextField {...params} label="Status" placeholder="Select status" />
                     )}
                     sx={{ mb: 3 }}
-                />
+                /> */}
 
                 <Button
                     variant="contained"

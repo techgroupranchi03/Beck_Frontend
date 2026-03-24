@@ -10,6 +10,7 @@ import {
     IconButton,
     Stack,
     useTheme,
+    useMediaQuery,
     Avatar,
     Divider,
     Tooltip,
@@ -38,11 +39,11 @@ import {
     Clear,
     SearchOff,
     InventoryOutlined,
-    Task,
     Close,
     AssignmentTurnedIn,
     CameraAlt,
-    FileCopy
+    FileCopy,
+    OpenInNew
 } from "@mui/icons-material";
 import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
 import ImageViewer from "../../../resuable_components/ImageViewer.jsx";
@@ -53,14 +54,15 @@ import { useTaskContext } from "./TaskManagement.jsx";
 import { useSnackbar } from "../../../resuable_components/Snackbar";
 import { GroupTaskCard } from "./GroupTaskCard.jsx";
 import { formatDate } from "../../../utils/dateFormat.js";
-import { Form, useLocation } from "react-router-dom";
+import { Form, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import IconLabel from "../../../resuable_components/IconLabel.jsx";
 import ConfirmationDialog from "../../../dialoge/clients/Confirmation_dialog.jsx";
-import { taskStatusFilter } from "../../../constant.js";
+import { scheduleTypeOptions, taskStatusFilter } from "../../../constant.js";
 import { formatSchedule } from "../../../utils/scheduleFormatter.js";
 import { useViewMode } from "../../../context/ViewModeContext.jsx";
 import TaskCardSkeleton from "./TaskCardSkeleton.jsx";
+import { useTopBar } from "../../../context/TopBarContext.jsx";
 
 export const Tile_View_task = () => {
     const theme = useTheme();
@@ -68,7 +70,9 @@ export const Tile_View_task = () => {
     const { showSnackbar } = useSnackbar();
     const observerTarget = useRef(null);
     const location = useLocation();
+    const navigate = useNavigate();
     const { viewMode } = useViewMode();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [openAddEditDialog, setOpenAddEditDialog] = useState(false);
     const [openAddEditGroupTaskDialog, setOpenAddEditGroupTaskDialog] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
@@ -83,11 +87,27 @@ export const Tile_View_task = () => {
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [openConfirm, setOpenConfirm] = useState(false);
     const isFetchingRef = useRef(false);
+    const searchDebounceRef = useRef(null);
+
+    // Register search actions in top bar for mobile
+    const { registerActions, clearActions } = useTopBar();
+    const hasActiveFilters = Object.keys(filters).some((key) => {
+        const val = filters[key];
+        return Array.isArray(val) ? val.length > 0 : val;
+    });
+    useEffect(() => {
+        if (isMobile) {
+            registerActions({
+                onSearchToggle: () => setIsSearchVisible((prev) => !prev),
+                isSearchActive: isSearchVisible,
+            });
+        }
+        return () => { if (isMobile) clearActions(); };
+    }, [isMobile, isSearchVisible]);
 
     const {
         allTasksData,
-        deleteOneTimeTask,
-        deleteRecurringTask,
+        deleteTask,
         deleteGroupTask,
         loading,
         fetchAllTasks,
@@ -96,6 +116,17 @@ export const Tile_View_task = () => {
         properties
     } = useTaskContext();
 
+    // view details 
+    const handleViewDetails = (task) => {
+        const taskToView = task || selectedTask;
+        if (!taskToView) return;
+        const basePath = location.pathname.startsWith('/teams') ? '/teams' : '/clients';
+
+        const taskSlug = taskToView.title.toLowerCase().replace(/\s+/g, '-');
+        navigate(`${basePath}/task-management/task/${taskSlug}`, {
+            state: { taskId: taskToView.id },
+        });
+    };
 
     useEffect(() => {
         setCurrentPage(1);
@@ -103,18 +134,10 @@ export const Tile_View_task = () => {
 
     const tasksToRender = useMemo(() => {
         if (!allTasksData) return [];
-        if (Array.isArray(allTasksData)) return allTasksData;
-        if (allTasksData && (allTasksData.task_groups || allTasksData.active_tasks || allTasksData.recurring_tasks)) {
-            const combined = [
-                ...(allTasksData.task_groups || []),
-                ...(allTasksData.active_tasks || []),
-                ...(allTasksData.recurring_tasks || [])
-            ];
-            return combined;
-        }
-        return [];
+        const groupTasks = (allTasksData.group_task || []).map(g => ({ ...g, is_task_group: true }));
+        const tasks = allTasksData.tasks || [];
+        return [...groupTasks, ...tasks];
     }, [allTasksData]);
-
 
     const loadMoreTasks = useCallback(async () => {
         if (!allTaskPagination?.hasNextPage || isLoadingMore || loading || isFetchingRef.current) return;
@@ -123,7 +146,7 @@ export const Tile_View_task = () => {
         setIsLoadingMore(true);
         const nextPage = currentPage + 1;
         try {
-            await fetchAllTasks(filters, searchText, nextPage, true);
+            await fetchAllTasks(filters, searchText, nextPage, true, 5);
             setCurrentPage(nextPage);
         } catch (error) {
             console.error("Error loading more tasks:", error);
@@ -134,9 +157,6 @@ export const Tile_View_task = () => {
     }, [allTaskPagination, isLoadingMore, loading, currentPage, fetchAllTasks, filters, searchText]);
 
     useEffect(() => {
-        // Reset fetching flag when filters or search change
-        isFetchingRef.current = false;
-
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && allTaskPagination?.hasNextPage && !isLoadingMore && !loading && !isFetchingRef.current) {
                 loadMoreTasks();
@@ -157,7 +177,7 @@ export const Tile_View_task = () => {
             }
             observer.disconnect();
         };
-    }, [allTaskPagination?.hasNextPage, isLoadingMore, loading, tasksToRender.length]);
+    }, [allTaskPagination?.hasNextPage, isLoadingMore, loading, tasksToRender.length, loadMoreTasks]);
 
     const handleEdit = (task) => {
         setSelectedTask(task);
@@ -195,16 +215,13 @@ export const Tile_View_task = () => {
             if (selectedTask.is_task_group) {
                 const res = await deleteGroupTask(selectedTask.id);
                 showSnackbar(res.message, "success");
-            } else if (selectedTask.schedule_type && selectedTask.schedule_type !== 'one_time') {
-                const res = await deleteRecurringTask(selectedTask.id);
-                showSnackbar(res.message, "success");
             } else {
-                const res = await deleteOneTimeTask(selectedTask.id);
+                const res = await deleteTask(selectedTask.id);
                 showSnackbar(res.message, "success");
             }
         } catch (error) {
             console.error("Error deleting task:", error);
-            showSnackbar("Failed to delete task", "error");
+            showSnackbar(error.message, "error");
         } finally {
             setOpenConfirm(false);
             setSelectedTask(null);
@@ -222,7 +239,7 @@ export const Tile_View_task = () => {
         setFilters(appliedFilters);
         setCurrentPage(1);
         try {
-            await fetchAllTasks(appliedFilters, searchText);
+            await fetchAllTasks(appliedFilters, searchText, 1, false, 10);
         } catch (error) {
             console.error("Error applying filters:", error);
             showSnackbar("Failed to apply filters", "error");
@@ -274,6 +291,18 @@ export const Tile_View_task = () => {
                     const property = properties.find(p => p.id === value);
                     return property ? `Property: ${property.name}` : null;
                 }
+
+            case 'schedule_type':
+                if (Array.isArray(value)) {
+                    const labels = value.map(val => {
+                        const schedule = scheduleTypeOptions.find(s => s.value === val);
+                        return schedule ? schedule.label : null;
+                    }).filter(Boolean);
+                    return labels.length > 0 ? `Schedule: ${labels.join(', ')}` : null;
+                } else {
+                    const schedule = scheduleTypeOptions.find(s => s.value === value);
+                    return schedule ? `Schedule: ${schedule.label}` : null;
+                }
             default:
                 return null;
         }
@@ -290,20 +319,49 @@ export const Tile_View_task = () => {
         }
     }, [location.state?.assignedTo]);
 
-    const handleSearch = async (text) => {
-        if (isFetchingRef.current) return;
-
-        isFetchingRef.current = true;
-        setSearchText(text);
-        setCurrentPage(1);
-        try {
-            await fetchAllTasks(filters, text);
-        } catch (error) {
-            console.error("Error searching tasks:", error);
-        } finally {
-            isFetchingRef.current = false;
+    // Auto-open add dialog from mobile FAB navigation
+    useEffect(() => {
+        if (location.state?.openAdd) {
+            setSelectedTask(null);
+            setOpenAddEditDialog(true);
+            window.history.replaceState({}, document.title);
         }
+        if (location.state?.openAddGroupTask) {
+            setSelectedTask(null);
+            setOpenAddEditGroupTaskDialog(true);
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state?.openAdd, location.state?.openAddGroupTask]);
+
+    const handleSearch = (text) => {
+        setSearchText(text);
+
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+
+        searchDebounceRef.current = setTimeout(async () => {
+            if (isFetchingRef.current) return;
+
+            isFetchingRef.current = true;
+            setCurrentPage(1);
+            try {
+                await fetchAllTasks(filters, text, 1, false, 10);
+            } catch (error) {
+                console.error("Error searching tasks:", error);
+            } finally {
+                isFetchingRef.current = false;
+            }
+        }, 400);
     };
+
+    useEffect(() => {
+        return () => {
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current);
+            }
+        };
+    }, []);
 
     const handleCloseDialog = () => {
         setOpenAddEditDialog(false);
@@ -318,9 +376,9 @@ export const Tile_View_task = () => {
     return (
         <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
 
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box display="flex" justifyContent={isMobile ? "flex-end" : "space-between"} alignItems="center" mb={2}>
 
-                <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+                {!isMobile && <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
 
                     <Button
                         variant="contained"
@@ -362,10 +420,9 @@ export const Tile_View_task = () => {
                         Create Group Task
                     </Button>
 
-                </Stack>
+                </Stack>}
 
-
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ display: isMobile ? 'none' : 'flex', py: 1 }}>
                     <IconButton
                         onClick={handleFilterToggle}
                         sx={{
@@ -390,7 +447,6 @@ export const Tile_View_task = () => {
                         {isSearchVisible ? <SearchOff /> : <Search />}
                     </IconButton>
                 </Stack>
-
             </Box>
 
             {Object.keys(filters).some((key) => {
@@ -439,6 +495,36 @@ export const Tile_View_task = () => {
                 />
             )}
 
+            {/* Mobile floating filter tab */}
+            {isMobile && (
+                <Box
+                    onClick={handleFilterToggle}
+                    sx={{
+                        position: 'fixed',
+                        right: 0,
+                        top: '25%',
+                        transform: 'translateY(-50%)',
+                        zIndex: 1100,
+                        bgcolor: hasActiveFilters ? palette.secondary.main : palette.secondary.main,
+                        color: '#fff',
+                        writingMode: 'vertical-rl',
+                        textOrientation: 'mixed',
+                        py: 1.5,
+                        px: 0.5,
+                        borderRadius: '8px 0 0 8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.5px',
+                        userSelect: 'none',
+                        '&:active': { opacity: 0.8 },
+                    }}
+                >
+                    Filter
+                </Box>
+            )}
+
             <TaskFilter
                 open={isFilterVisible}
                 onClose={handleFilterToggle}
@@ -446,7 +532,7 @@ export const Tile_View_task = () => {
                 initialFilters={filters}
             />
 
-            <Divider sx={{ my: 2 }} />
+            <Divider sx={{ my: 2 , display : {xs : 'none' , sm : 'block'}}} />
 
             {/* show skeleton when loading intial data  */}
             {loading && tasksToRender.length === 0 && (
@@ -481,14 +567,16 @@ export const Tile_View_task = () => {
                                         elevation: 0,
                                         border: `1px solid ${palette.divider}`,
                                         bgcolor: palette.background.paper,
-
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
                                     }}
                                 >
 
                                     <CardHeader
                                         sx={{ pb: 0.5 }}
                                         title={
-                                            <Typography variant="h6" color="text.primary">
+                                            <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
                                                 {task.title}
                                             </Typography>
                                         }
@@ -505,11 +593,11 @@ export const Tile_View_task = () => {
                                         }
                                     />
 
-                                    <CardContent sx={{ pt: 0 }}>
+                                    <CardContent sx={{ pt: 0, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
 
                                         {/* Schedule Information */}
                                         {(() => {
-                                            const scheduleInfo = formatSchedule(task.schedule_type, task.repeat_on);
+                                            const scheduleInfo = formatSchedule(task.schedule?.type, task.schedule?.recurrence_rule);
                                             if (!scheduleInfo) return null;
 
                                             return (
@@ -551,28 +639,13 @@ export const Tile_View_task = () => {
                                                             {scheduleInfo.description}
                                                         </Typography>
                                                     </Stack>
-
-                                                    {/* add status chip here */}
-                                                    <Tooltip placement="top" arrow title="Task Status">
-                                                        <Chip
-                                                            label={task.status.replace('_', ' ')}
-                                                            size="small"
-                                                            sx={{
-                                                                bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                                color: 'white',
-                                                                px: 1.5,
-                                                                borderRadius: 5,
-
-                                                            }}
-                                                        />
-                                                    </Tooltip>
                                                 </Stack>
                                             );
                                         })()}
-                                        
-                                        {/* Task Type + Status shouldd not be show for weekly/monthly/yearly tasks */}
 
-                                        {!(task.schedule_type === 'weekly' || task.schedule_type === 'monthly' || task.schedule_type === 'yearly') && (
+                                        {/* Task Type + Status should not be shown for weekly/monthly/yearly tasks */}
+
+                                        {!(task.schedule?.type === 'weekly' || task.schedule?.type === 'monthly' || task.schedule?.type === 'yearly') && (
                                             <Stack
                                                 spacing={1}
                                                 mb={1}
@@ -583,25 +656,28 @@ export const Tile_View_task = () => {
                                                 <IconLabel
                                                     icon={CalendarMonth}
                                                     label={
-                                                        task.scheduled_date || task.start_date
-                                                            ? formatDate(task.scheduled_date || task.start_date)
+                                                        task.schedule?.recurrence_rule?.dates?.length
+                                                            ? task.schedule.recurrence_rule.dates
+                                                                .map((date) => formatDate(date))
+                                                                .join(", ")
                                                             : "N/A"
                                                     }
                                                 />
 
-                                                <Tooltip placement="top" arrow title="Task Status">
-                                                    <Chip
-                                                        label={task.status.replace('_', ' ')}
-                                                        size="small"
-                                                        sx={{
-                                                            bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
-                                                            color: 'white',
-                                                            px: 1.5,
-                                                            borderRadius: 5,
-
-                                                        }}
-                                                    />
-                                                </Tooltip>
+                                                {task.status && (
+                                                    <Tooltip placement="top" arrow title="Task Status">
+                                                        <Chip
+                                                            label={task.status.replace('_', ' ')}
+                                                            size="small"
+                                                            sx={{
+                                                                bgcolor: palette.taskStatus?.[task.status] || palette.grey[500],
+                                                                color: 'white',
+                                                                px: 1.5,
+                                                                borderRadius: 5,
+                                                            }}
+                                                        />
+                                                    </Tooltip>
+                                                )}
                                             </Stack>
                                         )}
 
@@ -610,103 +686,45 @@ export const Tile_View_task = () => {
 
                                         <Stack direction="row" flexWrap="wrap" gap={1} mt={1} >
                                             <IconLabel
-                                                icon={Task}
-                                                label={task.task_type.replace('_', ' ')}
-                                            />
-
-                                            <IconLabel
                                                 icon={Person}
-                                                label={task.assigned_to_name || '-'}
+                                                label={task.assigned_to?.name || '-'}
                                             />
 
-
-                                            {task.scheduled_day && (
-                                                <IconLabel
-                                                    icon={CalendarMonth}
-                                                    label={task.scheduled_day}
-                                                />
-                                            )}
-                                            {task.inventory_name && (
-                                                <IconLabel
-                                                    icon={InventoryOutlined}
-                                                    label={task.inventory_name}
-                                                />
-                                            )}
-                                            {task.property_name && (
+                                            {task.property && (
                                                 <IconLabel
                                                     icon={Business}
-                                                    label={task.property_name}
+                                                    label={task.property.name}
                                                 />
-                                            )
-                                            }
+                                            )}
                                         </Stack>
 
-                                        <Stack direction="row" spacing={1} mt={0.5} alignItems="center"
-                                            justifyContent={task.last_task?.scheduled_date ? "space-between" : "flex-end"}>
-
-                                            {/* Last Executed Date */}
-                                            {task.last_task?.scheduled_date && (
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: palette.primary.main,
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    Last Executed On: {formatDate(task.last_task.scheduled_date)}
-                                                </Typography>
-                                            )}
+                                        <Stack direction="row" spacing={1} mt="auto" pt={1} alignItems="center"
+                                            justifyContent="space-between"
+                                        >
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                {!!task.is_photo_required && task.completion_image_urls && (
-                                                    <Chip
-                                                        sx={{
-                                                            px: 0.5,
-                                                            height: 30,
-                                                            '& .MuiChip-label': {
-                                                                p: 0.5,
-                                                            },
-                                                        }}
-                                                        icon={<CameraAlt />}
-                                                        label={
-                                                            Array.isArray(task.completion_image_urls) &&
-                                                                task.completion_image_urls.length > 0 ? (
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginLeft: 1 }}>
-                                                                    {task.completion_image_urls.map((url, index) => (
-                                                                        <Avatar
-                                                                            key={index}
-                                                                            src={url}
-                                                                            variant="rounded"
-                                                                            onClick={() => {
-                                                                                setSelectedImage(url);
-                                                                                setOpenImage(true);
-                                                                            }}
-                                                                            sx={{
-                                                                                width: 25,
-                                                                                height: 25,
-                                                                                borderRadius: 10,
-                                                                                cursor: 'pointer',
-                                                                                border: `1px solid ${palette.divider}`,
-                                                                                '&:hover': { opacity: 0.8 },
-                                                                            }}
-                                                                        />
-                                                                    ))}
-                                                                </Box>
-                                                            ) : null
-                                                        }
-                                                    />
-                                                )}
-
-                                                {!!task.is_photo_required && !task.completion_image_urls && (
+                                                {!!task.requires_photo && (
                                                     <Tooltip title="Photo Required" placement="top" arrow>
                                                         <CameraAlt color="action" sx={{ fontSize: 25 }} />
                                                     </Tooltip>
                                                 )}
-                                                {!!task.update_inventory && (
+                                                {!!task.allows_inventory_update && (
                                                     <Tooltip title="Inventory Update" placement="top" arrow>
                                                         <AssignmentTurnedIn color="action" sx={{ fontSize: 22 }} />
                                                     </Tooltip>
                                                 )}
                                             </Box>
+
+                                            <Box>
+                                                <Tooltip placement="top" arrow title="View Details">
+                                                    <IconButton
+                                                        aria-label="view details"
+                                                        onClick={() => handleViewDetails(task)}
+                                                    >
+                                                        <OpenInNew fontSize="medium" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+
 
                                         </Stack>
 
@@ -717,7 +735,6 @@ export const Tile_View_task = () => {
                     ))}
                 </Grid>
             )}
-
 
             <div ref={observerTarget} style={{ height: '10px' }}></div>
 
@@ -814,12 +831,15 @@ export const Tile_View_task = () => {
                 onClose={handleCloseDialog}
                 task={selectedTask}
             />
-            
+
             <TileVeiwAddEditGroupTaskDialog
                 open={openAddEditGroupTaskDialog}
                 onClose={handleCloseGroupTaskDialog}
                 task={selectedTask}
             />
+            
         </Container>
     );
 };
+
+

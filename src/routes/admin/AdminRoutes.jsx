@@ -20,37 +20,47 @@
 
 
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../../Layout.jsx';
-import Dashboard from '../../pages/admin/Dashboard.jsx';
-import ClientsManagement from '../../pages/admin/ClientsManagement.jsx';
-import Admin_login from '../../auth/admin/Admin_login.jsx';
 import ProtectedRoute from '../ProtectedRoute.jsx';
-import ThemeSettings from '../../pages/ThemeSettings.jsx';
+import { CircularProgress, Box } from '@mui/material';
+
+const Dashboard = lazy(() => import('../../pages/admin/Dashboard.jsx'));
+const ClientsManagement = lazy(() => import('../../pages/admin/ClientsManagement.jsx'));
+const Admin_login = lazy(() => import('../../auth/admin/Admin_login.jsx'));
+const ThemeSettings = lazy(() => import('../../pages/ThemeSettings.jsx'));
+
+const Loader = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+    <CircularProgress />
+  </Box>
+);
 
 const AdminRoutes = () => (
-  <Routes>
-    {/* Public route - Login page */}
-    <Route path="/login" element={<Admin_login />} />
-    
-    {/* Protected routes - Require admin authentication */}
-    <Route
-      path="/"
-      element={
-        <ProtectedRoute requiredRole="admin">
-          <Layout role="admin" />
-        </ProtectedRoute>
-      }
-    >
-      {/* Nested routes inside Layout */}
-      <Route index element={<Navigate to="dashboard" replace />} />
-      <Route path="dashboard" element={<Dashboard />} />
-      <Route path="clients" element={<ClientsManagement />} />
-      <Route path="themeSetting" element={<ThemeSettings />} />
-      <Route path="*" element={<Navigate to="dashboard" replace />} />
-    </Route>
-  </Routes>
+  <Suspense fallback={<Loader />}>
+    <Routes>
+      {/* Public route - Login page */}
+      <Route path="/login" element={<Admin_login />} />
+      
+      {/* Protected routes - Require admin authentication */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <Layout role="admin" />
+          </ProtectedRoute>
+        }
+      >
+        {/* Nested routes inside Layout */}
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="clients" element={<ClientsManagement />} />
+        <Route path="themeSetting" element={<ThemeSettings />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
+      </Route>
+    </Routes>
+  </Suspense>
 );
 
 export default AdminRoutes;

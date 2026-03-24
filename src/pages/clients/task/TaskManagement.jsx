@@ -7,6 +7,7 @@ import { useViewMode } from '../../../context/ViewModeContext.jsx';
 import ViewToggle from '../../../resuable_components/ViewToggle.jsx';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import TileViewTaskStaff from '../../teams/TileViewTaskStaff.jsx';
+import { isStaffOrOutsource } from '../../../utils/permissions.js';
 
 export const TaskContext = createContext(null);
 
@@ -23,7 +24,7 @@ const TaskManagement = () => {
     const { user } = useAuth();
     const taskData = useTaskData();
 
-    const isStaffOrOthers = user?.teamRole === 'Others' || user?.teamRole === 'Staff';
+    const isStaffOrOthers = isStaffOrOutsource(user?.teamRole);
 
     return (
         <TaskContext.Provider value={taskData}>

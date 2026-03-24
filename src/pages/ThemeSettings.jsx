@@ -30,6 +30,7 @@ import { useThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { switchClientTheme, CreateClientCustomTheme, UpdateClientCustomTheme, DeleteClientCustomTheme } from '../service/Clients/clientThemeService';
 import { useSnackbar } from '../resuable_components/Snackbar';
+import { CreateTeamCustomTheme, switchTeamTheme, UpdateTeamCustomTheme, DeleteTeamCustomTheme } from '../service/Teams/TeamThemeService';
 
 // Theme Preview Component
 const ThemePreview = ({ colors }) => {
@@ -279,6 +280,8 @@ const ThemeSettings = () => {
     const [creatingCustomTheme, setCreatingCustomTheme] = useState(false);
     const [editingTheme, setEditingTheme] = useState(null);
     const [loading, setLoading] = useState(false);
+    console.log('ThemeSettings user:', user);
+    const isTeamUser = user?.role === 'team';
     
     const { 
         selectedLightThemeId, 
@@ -332,7 +335,11 @@ const ThemeSettings = () => {
 
             // Call API to update both light and dark themes
             // The API will update the user profile, which will trigger a re-sync
-            await switchClientTheme(newLightThemeId, newDarkThemeId);
+            if (isTeamUser) {
+                await switchTeamTheme(newLightThemeId, newDarkThemeId);
+            } else {
+                await switchClientTheme(newLightThemeId, newDarkThemeId);
+            }
 
             // refresh complete website  with window location reload
             window.location.reload();
@@ -342,7 +349,7 @@ const ThemeSettings = () => {
             console.error('Failed to switch theme:', error);
             showSnackbar(error.message || 'Failed to switch theme', 'error');
         }
-    }, [selectedLightThemeId, selectedDarkThemeId, setSelectedLightThemeId, setSelectedDarkThemeId, showSnackbar]);
+    }, [isTeamUser, selectedLightThemeId, selectedDarkThemeId, setSelectedLightThemeId, setSelectedDarkThemeId, showSnackbar]);
 
     const handleCreateCustomTheme = (isDark = false) => {
         setCreatingCustomTheme(true);
@@ -465,14 +472,21 @@ const ThemeSettings = () => {
         try {
             if (editingTheme) {
                 // Update existing theme
-                const response = await UpdateClientCustomTheme({
-                    id: editingTheme.id,
-                    ...themePayload
-                });
+                const response = isTeamUser
+                    ? await UpdateTeamCustomTheme({
+                        id: editingTheme.id,
+                        ...themePayload
+                    })
+                    : await UpdateClientCustomTheme({
+                        id: editingTheme.id,
+                        ...themePayload
+                    });
                 showSnackbar(response.message, 'success');
             } else {
                 // Create new theme
-                const response = await CreateClientCustomTheme(themePayload);
+                const response = isTeamUser
+                    ? await CreateTeamCustomTheme(themePayload)
+                    : await CreateClientCustomTheme(themePayload);
                 showSnackbar(response.message, 'success');
             }
 
@@ -498,14 +512,18 @@ const ThemeSettings = () => {
 
     const handleDeleteTheme = useCallback(async (themeToDelete) => {
         try {
-            await DeleteClientCustomTheme(themeToDelete.id, themeToDelete.theme_name);
+            if (isTeamUser) {
+                await DeleteTeamCustomTheme(themeToDelete.id, themeToDelete.theme_name);
+            } else {
+                await DeleteClientCustomTheme(themeToDelete.id, themeToDelete.theme_name);
+            }
             showSnackbar('Theme deleted successfully!', 'success');
             await reloadThemes();
         } catch (error) {
             console.error('Failed to delete theme:', error);
             showSnackbar('Failed to delete theme', 'error');
         }
-    }, [reloadThemes, showSnackbar]);
+    }, [isTeamUser, reloadThemes, showSnackbar]);
 
     const handleThemeTypeChange = useCallback((event, newValue) => {
         if (newValue !== null) {
@@ -548,16 +566,15 @@ const ThemeSettings = () => {
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                         <Palette sx={{ fontSize: 32, color: theme.palette.primary.main }} />
-                        <Typography variant="h4">
+                        <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }} gutterBottom>
                             Theme Settings
                         </Typography>
                     </Stack>
                     <Button
                         variant="contained"
-                        startIcon={<Add />}
                         onClick={() => handleCreateCustomTheme(false)}
                         disableElevation
-                        sx={{ borderRadius: 10 }}
+                        sx={{ borderRadius: 10, height: 30, textTransform: 'none' }}
                     >
                         Create Theme
                     </Button>
@@ -574,13 +591,13 @@ const ThemeSettings = () => {
                     <Paper sx={{ p: 3, mb: 3 }} elevation={0}>
                         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
                             <LightMode sx={{ fontSize: 32, color: theme.palette.warning.main }} />
-                            <Typography variant="h5" fontWeight={600} gutterBottom>
+                            <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
                                 Light Themes
                             </Typography>
                         </Stack>
                         {themesLoading ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="body1" color="text.secondary">
                                     Loading themes...
                                 </Typography>
                             </Box>
@@ -629,7 +646,7 @@ const ThemeSettings = () => {
                     <Paper sx={{ p: 3, mb: 3 }} elevation={0}>
                         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
                             <DarkMode sx={{ fontSize: 32 }} />
-                            <Typography variant="h5" fontWeight={600} gutterBottom>
+                            <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
                                 Dark Themes
                             </Typography>
                         </Stack>

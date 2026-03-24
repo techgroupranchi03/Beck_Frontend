@@ -11,17 +11,27 @@ import { getClientProperties } from '../../../service/Clients/Properties';
 import {
     createClientTask,
     createClientActiveTask,
+    updateClientTask,
     updateTaskPlanner,
     updateActiveTask,
     deleteOneTime,
-    deleteRecurring,
-    updateClientActiveTaskStatus
+    deleteClientTask,
+    updateClientActiveTaskStatus,
 } from '../../../service/Clients/Task';
 import { getTeamMembers } from '../../../service/Clients/Team';
 import { useAuth } from '../../../context/AuthContext';
 import { createTeamInventoryItem, deleteTeamInventoryItem, getTeamInventoryById, getTeamInventoryFieldOptions, getTeamInventoryItems, updateTeamInventoryItem } from '../../../service/Teams/Team_Inventory';
 import { getTeamProperties } from '../../../service/Teams/Team_Properties';
-import { createTeamActiveTask, createTeamTask, getTeamsTeamMembers, updateTeamsActiveTask, updateTeamsTaskPlanner, deleteTeamOneTimeTask, deleteTeamRecurringTask, updateTeamTaskStatusCompleted } from '../../../service/Teams/Team_Task';
+import { 
+    createTeamActiveTask,
+     createTeamTask, 
+     getTeamsTeamMembers,
+      updateTeamsActiveTask,
+       updateTeamsTaskPlanner, 
+       deleteTeamOneTimeTask, 
+       deleteTeamRecurringTask,
+        // updateTeamTaskStatusCompleted 
+    } from '../../../service/Teams/Team_Task';
 
 export const useInventoryData = () => {
     const { user } = useAuth();
@@ -33,6 +43,7 @@ export const useInventoryData = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [inventoryPagination, setInventoryPagination] = useState({});
+    const [propertyPagination, setPropertyPagination] = useState({});
     const isTeamUser = user?.role === 'team';
 
     const fetchInventoryItems = useCallback(async (filters = {}, searchText = "", page = 1, append = false) => {
@@ -63,21 +74,32 @@ export const useInventoryData = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isTeamUser]);
 
-    const fetchProperties = useCallback(async (page = 1) => {
+    const fetchProperties = useCallback(async (page = 1, append = false, search = '') => {
         try {
             const res = isTeamUser
-                ? await getTeamProperties(page)
-                : await getClientProperties(page);
-            setProperties(res.data || []);
+                ? await getTeamProperties(page, search)
+                : await getClientProperties(page, search);
+            if (append) {
+                setProperties((prev) => [...prev, ...(res.data || [])]);
+            } else {
+                setProperties(res.data || []);
+            }
+            setPropertyPagination({
+                hasNextPage: res.pagination?.hasNextPage || false,
+                hasPreviousPage: res.pagination?.hasPreviousPage || false,
+                page: res.pagination?.page || 1,
+                total: res.pagination?.total || 0,
+                totalPages: res.pagination?.totalPages || 1,
+            });
             return res.data;
         } catch (err) {
             console.error('Error fetching properties:', err);
             setError(err);
             throw err;
         }
-    }, []);
+    }, [isTeamUser]);
 
     const fetchUnitsAndQuantities = useCallback(async () => {
         try {
@@ -92,7 +114,7 @@ export const useInventoryData = () => {
             setError(err);
             throw err;
         }
-    }, []);
+    }, [isTeamUser]);
 
     const fetchTeamMembers = useCallback(async () => {
         try {
@@ -106,7 +128,7 @@ export const useInventoryData = () => {
             setError(err);
             throw err;
         }
-    }, []);
+    }, [isTeamUser]);
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
@@ -174,7 +196,7 @@ export const useInventoryData = () => {
                 ? await deleteTeamInventoryItem(id)
                 : await deleteInventoryItem(id);
             setInventoryData((prev) => prev.filter((item) => item.id !== id));
-            return res.data;
+            return res;
         } catch (err) {
             console.error('Error deleting inventory item:', err);
             throw err;
@@ -202,6 +224,17 @@ export const useInventoryData = () => {
             return res;
         } catch (err) {
             console.error('Error creating task:', err);
+            throw err;
+        }
+    };
+
+    const updateTask = async (id, values) => {
+        try {
+            const res = await updateClientTask(id, values);
+            await fetchInventoryItems();
+            return res;
+        } catch (err) {
+            console.error('Error updating task:', err);
             throw err;
         }
     };
@@ -287,7 +320,7 @@ export const useInventoryData = () => {
         try {
             const res = isTeamUser
                 ? await deleteTeamRecurringTask(id)
-                : await deleteRecurring(id);
+                : await deleteClientTask(id);
 
             // Update inventory data locally by removing the deleted task
             setInventoryData(prevData =>
@@ -318,7 +351,6 @@ export const useInventoryData = () => {
                     )
                 }))
             );
-
             return res;
         } catch (err) {
             console.error('Error updating task completion status:', err);
@@ -338,6 +370,7 @@ export const useInventoryData = () => {
 
         // pagination state
         inventoryPagination,
+        propertyPagination,
 
         // Fetch operations
         fetchInventoryItems,
@@ -354,6 +387,7 @@ export const useInventoryData = () => {
 
         // Task operations
         createTask,
+        updateTask,
         createActiveTask,
         updateTaskPlannerData,
         updateActiveTaskData,

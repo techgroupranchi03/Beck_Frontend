@@ -33,11 +33,10 @@ export const getClientTasks = async (filters = {}, searchText = "", page = 1) =>
 
 export const createClientTask = async (taskData) => {
     const token = getClientToken();
-    console.log('Creating task with data:', taskData);
+    //console.log('Creating task with data:', taskData);
     try {
         const response = await axios.post(
-            // `${BASE_URL}/client/tasks-planner`,
-            `${BASE_URL}/tasks`,
+            `${BASE_URL}/client/tasks`,
             taskData,
             {
                 headers: {
@@ -49,6 +48,25 @@ export const createClientTask = async (taskData) => {
     } catch (error) {
         console.error('Client task creation error:', error);
         return Promise.reject(error.response?.data || { message: 'Task creation failed' });
+    }
+};
+
+export const updateClientTask = async (taskId, taskData) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/tasks/${taskId}`,
+            taskData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task update error:', error);
+        return Promise.reject(error.response?.data || { message: 'Task update failed' });
     }
 };
 
@@ -127,11 +145,11 @@ export const deleteOneTime = async (taskId) => {
     }
 };
 
-export const deleteRecurring = async (taskId) => {
+export const deleteClientTask = async (taskId) => {
     const token = getClientToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/client/tasks-planner/${taskId}`,
+            `${BASE_URL}/client/tasks/${taskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -226,17 +244,18 @@ export const getInventoryByPropertyId = async (propertyId) => {
     }
 };
 
-export const getAllClientTasks = async (filters = {}, searchText = "", page = 1) => {
+export const getAllClientTasks = async (filters = {}, searchText = "", page = 1, limit = 10) => {
     const token = getClientToken();
     try {
-        const params = { page };
-        if (filters.assigned_to) params.assigned_to = filters.assigned_to;
-        if(filters.property_id) params.property_id = filters.property_id;
-        if (filters.status) params.status = filters.status;
+        const params = { page, limit };
+        //if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.property_id) params.property_id = filters.property_id;
+        // if (filters.status) params.status = filters.status;
+        if (filters.schedule_type) params.schedule_type = filters.schedule_type;
         if (searchText) params.search = searchText;
 
         const response = await axios.get(
-            `${BASE_URL}/client/all-tasks`,
+            `${BASE_URL}/client/tasks`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -244,7 +263,7 @@ export const getAllClientTasks = async (filters = {}, searchText = "", page = 1)
                 params: params,
             }
         );
-        console.log('All Client tasks response:', response.data);
+        //console.log('All Client tasks response:', response.data);
         return response.data;
     } catch (error) {
         console.error('All client tasks fetching error:', error);
@@ -252,17 +271,16 @@ export const getAllClientTasks = async (filters = {}, searchText = "", page = 1)
     }
 };
 
-export const updateClientTaskStatusCompleted = async (taskId, formData) => {
-
+export const updateClientTaskStatus = async (occurrenceId, status) => {
     const token = getClientToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/tasks-instances/${taskId}`,
-            formData,
+            `${BASE_URL}/client/tasks/occurrences/${occurrenceId}`,
+            { status },
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data',
+                    "Content-Type": "application/json",
                 },
             }
         );
@@ -273,15 +291,57 @@ export const updateClientTaskStatusCompleted = async (taskId, formData) => {
     }
 };
 
-export const getClientGroupTasksById = async (groupTaskId) => {
+export const addClientConfirmationTaskImage = async (occurrenceId, formData) => {
     const token = getClientToken();
     try {
+        const response = await axios.post(
+            `${BASE_URL}/client/tasks/occurrences/${occurrenceId}/complete`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task update error:', error);
+        return Promise.reject(error.response?.data);
+    }
+};
+
+export const updateClientConfirmationTaskImage = async (occurrenceId, formData) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.put(
+            `${BASE_URL}/client/tasks/occurrences/${occurrenceId}/proof`,
+            formData,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task update error:', error);
+        return Promise.reject(error.response?.data);
+    }
+};
+
+export const getClientGroupTasksById = async (groupTaskId, page = 1, limit = 3) => {
+    const token = getClientToken();
+    try {
+        const params = { page, limit };
         const response = await axios.get(
-            `${BASE_URL}/client/groups/${groupTaskId}`,
+            `${BASE_URL}/client/task-groups/${groupTaskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                params: params,
             }
         );
         return response.data;
@@ -293,10 +353,10 @@ export const getClientGroupTasksById = async (groupTaskId) => {
 
 export const createClientGroupTask = async (groupTaskData) => {
     const token = getClientToken();
-    console.log('Creating group task with data:', groupTaskData);
+    // console.log('Creating group task with data:', groupTaskData);
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/groups`,
+            `${BASE_URL}/client/task-groups`,
             groupTaskData,
             {
                 headers: {
@@ -315,7 +375,7 @@ export const updateClientGroupTask = async (groupTaskId, groupTaskData) => {
     const token = getClientToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/groups/${groupTaskId}`,
+            `${BASE_URL}/client/task-groups/${groupTaskId}`,
             groupTaskData,
             {
                 headers: {
@@ -334,7 +394,7 @@ export const deleteClientGroupTask = async (groupTaskId) => {
     const token = getClientToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/client/groups/${groupTaskId}`,
+            `${BASE_URL}/client/task-groups/${groupTaskId}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -350,11 +410,11 @@ export const deleteClientGroupTask = async (groupTaskId) => {
 
 export const createClientSubGroupTask = async (groupId, subGroupTaskData) => {
     const token = getClientToken();
-    console.log('Creating sub-group task with data:', groupId, subGroupTaskData);
+    // console.log('Creating sub-group task with data:', groupId, subGroupTaskData);
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/groups/${groupId}/tasks`,
-            
+            `${BASE_URL}/client/task-groups/${groupId}/tasks`,
+
             subGroupTaskData,
             {
                 headers: {
@@ -369,12 +429,12 @@ export const createClientSubGroupTask = async (groupId, subGroupTaskData) => {
     }
 };
 
-export const updateClientSubGroupTask = async (groupId, subGroupTaskId, subGroupTaskData) => {
+export const updateClientSubGroupTask = async (groupId, groupTaskId, formData) => {
     const token = getClientToken();
     try {
         const response = await axios.put(
-            `${BASE_URL}/client/groups/tasks/${subGroupTaskId}`,
-            subGroupTaskData,
+            `${BASE_URL}/client/task-groups/${groupId}/tasks/${groupTaskId}`,
+            formData,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -392,7 +452,8 @@ export const deleteClientSubGroupTask = async (groupId, subGroupTaskId) => {
     const token = getClientToken();
     try {
         const response = await axios.delete(
-            `${BASE_URL}/client/groups/${groupId}/tasks/${subGroupTaskId}`,
+            `${BASE_URL}/client/task-groups/${groupId}/tasks/${subGroupTaskId}`,
+
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -408,10 +469,10 @@ export const deleteClientSubGroupTask = async (groupId, subGroupTaskId) => {
 
 export const addClientExistingTaskInsideGroupTask = async (groupId, taskData) => {
     const token = getClientToken();
-    console.log('Adding existing task to group with data:', groupId, taskData);
+    // console.log('Adding existing task to group with data:', groupId, taskData);
     try {
         const response = await axios.post(
-            `${BASE_URL}/client/groups/${groupId}/tasks/bulk`,
+            `${BASE_URL}/client/task-groups/${groupId}/add-tasks`,
             taskData,
             {
                 headers: {
@@ -424,5 +485,63 @@ export const addClientExistingTaskInsideGroupTask = async (groupId, taskData) =>
         console.error('Client existing task addition error:', error);
         return Promise.reject(error.response?.data || { message: 'Existing task addition failed' });
     }
-}; 
+};
 
+export const getClientTaskById = async (taskId) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/client/tasks/${taskId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching task failed' });
+    }
+};
+
+
+export const getClientTaskGroupOccurrecesByGroupId = async (groupId, page = 1, limit = 5) => {
+    const token = getClientToken();
+    try {
+        const params = { page, limit };
+        const response = await axios.get(
+            `${BASE_URL}/client/task-groups/${groupId}/group-occurrences`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                params: params,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client group task occurrences fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching group task occurrences failed' });
+    }
+};
+
+export const getClientTaskOccurrenceByTaskGroupOccurrrenceId = async (TaskGroupOccurrenceId, page = 1, limit = 5) => {
+    const token = getClientToken();
+    try {
+        const params = { page, limit };
+        const response = await axios.get(
+            `${BASE_URL}/client/task-group-occurrences/${TaskGroupOccurrenceId}/task-occurrences`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                params: params,
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client task occurrence fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching task occurrence failed' });
+    }
+};

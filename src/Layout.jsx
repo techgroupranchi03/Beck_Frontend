@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   Stack,
@@ -8,13 +8,20 @@ import {
   IconButton,
   Drawer,
   Tooltip,
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import { People, TrendingUp, Menu as MenuIcon, Business, Inventory, Assignment } from "@mui/icons-material";
+import { People, TrendingUp, Menu as MenuIcon, Business, Inventory, Assignment, Add, GroupWork, Home, Search, SearchOff } from "@mui/icons-material";
 import ProfileMenu from "./resuable_components/profile_menu.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useThemeMode } from "./context/ThemeContext.jsx";
+import { TopBarProvider, useTopBar } from "./context/TopBarContext.jsx";
 
 const getPageTitle = (pathname) => {
   const path = pathname.split(/[?#]/)[0];
@@ -47,6 +54,7 @@ export default function Layout({ role }) {
   const location = useLocation();
   const { user } = useAuth();
   const { syncUserTheme } = useThemeMode();
+  const navigate = useNavigate();
   const pageTitle = getPageTitle(location.pathname);
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -135,133 +143,213 @@ export default function Layout({ role }) {
     return [];
   }, [resolvedRole, basePath]);
 
+  // SpeedDial quick-add actions based on role AND current page
+  const speedDialActions = useMemo(() => {
+    if (resolvedRole === "admin") return [];
+
+    const hasCreatePermission = (module) => {
+      if (!user?.permissions || !Object.prototype.hasOwnProperty.call(user.permissions, module)) {
+        return false;
+      }
+      return user.permissions[module].create;
+    };
+
+    const path = location.pathname;
+    const actions = [];
+
+    if (resolvedRole === "client") {
+      if (path.includes("property-management")) {
+        actions.push({ icon: <Home />, name: "Add Property", stateKey: "openAdd" });
+      } else if (path.includes("inventory-management")) {
+        actions.push({ icon: <Inventory />, name: "Add Inventory", stateKey: "openAdd" });
+      } else if (path.includes("team-management")) {
+        actions.push({ icon: <People />, name: "Add Team Member", stateKey: "openAdd" });
+      } else if (path.includes("task-management")) {
+        actions.push(
+          { icon: <Assignment sx={{ color: theme.palette.primary.main }} />, name: "Create Task", stateKey: "openAdd" },
+          { icon: <GroupWork sx={{ color: theme.palette.primary.main }} />, name: "Create Group Task", stateKey: "openAddGroupTask" },
+        );
+      }
+    }
+
+    if (resolvedRole === "team") {
+      if (path.includes("property-management") && hasCreatePermission("property")) {
+        actions.push({ icon: <Home />, name: "Add Property", stateKey: "openAdd" });
+      } else if (path.includes("inventory-management") && hasCreatePermission("inventory")) {
+        actions.push({ icon: <Inventory />, name: "Add Inventory", stateKey: "openAdd" });
+      } else if (path.includes("team-management") && hasCreatePermission("team")) {
+        actions.push({ icon: <People />, name: "Add Team Member", stateKey: "openAdd" });
+      } else if (path.includes("task-management") && hasCreatePermission("task")) {
+        actions.push(
+          { icon: <Assignment sx={{ color: theme.palette.primary.main }} />, name: "Create Task", stateKey: "openAdd" },
+          { icon: <GroupWork sx={{ color: theme.palette.primary.main }} />, name: "Create Group Task", stateKey: "openAddGroupTask" },
+        );
+      }
+    }
+
+    return actions;
+  }, [resolvedRole, basePath, user, location.pathname]);
+
   const drawerWidth = useMemo(() => {
     if (isMobile) return 260;
     return drawerOpen ? 260 : 80;
   }, [isMobile, drawerOpen]);
 
-  const drawerVariant = isMobile ? "temporary" : "permanent";
+  const drawerVariant = "permanent";
+
+  // Find active nav index for bottom navigation
+  const activeNavIndex = useMemo(() => {
+    const idx = navItems.findIndex((item) => location.pathname.startsWith(item.to));
+    return idx >= 0 ? idx : 0;
+  }, [navItems, location.pathname]);
+
+  return (
+    <TopBarProvider>
+      <LayoutInner
+        theme={theme}
+        location={location}
+        user={user}
+        navigate={navigate}
+        pageTitle={pageTitle}
+        isMobile={isMobile}
+        isDesktop={isDesktop}
+        drawerOpen={drawerOpen}
+        setDrawerOpen={setDrawerOpen}
+        resolvedRole={resolvedRole}
+        basePath={basePath}
+        navItems={navItems}
+        speedDialActions={speedDialActions}
+        drawerWidth={drawerWidth}
+        drawerVariant={drawerVariant}
+        activeNavIndex={activeNavIndex}
+      />
+    </TopBarProvider>
+  );
+}
+
+function LayoutInner({
+  theme, location, user, navigate, pageTitle, isMobile, isDesktop,
+  drawerOpen, setDrawerOpen, resolvedRole, basePath, navItems,
+  speedDialActions, drawerWidth, drawerVariant, activeNavIndex,
+}) {
+  const { actions: topBarActions } = useTopBar();
 
   return (
     <Box sx={{ bgcolor: theme.palette.background.default }}>
-      <Drawer
-        variant={drawerVariant}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        ModalProps={{
-          keepMounted: true,
-        }}
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            transition: "width 0.3s ease",
-            overflowX: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: (isMobile || (isDesktop && drawerOpen)) ? "flex-start" : "center",
-          },
-        }}
-      >
-        {/* Logo + App Name */}
-        <Stack
-          direction={(isMobile || drawerOpen) ? "row" : "column"}
-          alignItems="center"
-          spacing={(isMobile || drawerOpen) ? 1 : 0}
+      {/* Desktop Sidebar Drawer - hidden on mobile */}
+      {!isMobile && (
+        <Drawer
+          variant={drawerVariant}
+          open={drawerOpen}
           sx={{
-            p: 2,
-            mt: 1,
-            width: "100%",
-            justifyContent: (isMobile || drawerOpen) ? "flex-start" : "center",
+            width: drawerWidth,
+            flexShrink: 0,
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              transition: "width 0.3s ease",
+              overflowX: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: (isDesktop && drawerOpen) ? "flex-start" : "center",
+            },
           }}
         >
-          <Avatar
-            src="/images/new_logo.gif"
-            alt="TaskBnb Logo"
+          {/* Logo + App Name */}
+          <Stack
+            direction={drawerOpen ? "row" : "column"}
+            alignItems="center"
+            spacing={drawerOpen ? 1 : 0}
             sx={{
-              width: isMobile ? 40 : 60,
-              height: isMobile ? 40 : 60,
-              '& img': {
-                objectFit: 'cover',
-                width: '100%',
-                height: '100%',
-              }
+              p: 2,
+              mt: 1,
+              width: "100%",
+              justifyContent: drawerOpen ? "flex-start" : "center",
             }}
-          />
-          {(isMobile || drawerOpen) && (
-            <Stack>
-            <Typography
-              variant={isMobile ? "body2" : "body1"}
+          >
+            <Avatar
+              src="/images/new_logo.gif"
+              alt="TaskBnb Logo"
               sx={{
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-                fontSize: isMobile ? '0.875rem' : '1rem'
+                width: 60,
+                height: 60,
+                '& img': {
+                  objectFit: 'cover',
+                  width: '100%',
+                  height: '100%',
+                }
               }}
-            >
-              TaskBnb
-            </Typography>
-            <Typography
-              variant={isMobile ? "caption" : "body1"}
-              sx={{
-                whiteSpace: "nowrap",
-                fontSize: isMobile ? '0.7rem' : '0.875rem',
-              }}
-            >
-              Property Management
-            </Typography>
-            </Stack>
-          )}
-        </Stack>
-
-        {/* Navigation Links */}
-        <Box component="nav" sx={{ width: "100%", mt: 2 }}>
-          <Stack spacing={0.5}>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                style={({ isActive }) => ({
-                  display: "flex",
-                  alignItems: "center",
-                  gap: (isMobile || drawerOpen) ? 12 : 0,
-                  justifyContent: (isMobile || drawerOpen) ? "flex-start" : "center",
-                  padding: isMobile ? "10px 16px" : "12px 16px",
-                  borderRadius: 2,
-                  color: "#fff",
-                  textDecoration: "none",
-                  backgroundColor: isActive ? theme.palette.primary.main : "transparent",
-                  fontWeight: isActive ? 600 : 400,
-                  transition: "all 0.2s ease",
-                })}
-              >
-                <Tooltip title={(!isMobile && !drawerOpen) ? item.label : ""} placement="right">
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: (isMobile || drawerOpen) ? "flex-start" : "center",
-                    }}
-                  >
-                    {item.icon}
-                    {(isMobile || drawerOpen) && (
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          ml: 1,
-                          fontSize: isMobile ? '0.875rem' : '1rem'
-                        }}
-                      >
-                        {item.label}
-                      </Typography>
-                    )}
-                  </Box>
-                </Tooltip>
-              </NavLink>
-            ))}
+            />
+            {drawerOpen && (
+              <Stack>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    fontSize: '1rem'
+                  }}
+                >
+                  TaskBnb
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    whiteSpace: "nowrap",
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Property Management
+                </Typography>
+              </Stack>
+            )}
           </Stack>
-        </Box>
-      </Drawer>
+
+          {/* Navigation Links */}
+          <Box component="nav" sx={{ width: "100%", mt: 2 }}>
+            <Stack spacing={0.5}>
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  style={({ isActive }) => ({
+                    display: "flex",
+                    alignItems: "center",
+                    gap: drawerOpen ? 12 : 0,
+                    justifyContent: drawerOpen ? "flex-start" : "center",
+                    padding: "12px 16px",
+                    borderRadius: 2,
+                    color: "#fff",
+                    textDecoration: "none",
+                    backgroundColor: isActive ? theme.palette.primary.main : "transparent",
+                    fontWeight: isActive ? 600 : 400,
+                    transition: "all 0.2s ease",
+                  })}
+                >
+                  <Tooltip title={!drawerOpen ? item.label : ""} placement="right">
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: drawerOpen ? "flex-start" : "center",
+                      }}
+                    >
+                      {item.icon}
+                      {drawerOpen && (
+                        <Typography
+                          variant="body1"
+                          sx={{ ml: 1, fontSize: '1rem' }}
+                        >
+                          {item.label}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Tooltip>
+                </NavLink>
+              ))}
+            </Stack>
+          </Box>
+        </Drawer>
+      )}
 
       <Box
         flex={1}
@@ -300,12 +388,14 @@ export default function Layout({ role }) {
         >
           {/* Menu Icon + Page Title */}
           <Stack direction="row" alignItems="center" spacing={isMobile ? 1 : 2}>
-            <IconButton
-              onClick={() => setDrawerOpen(!drawerOpen)}
-              size={isMobile ? "medium" : "large"}
-            >
-              <MenuIcon sx={{ color: theme.palette.text.primary }} />
-            </IconButton>
+            {!isMobile && (
+              <IconButton
+                onClick={() => setDrawerOpen(!drawerOpen)}
+                size="large"
+              >
+                <MenuIcon sx={{ color: theme.palette.text.primary }} />
+              </IconButton>
+            )}
             <Box>
               <Typography
                 variant={isMobile ? "h6" : "h5"}
@@ -344,8 +434,23 @@ export default function Layout({ role }) {
             </Box>
           </Stack>
 
-          {/* Profile Menu */}
-          <ProfileMenu />
+          {/* Profile Menu + Mobile Search */}
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {isMobile && topBarActions?.onSearchToggle && (
+              <IconButton
+                onClick={topBarActions.onSearchToggle}
+                size="small"
+                sx={{
+                  color: topBarActions.isSearchActive
+                    ? theme.palette.primary.main
+                    : theme.palette.text.primary,
+                }}
+              >
+                {topBarActions.isSearchActive ? <SearchOff /> : <Search />}
+              </IconButton>
+            )}
+            <ProfileMenu />
+          </Stack>
         </Box>
 
         {/* Page Content (below top bar) */}
@@ -356,7 +461,7 @@ export default function Layout({ role }) {
             bgcolor: theme.palette.background.default,
             p: isMobile ? 1 : 0,
             mt: isMobile ? 7 : 8,
-            ml: isMobile ? 0 : 0,
+            mb: isMobile ? '64px' : 0,
             overflowY: "auto",
             overflowX: "hidden",
           }}
@@ -365,6 +470,126 @@ export default function Layout({ role }) {
         </Box>
 
       </Box>
+
+      {/* Mobile SpeedDial FAB for quick-add actions */}
+      {isMobile && speedDialActions.length > 0 && (
+        speedDialActions.length === 1 ? (
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: 80,
+              right: 20,
+              zIndex: 1201,
+            }}
+          >
+            <IconButton
+              onClick={() => navigate(location.pathname, { state: { [speedDialActions[0].stateKey]: Date.now() }, replace: true })}
+              sx={{
+                width: 52,
+                height: 52,
+                bgcolor: theme.palette.primary.main,
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                '&:hover': {
+                  bgcolor: theme.palette.primary.dark,
+                },
+              }}
+            >
+              <Add />
+            </IconButton>
+          </Box>
+        ) : (
+          <SpeedDial
+            ariaLabel="Quick actions"
+            sx={{
+              position: 'fixed',
+              bottom: 80,
+              right: 20,
+              zIndex: 1201,
+              '& .MuiFab-primary': {
+                bgcolor: theme.palette.primary.main,
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                '&:hover': {
+                  bgcolor: theme.palette.primary.dark,
+                },
+                width: 52,
+                height: 52,
+              },
+            }}
+            icon={<SpeedDialIcon openIcon={<Add />} />}
+          >
+            {speedDialActions.map((action) => (
+              <SpeedDialAction
+                key={action.name}
+                icon={action.icon}
+                tooltipTitle={action.name}
+                tooltipOpen
+                onClick={() => navigate(location.pathname, { state: { [action.stateKey]: Date.now() }, replace: true })}
+                sx={{
+                  '& .MuiSpeedDialAction-staticTooltipLabel': {
+                    whiteSpace: 'nowrap',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    bgcolor: theme.palette.primary.main,
+                    color: '#fff',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  },
+                }}
+              />
+            ))}
+          </SpeedDial>
+        )
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <Paper
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1200,
+            borderTop: `1px solid ${theme.palette.divider}`,
+          }}
+          elevation={8}
+        >
+          <BottomNavigation
+            value={activeNavIndex}
+            showLabels
+            sx={{
+              bgcolor: theme.palette.background.paper,
+              height: 64,
+              '& .MuiBottomNavigationAction-root': {
+                minWidth: 'auto',
+                px: 0.5,
+                color: theme.palette.text.secondary,
+                '&.Mui-selected': {
+                  color: theme.palette.primary.main,
+                },
+              },
+              '& .MuiBottomNavigationAction-label': {
+                fontSize: '0.65rem',
+                '&.Mui-selected': {
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                },
+              },
+            }}
+          >
+            {navItems.map((item) => (
+              <BottomNavigationAction
+                key={item.to}
+                label={item.label}
+                icon={item.icon}
+                component={NavLink}
+                to={item.to}
+              />
+            ))}
+          </BottomNavigation>
+        </Paper>
+      )}
 
     </Box>
   );

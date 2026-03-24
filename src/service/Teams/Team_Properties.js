@@ -5,11 +5,11 @@ const getTeamToken = () => {
     return localStorage.getItem('team_token');
 };
 
-export const getTeamProperties = async (page) => {
+export const getTeamProperties = async (page, search = '') => {
     const token = getTeamToken();
     try {
         const response = await axios.get(
-            `${BASE_URL}/team/properties?page=${page}`,
+            `${BASE_URL}/team/properties?page=${page}&search=${encodeURIComponent(search)}`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
