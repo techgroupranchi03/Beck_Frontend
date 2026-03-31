@@ -303,9 +303,9 @@ const AddEditTaskInsideGroup = ({ open, onClose, task, groupTaskId, groupData })
                     <Grid size={{ xs: 12, sm: 6 }}>
                         <Autocomplete
                             size="small"
-                            options={teamMembers}
+                            options={[{ id: '', name: 'Myself' }, ...(teamMembers || [])]}
                             getOptionLabel={(option) => (option.name ? String(option.name) : '')}
-                            value={teamMembers.find((member) => member.id === formData.assigned_to) || null}
+                            value={[{ id: '', name: 'Myself' }, ...(teamMembers || [])].find((item) => item.id === (formData.assigned_to || '')) || null}
                             onChange={(e, newValue) => {
                                 handleChange('assigned_to')({ target: { value: newValue ? newValue.id : '' } });
                             }}

@@ -137,6 +137,25 @@ export const containerOptions = [
     { label: "Empty", value: "empty" }
 ];
 
+export const containerTypes = [
+    { label: "Bottle", value: "bottle", icon: "🍶" },
+    { label: "Jar", value: "jar", icon: "🫙" },
+    { label: "Jug", value: "jug", icon: "🫗" },
+    { label: "Can", value: "can", icon: "🥫" },
+    { label: "Drum", value: "drum", icon: "🛢️" },
+    { label: "Tank", value: "tank", icon: "⛽" },
+    { label: "Bucket", value: "bucket", icon: "🪣" },
+    { label: "Box", value: "box", icon: "📦" },
+    { label: "Cylinder", value: "cylinder", icon: "🔴" },
+    { label: "Spray Bottle", value: "spray_bottle", icon: "🧴" },
+];
+
+export const quantityConfig = {
+    piece: { step: 0.5, min: 0, max: 9999, quickFill: [0.5, 1, 5, 10], unitSuffix: '' },
+    liters: { step: 0.1, min: 0, max: 9999, quickFill: [0.5, 1.0, 5.0], unitSuffix: 'L' },
+    kg: { step: 0.1, min: 0, max: 9999, quickFill: [0.5, 1.0, 5.0], unitSuffix: 'kg' },
+};
+
 export const palette = {
     layout: '#132421',
     active: '#407f68',

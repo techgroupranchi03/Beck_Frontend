@@ -36,6 +36,7 @@ const getPageTitle = (pathname) => {
     if (path.includes("inventory")) return "Inventory Management";
     if (path.includes("team")) return "Team Management";
     if (path.includes("task")) return "Task Management";
+    if (path.includes("settings")) return "Settings";
     return "Client Portal";
   }
   if (path.startsWith("/teams")) {

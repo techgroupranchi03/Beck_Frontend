@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+
 import {
     Box,
     Card,
@@ -83,8 +84,10 @@ const TaskDetails = () => {
     const [pendingTask, setPendingTask] = useState(null);
     const [activeTab, setActiveTab] = useState(0);
     const [selectedTaskOccurrence, setSelectedTaskOccurrence] = useState(null);
+    const [occurrencePagination, setOccurrencePagination] = useState(null);
 
-    const taskId = location.state?.taskId;
+    const { taskId: paramTaskId } = useParams();
+    const taskId = location.state?.taskId || Number(paramTaskId);
 
     console.log('task', task);
     console.log('occurrences', occurrences);
@@ -101,6 +104,7 @@ const TaskDetails = () => {
             const res = await fetchTaskById(taskId);
             setTask(res.data || null);
             setOccurrences(res.task_occurrences || []);
+            setOccurrencePagination(res.pagination || null);
         } catch (err) {
             console.error('Error fetching task details:', err);
             setError('Failed to load task details');
@@ -165,6 +169,7 @@ const TaskDetails = () => {
             const res = await fetchTaskById(taskId);
             setTask(res.data || null);
             setOccurrences(res.task_occurrences || []);
+            setOccurrencePagination(res.pagination || null);
         } catch (err) {
             console.error('Error refreshing task data:', err);
         }
@@ -187,6 +192,7 @@ const TaskDetails = () => {
     const completedCount = occurrences.filter(o => o.status === 'completed').length;
     const pendingCount = occurrences.filter(o => o.status === 'pending').length;
     const totalCount = occurrences.length;
+    const realTotal = occurrencePagination?.realTotal || totalCount;
 
     if (loading) {
         return (
@@ -296,21 +302,22 @@ const TaskDetails = () => {
                         {/* Stats Chips */}
                         {totalCount > 0 && (
                             <Stack direction="row" gap={1} flexWrap="wrap" mb={2}>
-                                <Chip
+                                {/* <Chip
                                     label={`${totalCount} Occurrence${totalCount !== 1 ? 's' : ''}`}
                                     size="small"
                                     sx={{
-                                        bgcolor: palette.background.customPaper,
-                                        color: palette.text.primary,
+                                        //info color 
+                                        bgcolor: palette.info.main,
+                                        color: '#000',
                                         fontWeight: 500,
                                     }}
-                                />
+                                /> */}
                                 <Chip
                                     label={`${completedCount} Completed`}
                                     size="small"
                                     sx={{
                                         bgcolor: palette.taskStatus?.completed || palette.success.main,
-                                        color: 'white',
+                                        color: '#000',
                                         fontWeight: 500,
                                     }}
                                 />
@@ -319,7 +326,7 @@ const TaskDetails = () => {
                                     size="small"
                                     sx={{
                                         bgcolor: palette.taskStatus?.pending || palette.warning.main,
-                                        color: 'white',
+                                        color: '#000',
                                         fontWeight: 500,
                                     }}
                                 />
@@ -328,12 +335,10 @@ const TaskDetails = () => {
 
                         {/* Task Details Labels */}
                         <Stack direction="row" flexWrap="wrap" gap={1} mt={1}>
-                            {task.assigned_to && (
-                                <IconLabel
-                                    icon={Person}
-                                    label={task.assigned_to.name || 'Unassigned'}
-                                />
-                            )}
+                            <IconLabel
+                                icon={Person}
+                                label={task.assigned_to?.name || 'Myself'}
+                            />
                             {task.property && (
                                 <IconLabel
                                     icon={Business}
@@ -352,13 +357,13 @@ const TaskDetails = () => {
                                     label={`End: ${formatDate(task.schedule.end_date)}`}
                                 />
                             )}
-                            {task.requires_photo && (
+                            {!!task.requires_photo && (
                                 <IconLabel
                                     icon={CameraAlt}
                                     label="Photo Required"
                                 />
                             )}
-                            {task.allows_inventory_update && (
+                            {!!task.allows_inventory_update && (
                                 <IconLabel
                                     icon={AssignmentTurnedIn}
                                     label="Inventory Update"
@@ -377,152 +382,18 @@ const TaskDetails = () => {
                 <Divider sx={{ mb: 2 }} />
 
                 {/* Occurrences Section */}
-                <Typography variant="h6" fontWeight={600} mb={2}>
-                    Task Occurrences
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" fontWeight={600}>
+                        Task Occurrences
+                    </Typography>
+                    {realTotal > totalCount && (
+                        <Typography variant="body2" color="text.secondary">
+                            Showing last {totalCount} of {realTotal}
+                        </Typography>
+                    )}
+                </Box>
 
                 {occurrences.length > 0 ? (
-                    // <TableContainer
-                    //     component={Paper}
-                    //     elevation={0}
-                    //     sx={{
-                    //         border: `1px solid ${palette.divider}`,
-                    //         borderRadius: 2,
-                    //     }}
-                    // >
-                    //     <Table size="small">
-                    //         <TableHead>
-                    //             <TableRow>
-                    //                 {/* <TableCell sx={{ fontWeight: 600 }}>#</TableCell> */}
-                    //                 <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                    //                 <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                    //                 <TableCell sx={{ fontWeight: 600 }}>Image</TableCell>
-                    //                 <TableCell sx={{ fontWeight: 600 }}> Action </TableCell>
-                    //             </TableRow>
-                    //         </TableHead>
-                    //         <TableBody>
-                    //             {occurrences.map((occ, index) => (
-                    //                 <TableRow
-                    //                     key={occ.id}
-                    //                     sx={{
-                    //                         '&:last-child td, &:last-child th': { border: 0 },
-                    //                         bgcolor: occ.status === 'completed'
-                    //                             ? `${palette.success.main}08`
-                    //                             : 'inherit',
-                    //                     }}
-                    //                 >
-                    //                     {/* <TableCell>{index + 1}</TableCell> */}
-                    //                     <TableCell>
-                    //                         {formatDate(occ.scheduled_date)}
-                    //                     </TableCell>
-                    //                     <TableCell>
-                    //                         <FormControl size='small' sx={{ width: 130 }}>
-                    //                             <Select
-                    //                                 value={occ.status}
-                    //                                 // set the color of select based on status
-                    //                                 sx={{
-                    //                                     height: 32,
-                    //                                     borderRadius: 2,
-                    //                                     bgcolor: getStatusColor(occ.status), // 20 for 12% opacity
-                    //                                     // color: getStatusColor(occurrence.status),
-                    //                                     // '& .MuiSvgIcon-root': {
-                    //                                     //     color: getStatusColor(occurrence.status),
-                    //                                     // },
-                    //                                 }}
-                    //                                 onChange={async (e) => {
-                    //                                     const newStatus = e.target.value;
-                    //                                     try {
-                    //                                         const res = await updateTaskOccurrenceStatus(occ.id, newStatus);
-                    //                                         showSnackbar(res.message, 'success');
-                    //                                         // Update local state
-                    //                                         setOccurrences((prev) =>
-                    //                                             prev.map((o) =>
-                    //                                                 o.id === occ.id ? { ...o, status: newStatus } : o
-                    //                                             )
-                    //                                         );
-                    //                                     } catch (err) {
-                    //                                         console.error('Error updating task occurrence status:', err);
-                    //                                         showSnackbar(err.message, 'error');
-                    //                                     }
-                    //                                 }}
-                    //                             >
-                    //                                 {taskStatusFilter.map((statusOption) => (
-                    //                                     <MenuItem key={statusOption.value} value={statusOption.value}>
-                    //                                         {statusOption.label}
-                    //                                     </MenuItem>
-                    //                                 ))}
-                    //                             </Select>
-                    //                         </FormControl>
-
-                    //                     </TableCell>
-                    //                     <TableCell>
-                    //                         {occ.proofs?.file_urls?.length > 0 ? (
-                    //                             <Box sx={{ display: "flex", gap: 0.5 }}>
-                    //                                 {occ.proofs.file_urls.map((url, index) => (
-                    //                                     <Box
-                    //                                         key={index}
-                    //                                         component="img"
-                    //                                         src={url}
-                    //                                         alt={`completion-${index}`}
-                    //                                         onClick={() => {
-                    //                                             setSelectedImage(url);
-                    //                                             setOpenImage(true);
-                    //                                         }}
-                    //                                         sx={{
-                    //                                             width: 40,
-                    //                                             height: 40,
-                    //                                             borderRadius: 1,
-                    //                                             objectFit: "cover",
-                    //                                             cursor: "pointer",
-                    //                                             border: `1px solid ${palette.divider}`,
-                    //                                         }}
-                    //                                     />
-                    //                                 ))}
-                    //                             </Box>
-                    //                         ) : (
-                    //                             <Typography variant="body2" color="text.secondary">
-                    //                                 —
-                    //                             </Typography>
-                    //                         )}
-                    //                     </TableCell>
-                    //                     <TableCell>
-                    //                         {/* Edit button to open TaskCompletionTabs for updating images and quantity */}
-                    //                         <IconButton
-                    //                             onClick={() => {
-                    //                                 const taskForCompletion = {
-                    //                                     ...task,
-                    //                                     id: occ.id,
-                    //                                     status: occ.status,
-                    //                                     scheduled_date: occ.scheduled_date,
-                    //                                     is_photo_required: task.requires_photo,
-                    //                                     update_inventory: task.allows_inventory_update,
-                    //                                     inventory_id: task.inventory?.id,
-                    //                                     inventory_name: task.inventory?.name,
-                    //                                     inventory_unit: task.inventory?.unit,
-                    //                                     inventory_quantity: task.inventory?.quantity,
-                    //                                     completion_images: occ.proofs?.file_names || [],
-                    //                                     completion_image_urls: occ.proofs?.file_urls || [],
-                    //                                 };
-                    //                                 setPendingTask(taskForCompletion);
-                    //                                 setActiveTab(0);
-                    //                                 setOpenCompletionDialog(true);
-                    //                                 setSelectedTaskOccurrence(occ);
-                    //                             }}
-                    //                         //disabled={occ.status === 'completed'}
-                    //                         >
-                    //                             <Edit fontSize="small" />
-                    //                         </IconButton>
-
-
-
-
-                    //                     </TableCell>
-                    //                 </TableRow>
-                    //             ))}
-                    //         </TableBody>
-                    //     </Table>
-                    // </TableContainer>
-                    // use card layout instead of table for occurrences for better mobile responsiveness
                     <Stack direction="column" gap={2}>
                         {occurrences.map((occ) => (
                             <Card
@@ -537,73 +408,11 @@ const TaskDetails = () => {
                                 }}
                             >
                                 <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {/* Row 1: date + edit icon */}
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="body2">
+                                        <Typography variant="body1">
                                             {formatDate(occ.scheduled_date)}
                                         </Typography>
-                                        <FormControl size='small' sx={{ width: 130 }}>
-                                            <Select
-                                                value={occ.status}
-                                                sx={{
-                                                    height: 22,
-                                                    borderRadius: 20,
-                                                    bgcolor: getStatusColor(occ.status),
-                                                }}
-                                                onChange={async (e) => {
-                                                    const newStatus = e.target.value;
-                                                    try {
-                                                        const res = await updateTaskOccurrenceStatus(occ.id, newStatus);
-                                                        showSnackbar(res.message, 'success');
-                                                        // Update local state
-                                                        setOccurrences((prev) =>
-                                                            prev.map((o) =>
-                                                                o.id === occ.id ? { ...o, status: newStatus } : o
-                                                            )
-                                                        );
-                                                    } catch (err) {
-                                                        console.error('Error updating task occurrence status:', err);
-                                                        showSnackbar(err.message, 'error');
-                                                    }
-                                                }}
-                                            >
-                                                {taskStatusFilter.map((statusOption) => (
-                                                    <MenuItem key={statusOption.value} value={statusOption.value}>
-                                                        {statusOption.label}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </Stack>
-                                    <Stack direction="row" gap={1} alignItems="center" justifyContent="space-between">
-                                        {occ.proofs?.file_urls?.length > 0 ? (
-                                            <Box sx={{ display: "flex", gap: 2 }}>
-                                                {occ.proofs.file_urls.map((url, index) => (
-                                                    <Box
-                                                        key={index}
-                                                        component="img"
-                                                        src={url}
-                                                        alt={`completion-${index}`}
-                                                        onClick={() => {
-                                                            setSelectedImage(url);
-                                                            setOpenImage(true);
-                                                        }}
-                                                        sx={{
-                                                            width: {xs: 40, sm: 60},
-                                                            height: {xs: 40, sm: 60},
-                                                            borderRadius: 1,
-                                                            objectFit: "cover",
-                                                            cursor: "pointer",
-                                                            border: `1px solid ${palette.divider}`,
-                                                        }}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                No proof images
-                                            </Typography>
-                                        )}
-
                                         <IconButton
                                             onClick={() => {
                                                 const taskForCompletion = {
@@ -625,10 +434,76 @@ const TaskDetails = () => {
                                                 setOpenCompletionDialog(true);
                                                 setSelectedTaskOccurrence(occ);
                                             }}
-                                        //disabled={occ.status === 'completed'}
                                         >
                                             <Edit fontSize="small" />
                                         </IconButton>
+                                    </Stack>
+                                    {/* Row 2: images + status */}
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        {occ.proofs?.file_urls?.length > 0 ? (
+                                            <Box sx={{ display: "flex", gap: 2, flexWrap: 'wrap' }}>
+                                                {occ.proofs.file_urls.map((url, index) => (
+                                                    <Box
+                                                        key={index}
+                                                        component="img"
+                                                        src={url}
+                                                        alt={`completion-${index}`}
+                                                        onClick={() => {
+                                                            setSelectedImage(url);
+                                                            setOpenImage(true);
+                                                        }}
+                                                        sx={{
+                                                            width: { xs: 40, sm: 60 },
+                                                            height: { xs: 40, sm: 60 },
+                                                            borderRadius: 1,
+                                                            objectFit: "cover",
+                                                            cursor: "pointer",
+                                                            border: `1px solid ${palette.divider}`,
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                No proof images
+                                            </Typography>
+                                        )}
+                                        <FormControl size='small' sx={{ width: 130 }}>
+                                            <Select
+                                                value={occ.status}
+                                                size="small"
+                                                sx={{
+                                                    height: 32,
+                                                    borderRadius: 2,
+                                                    bgcolor: getStatusColor(occ.status),
+                                                    color: '#000',
+                                                    '& .MuiSelect-icon': {
+                                                        color: '#000',
+                                                    },
+                                                }}
+                                                onChange={async (e) => {
+                                                    const newStatus = e.target.value;
+                                                    try {
+                                                        const res = await updateTaskOccurrenceStatus(occ.id, newStatus);
+                                                        showSnackbar(res.message, 'success');
+                                                        setOccurrences((prev) =>
+                                                            prev.map((o) =>
+                                                                o.id === occ.id ? { ...o, status: newStatus } : o
+                                                            )
+                                                        );
+                                                    } catch (err) {
+                                                        console.error('Error updating task occurrence status:', err);
+                                                        showSnackbar(err.message, 'error');
+                                                    }
+                                                }}
+                                            >
+                                                {taskStatusFilter.map((statusOption) => (
+                                                    <MenuItem key={statusOption.value} value={statusOption.value}>
+                                                        {statusOption.label}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
                                     </Stack>
                                 </CardContent>
                             </Card>

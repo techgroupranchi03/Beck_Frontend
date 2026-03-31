@@ -315,12 +315,11 @@ const PropertyManagement = () => {
           </Grid>
         )}
 
-        {/* Infinite scroll observer target */}
+        {/* Infinite scroll observer target  need property card skeleton here */}
         <div ref={observerTarget} style={{ height: 1 }} />
         {isLoadingMore && (
-          <Stack alignItems="center" py={2}>
-            <CircularProgress size={28} />
-          </Stack>
+         <PropertyCardSkeleton count={3} />
+
         )}
 
         <ConfirmationDialog

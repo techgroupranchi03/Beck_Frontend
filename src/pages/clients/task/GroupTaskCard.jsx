@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
 import {
     Card,
     CardContent,
@@ -40,10 +41,7 @@ export const GroupTaskCard = ({ task, onMenuClick }) => {
         const taskToView = task || selectedTask;
         if (!taskToView) return;
         const basePath = location.pathname.startsWith('/teams') ? '/teams' : '/clients';
-        const groupSlug = (taskToView.name || taskToView.title).toLowerCase().replace(/\s+/g, '-');
-        navigate(`${basePath}/task-management/group/${groupSlug}`, {
-            state: { groupId: taskToView.id },
-        });
+        navigate(`${basePath}/task-management/group/${taskToView.id}`);
     };
 
 return (

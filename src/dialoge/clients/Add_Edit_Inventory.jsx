@@ -17,6 +17,8 @@ import {
   useTheme,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import QuantityInput from '../../resuable_components/QuantityInput';
+import { units } from '../../constant';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -40,6 +42,7 @@ export default function Add_Edit_Inventory({
     assigned_team_id: "",
     quantity: "",
     unit: "",
+    container_type: "",
     expiry_date: "",
     check_frequency: "",
   });
@@ -53,6 +56,7 @@ export default function Add_Edit_Inventory({
         assigned_team_id: inventoryItem.assigned_team_id || "",
         quantity: inventoryItem.quantity || "",
         unit: inventoryItem.unit || "",
+        container_type: inventoryItem.container_type || "",
         expiry_date: inventoryItem.expiry_date || "",
         check_frequency: inventoryItem.check_frequency || "",
       });
@@ -64,6 +68,7 @@ export default function Add_Edit_Inventory({
         assigned_team_id: "",
         quantity: "",
         unit: "",
+        container_type: "",
         expiry_date: "",
         check_frequency: "",
       });
@@ -72,7 +77,19 @@ export default function Add_Edit_Inventory({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      // Reset container_type when unit changes
+      if (name === 'unit' && value !== 'container') {
+        updated.container_type = '';
+      }
+      // Reset quantity when unit changes to container
+      if (name === 'unit' && value === 'container') {
+        updated.quantity = '';
+        updated.container_type = '';
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = () => {
@@ -100,6 +117,7 @@ export default function Add_Edit_Inventory({
       assigned_team_id: "",
       quantity: "",
       unit: "",
+      container_type: "",
       expiry_date: "",
       check_frequency: "",
     });
@@ -217,30 +235,33 @@ export default function Add_Edit_Inventory({
             </FormControl>
           </Grid>
 
-          {/* Quantity */}
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              name="quantity"
-              label="Quantity"
-              type="number"
-              size="small"
-              fullWidth
-              value={formData.quantity}
-              onChange={handleChange}
-              required
-            />
-          </Grid>
-
           {/* Unit */}
           <Grid size={{ xs: 12 , sm: 6 }}>
-            <TextField
-              name="unit"
-              label="Unit (e.g. pcs, liters)"
-              size="small"
-              fullWidth
-              value={formData.unit}
-              onChange={handleChange}
-              required
+            <FormControl fullWidth size="small">
+              <InputLabel>Unit</InputLabel>
+              <Select
+                name="unit"
+                value={formData.unit}
+                onChange={handleChange}
+                label="Unit"
+                required
+              >
+                {units.map((u) => (
+                  <MenuItem key={u.value} value={u.value}>{u.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Quantity */}
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <QuantityInput
+              unit={formData.unit}
+              value={formData.quantity}
+              onChange={(val) => setFormData(prev => ({ ...prev, quantity: val }))}
+              label="Quantity"
+              containerType={formData.container_type}
+              onContainerTypeChange={(val) => setFormData(prev => ({ ...prev, container_type: val, quantity: '' }))}
             />
           </Grid>
 

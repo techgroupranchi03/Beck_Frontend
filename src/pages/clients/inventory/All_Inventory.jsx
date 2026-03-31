@@ -16,6 +16,7 @@ import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import Task_Accordian from './Task_Accordian';
 import PropertyDisplay from '../../../resuable_components/PropertyDisplay';
+import QuantityInput from '../../../resuable_components/QuantityInput';
 import { categories, categoriess } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
 
@@ -561,58 +562,23 @@ const All_Inventory = () => {
     {
       accessorKey: 'quantity',
       header: 'Quantity',
-      size: 120,
-      muiEditTextFieldProps: ({ row, table }) => {
+      size: 220,
+      Edit: ({ row, table }) => {
         const rowId = row?.id || 'creating';
         const currentUnit = selectedUnit[rowId] || row?.original?.unit || '';
-        const isContainer = currentUnit.toLowerCase() === 'container';
+        const currentValue = row._valuesCache?.quantity ?? row.original?.quantity ?? '';
 
-        if (isContainer && Array.isArray(containerOptions)) {
-          return {
-            select: true,
-            required: true,
-            error: !!validationErrors?.quantity,
-            helperText: validationErrors?.quantity,
-            SelectProps: {
-              displayEmpty: true,
-            },
-            children: [
-              <MenuItem key="empty-placeholder" value="">
-                <em>Select Level</em>
-              </MenuItem>,
-              ...containerOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))
-            ],
-            onFocus: () =>
-              setValidationErrors({
-                ...validationErrors,
-                quantity: undefined,
-              }),
-          };
-        }
-
-        const isPiece = currentUnit.toLowerCase() === 'piece';
-        const isKgOrLiters = currentUnit.toLowerCase() === 'kg' || currentUnit.toLowerCase() === 'liters' || currentUnit.toLowerCase() === 'l';
-
-        return {
-          type: 'number',
-          required: true,
-          error: !!validationErrors?.quantity,
-          helperText: validationErrors?.quantity,
-          inputProps: {
-            min: 0,
-            max: 9999,
-            step: isPiece ? 1 : (isKgOrLiters ? 0.1 : 0.01),
-          },
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              quantity: undefined,
-            }),
-        };
+        return (
+          <QuantityInput
+            unit={currentUnit}
+            value={currentValue}
+            onChange={(val) => {
+              row._valuesCache.quantity = val;
+            }}
+            size="small"
+            showQuickFill={currentUnit.toLowerCase() !== 'container'}
+          />
+        );
       },
     },
 

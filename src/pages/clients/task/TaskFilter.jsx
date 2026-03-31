@@ -13,7 +13,7 @@ import { taskStatusFilter, scheduleTypeOptions} from "../../../constant";
 import { useTaskContext } from "./TaskManagement";
 
 const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
-    // const [AssignTo, setAssignTo] = useState([]);
+    const [AssignTo, setAssignTo] = useState([]);
     const [selectedProperty, setSelectedProperty] = useState([]);
     // const [Status, setStatus] = useState([]);
     const [isFilter, setIsFilter] = useState(false);
@@ -27,10 +27,10 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
     } = useTaskContext();
 
     useEffect(() => {
-        // if (initialFilters.assigned_to > 0) {
-        //     setAssignTo(Array.isArray(initialFilters.assigned_to) ? initialFilters.assigned_to : [initialFilters.assigned_to]);
-        //     setIsFilter(true);
-        // }
+        if (initialFilters.assigned_to?.length > 0) {
+            setAssignTo(Array.isArray(initialFilters.assigned_to) ? initialFilters.assigned_to : [initialFilters.assigned_to]);
+            setIsFilter(true);
+        }
         // if (initialFilters.status > 0) {
         //     setStatus(Array.isArray(initialFilters.status) ? initialFilters.status : [initialFilters.status]);
         //     setIsFilter(true);
@@ -47,7 +47,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
 
     const handleFilterApply = () => {
         const filters = {
-            // assigned_to: AssignTo,
+            assigned_to: AssignTo,
             // status: Status,
             property_id: selectedProperty,
             schedule_type: ScheduleType,
@@ -58,12 +58,12 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
     };
 
     const handleClearFilters = () => {
-        // setAssignTo([]);
+        setAssignTo([]);
         // setStatus([]);
         setSelectedProperty([]);
         setScheduleType([]);
         setIsFilter(false);
-        onApplyFilters({ property_id: [], schedule_type: [] });
+        onApplyFilters({ assigned_to: [], property_id: [], schedule_type: [] });
     };
 
     const handleClose = () => {
@@ -116,7 +116,7 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                     sx={{ mb: 3 }}
                 />
 
-                {/* <Autocomplete
+                <Autocomplete
                     size="small"
                     multiple
                     limitTags={2}
@@ -127,10 +127,10 @@ const TaskFilter = ({ open, onClose, onApplyFilters, initialFilters = {} }) => {
                     options={teamMembers}
                     getOptionLabel={(option) => option.name || ""}
                     renderInput={(params) => (
-                        <TextField {...params} label="Assign To" />
+                        <TextField {...params} label="Assigned To" placeholder="Select members" />
                     )}
                     sx={{ mb: 3 }}
-                /> */}
+                />
 
                 <Autocomplete
                     size="small"

@@ -1,4 +1,5 @@
 import React, { use, useEffect, useMemo, useState, useRef, useCallback } from "react";
+
 import {
     Box,
     Container,
@@ -25,7 +26,9 @@ import {
     CircularProgress,
     Switch,
     FormControlLabel,
-    Icon
+    Icon,
+    Tabs,
+    Tab
 } from "@mui/material";
 import {
     Business,
@@ -43,7 +46,8 @@ import {
     AssignmentTurnedIn,
     CameraAlt,
     FileCopy,
-    OpenInNew
+    OpenInNew,
+    Inventory
 } from "@mui/icons-material";
 import ViewMoreText from "../../../resuable_components/ViewMore.jsx";
 import ImageViewer from "../../../resuable_components/ImageViewer.jsx";
@@ -86,6 +90,10 @@ export const Tile_View_task = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [openConfirm, setOpenConfirm] = useState(false);
+    const [taskTypeTab, setTaskTypeTab] = useState(() => {
+        const saved = localStorage.getItem('taskTypeTabIndex');
+        return saved ? Number(saved) : 0;
+    });
     const isFetchingRef = useRef(false);
     const searchDebounceRef = useRef(null);
 
@@ -95,6 +103,7 @@ export const Tile_View_task = () => {
         const val = filters[key];
         return Array.isArray(val) ? val.length > 0 : val;
     });
+
     useEffect(() => {
         if (isMobile) {
             registerActions({
@@ -116,28 +125,34 @@ export const Tile_View_task = () => {
         properties
     } = useTaskContext();
 
+    console.log("All Tasks Data:", allTasksData);
+
     // view details 
     const handleViewDetails = (task) => {
         const taskToView = task || selectedTask;
         if (!taskToView) return;
         const basePath = location.pathname.startsWith('/teams') ? '/teams' : '/clients';
 
-        const taskSlug = taskToView.title.toLowerCase().replace(/\s+/g, '-');
-        navigate(`${basePath}/task-management/task/${taskSlug}`, {
-            state: { taskId: taskToView.id },
-        });
+        navigate(`${basePath}/task-management/task/${taskToView.id}`);
     };
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [filters, searchText]);
+    }, [filters, searchText, taskTypeTab]);
+
+    const handleTaskTypeTabChange = (event, newValue) => {
+        setTaskTypeTab(newValue);
+        localStorage.setItem('taskTypeTabIndex', newValue);
+    };
 
     const tasksToRender = useMemo(() => {
         if (!allTasksData) return [];
         const groupTasks = (allTasksData.group_task || []).map(g => ({ ...g, is_task_group: true }));
         const tasks = allTasksData.tasks || [];
+        if (taskTypeTab === 1) return groupTasks;
+        if (taskTypeTab === 2) return tasks;
         return [...groupTasks, ...tasks];
-    }, [allTasksData]);
+    }, [allTasksData, taskTypeTab]);
 
     const loadMoreTasks = useCallback(async () => {
         if (!allTaskPagination?.hasNextPage || isLoadingMore || loading || isFetchingRef.current) return;
@@ -146,7 +161,7 @@ export const Tile_View_task = () => {
         setIsLoadingMore(true);
         const nextPage = currentPage + 1;
         try {
-            await fetchAllTasks(filters, searchText, nextPage, true, 5);
+            await fetchAllTasks(filters, searchText, nextPage, true, 10);
             setCurrentPage(nextPage);
         } catch (error) {
             console.error("Error loading more tasks:", error);
@@ -374,7 +389,7 @@ export const Tile_View_task = () => {
     };
 
     return (
-        <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 2, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
+        <Container maxWidth={viewMode === 'center' ? 'md' : 'mx'} sx={{ mt: 0, px: viewMode === 'center' ? { xs: 2, sm: 3, md: 4 } : 0 }}>
 
             <Box display="flex" justifyContent={isMobile ? "flex-end" : "space-between"} alignItems="center" mb={2}>
 
@@ -436,6 +451,7 @@ export const Tile_View_task = () => {
                     >
                         <FilterList />
                     </IconButton>
+
                     <IconButton
                         onClick={() => setIsSearchVisible((prev) => !prev)}
                         sx={{
@@ -446,6 +462,7 @@ export const Tile_View_task = () => {
                     >
                         {isSearchVisible ? <SearchOff /> : <Search />}
                     </IconButton>
+
                 </Stack>
             </Box>
 
@@ -480,7 +497,7 @@ export const Tile_View_task = () => {
                     variant="outlined"
                     placeholder="Search tasks..."
                     size="small"
-                    focused
+                    autoFocus
                     value={searchText}
                     onChange={(e) => handleSearch(e.target.value)}
                     InputProps={{
@@ -532,7 +549,25 @@ export const Tile_View_task = () => {
                 initialFilters={filters}
             />
 
-            <Divider sx={{ my: 2 , display : {xs : 'none' , sm : 'block'}}} />
+            <Tabs
+                value={taskTypeTab}
+                onChange={handleTaskTypeTabChange}
+                sx={{
+                    minHeight: 36,
+                    '& .MuiTab-root': {
+                        textTransform: 'none',
+                        minHeight: 36,
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                    },
+                }}
+            >
+                <Tab label="All" />
+                <Tab label="Group" />
+                <Tab label="Individual" />
+            </Tabs>
+
+            <Divider sx={{ mb: 2, display: { xs: 'block', sm: 'block' } }} />
 
             {/* show skeleton when loading intial data  */}
             {loading && tasksToRender.length === 0 && (
@@ -687,7 +722,7 @@ export const Tile_View_task = () => {
                                         <Stack direction="row" flexWrap="wrap" gap={1} mt={1} >
                                             <IconLabel
                                                 icon={Person}
-                                                label={task.assigned_to?.name || '-'}
+                                                label={task.assigned_to?.name || 'Myself'}
                                             />
 
                                             {task.property && (
@@ -696,6 +731,14 @@ export const Tile_View_task = () => {
                                                     label={task.property.name}
                                                 />
                                             )}
+
+                                            {task.inventory_details && (
+                                                <IconLabel
+                                                    icon={Inventory}
+                                                    label={task.inventory_details.name}
+                                                />
+                                            )}
+
                                         </Stack>
 
                                         <Stack direction="row" spacing={1} mt="auto" pt={1} alignItems="center"
@@ -728,6 +771,29 @@ export const Tile_View_task = () => {
 
                                         </Stack>
 
+                                        {(task.last_occurrence || task.next_occurrence) && (
+                                            <Stack direction="row" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 1, }} alignItems="center">
+                                                {task.last_occurrence && (
+                                                    <Chip
+                                                        label={`Last: ${formatDate(task.last_occurrence.date)}${task.last_occurrence.status === 'completed' || task.last_occurrence.status === 'skipped' ? '' : ' (Pending)'}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color={task.last_occurrence.status === 'completed' ? 'success' : task.last_occurrence.status === 'skipped' ? 'default' : 'warning'}
+                                                        sx={{fontSize: { xs: '0.7rem', sm: '0.8rem' }}}
+                                                    />
+                                                )}
+                                                {task.next_occurrence && (
+                                                    <Chip
+                                                        label={`Next: ${formatDate(task.next_occurrence.date)}${task.next_occurrence.date === new Date().toISOString().slice(0, 10) ? ' (Today)' : ''}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="info"
+                                                        sx={{fontSize: { xs: '0.7rem', sm: '0.8rem' }}}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        )}
+
                                     </CardContent>
                                 </Card>
                             )}
@@ -739,18 +805,25 @@ export const Tile_View_task = () => {
             <div ref={observerTarget} style={{ height: '10px' }}></div>
 
             {isLoadingMore && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                    <CircularProgress size={24} />
-                </Box>
+                <TaskCardSkeleton count={3} viewMode={viewMode} />
             )}
 
-            {allTaskPagination && tasksToRender.length > 8 && (
+            {/* give the message no more tasks to load  */}
+                {!allTaskPagination?.hasNextPage && tasksToRender.length > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            No more tasks to load.
+                        </Typography>
+                    </Box>
+                )}
+
+            {/* {allTaskPagination && tasksToRender.length > 8 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                         Page {allTaskPagination.page} of {allTaskPagination.totalPages}  • Total: {allTaskPagination.total}
                     </Typography>
                 </Box>
-            )}
+            )} */}
 
             <Menu
                 anchorEl={anchorEl}

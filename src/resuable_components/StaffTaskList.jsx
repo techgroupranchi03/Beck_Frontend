@@ -4,7 +4,7 @@ import {
     List, ListItem, ListItemIcon, ListItemText, Chip, Tabs, Tab,
     CircularProgress, useTheme
 } from '@mui/material';
-import { TaskAlt, PendingActions, Schedule, PlayArrow } from '@mui/icons-material';
+import { TaskAlt, PendingActions, Schedule, PlayArrow, Assessment, Assignment, LocationOnOutlined, AssignmentLate, AssignmentLateOutlined } from '@mui/icons-material';
 
 const statusConfig = {
     completed: { color: 'success', icon: <TaskAlt sx={{ fontSize: 20 }} />, label: 'Completed' },
@@ -48,6 +48,8 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
         setTodayLoading(false);
     }, [fetchTodayTasks, todayLoading]);
 
+    console.log('loadTodayTasks', todayTasks);
+
     const loadPendingTasks = useCallback(async (pageNum) => {
         if (pendingLoading) return;
         setPendingLoading(true);
@@ -87,20 +89,24 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
         const cfg = statusConfig[task.status] || statusConfig.pending;
         return (
             <ListItem key={task.id} sx={{ px: 0, py: 1, alignItems: 'flex-start' }}>
-                <ListItemIcon sx={{ minWidth: 36, mt: 0.5, color: `${cfg.color}.main` }}>
-                    {cfg.icon}
+                <ListItemIcon sx={{ minWidth: 36, mt: 0.5, color: `${cfg.color}.main`, alignSelf: 'center' }}>
+                    <Assignment sx={{ fontSize: 20 }} />
                 </ListItemIcon>
                 <ListItemText
-                    primary={<Typography variant="body2" fontWeight={600}>{task.task_title}</Typography>}
+                    primary={
+                        <Typography variant="body1" sx={{ mb: 0.3, textTransform: 'capitalize' }}>
+                            {task.task_title}
+                        </Typography>}
                     secondary={
                         <Box component="span">
-                            <Typography variant="caption" color="text.secondary" display="block">
-                                {task.property_name && `📍 ${task.property_name}`}
-                                {task.group_name && ` • 📂 ${task.group_name}`}
+                            <Typography variant="body2" color="text.secondary"
+                                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <LocationOnOutlined sx={{ fontSize: 16 }} />
+                                {task.property_name && `${task.property_name}`}
                             </Typography>
                             {showOverdue && task.days_overdue > 0 && (
-                                <Typography variant="caption" color="error.main" fontWeight={500}>
-                                    ⚠ {task.days_overdue} day{task.days_overdue > 1 ? 's' : ''} overdue
+                                <Typography variant="caption" color="error.main" sx={{ ml: 0.5 }}>
+                                    {task.days_overdue} day{task.days_overdue > 1 ? 's' : ''} overdue
                                 </Typography>
                             )}
                         </Box>
@@ -108,10 +114,11 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                 />
                 <Chip
                     label={cfg.label} size="small"
-                    sx={{ 
+                    sx={{
+                        display: 'flex', alignSelf: 'center',
                         bgcolor: theme.palette.taskStatus[task.status] || 'default',
                         color: theme.palette.getContrastText(theme.palette.taskStatus[task.status] || theme.palette.background.paper),
-                        fontWeight: 600, textTransform: 'capitalize', mt: 0.5 
+                        textTransform: 'capitalize', fontSize: '0.75rem', height: 24,mr: 1
                     }}
                 />
             </ListItem>
@@ -122,7 +129,7 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
         <Card elevation={0} sx={{
             border: '1px solid', borderColor: 'divider', borderRadius: 2,
             height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
+            // transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
         }}>
             <CardHeader
                 title={<Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>My Tasks</Typography>}
@@ -131,7 +138,8 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
 
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2 }} variant="fullWidth">
                 <Tab
-                    label={<Box display="flex" alignItems="center" gap={0.5}>
+                    label={
+                    <Box display="flex" alignItems="center" gap={0.5}>
                         <TaskAlt sx={{ fontSize: 18 }} />
                         <span>Today ({todayTotal})</span>
                     </Box>}
@@ -139,7 +147,7 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                 />
                 <Tab
                     label={<Box display="flex" alignItems="center" gap={0.5}>
-                        <PendingActions sx={{ fontSize: 18, color: pendingTotal > 0 ? 'error.main' : 'inherit' }} />
+                        <AssignmentLateOutlined sx={{ fontSize: 18, color: 'error.main' }} />
                         <span>Overdue ({pendingTotal})</span>
                     </Box>}
                     sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
@@ -153,12 +161,16 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                     todayTasks.length === 0 && !todayLoading ? (
                         <Box display="flex" alignItems="center" justifyContent="center" minHeight={100}>
                             <Typography variant="body1" color="text.secondary">
-                                🎉 No tasks scheduled for today
+                                No tasks scheduled for today
                             </Typography>
                         </Box>
                     ) : (
                         <Box ref={todayScrollRef} onScroll={handleTodayScroll}
-                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5 }}>
+                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5,
+                                '&::-webkit-scrollbar': { width: 8 },
+                                '&::-webkit-scrollbar-track': { bgcolor: theme.palette.background.default, borderRadius: 3 },
+                                '&::-webkit-scrollbar-thumb': { bgcolor: theme.palette.primary.main, borderRadius: 3 },
+                            }}>
                             <List dense sx={{ p: 0 }}>
                                 {todayTasks.map((task) => renderTaskItem(task, false))}
                             </List>
@@ -176,12 +188,16 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                     pendingTasks.length === 0 && !pendingLoading ? (
                         <Box display="flex" alignItems="center" justifyContent="center" minHeight={100}>
                             <Typography variant="body1" color="text.secondary">
-                                ✅ No overdue tasks
+                                No overdue tasks
                             </Typography>
                         </Box>
                     ) : (
                         <Box ref={pendingScrollRef} onScroll={handlePendingScroll}
-                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5 }}>
+                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5,
+                                '&::-webkit-scrollbar': { width: 8 },
+                                '&::-webkit-scrollbar-track': { bgcolor: theme.palette.background.default, borderRadius: 3 },
+                                '&::-webkit-scrollbar-thumb': { bgcolor: theme.palette.primary.main, borderRadius: 3 },
+                            }}>
                             <List dense sx={{ p: 0 }}>
                                 {pendingTasks.map((task) => renderTaskItem(task, true))}
                             </List>

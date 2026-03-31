@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+
 import {
     Box,
     Card,
@@ -86,7 +87,8 @@ const GroupTaskDetails = () => {
     console.log('Current Group Task Data:', groupTaskData);
 
 
-    const groupId = location.state?.groupId;
+    const { groupId: paramGroupId } = useParams();
+    const groupId = location.state?.groupId || Number(paramGroupId);
 
     // Initial fetch of group tasks
     useEffect(() => {

@@ -14,7 +14,7 @@ import {
     Chip,
     CircularProgress,
 } from "@mui/material";
-import { Logout, Business, CheckCircle, Person, Palette } from "@mui/icons-material";
+import { Logout, Business, CheckCircle, Person, Palette, Settings } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getAvailableTeamsAccounts, switchTeamAccount } from "../service/Teams/SelectAccount.js";
@@ -66,9 +66,10 @@ export default function ProfileMenu() {
         setAnchorEl(null);
     };
 
-    const handleThemeSettings = () => {
+    const handleSettings = () => {
         setAnchorEl(null);
-        navigate('themeSetting');
+        // Small delay to let the menu close before navigating
+        setTimeout(() => navigate('settings'), 150);
     };
 
     const handleSwitchAccount = async (clientId) => {
@@ -116,7 +117,7 @@ export default function ProfileMenu() {
     return (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 0 }}>
             {/* Theme Toggle Button */}
-            <ThemeToggleButton />
+            {/* <ThemeToggleButton /> */}
 
             {/* Profile button to open menu */}
             <Box
@@ -311,38 +312,63 @@ export default function ProfileMenu() {
                         <Divider sx={{ my: 1 }} />
                     </>
                 )}
-                
-                {/* Theme Settings Menu Item */}
-                <MenuItem onClick={handleThemeSettings}>
-                    <ListItemIcon>
-                        <Palette fontSize="small" sx={{ color: theme.palette.primary.main }} />
-                    </ListItemIcon>
-                    <ListItemText 
+
+                {/* Settings Menu Item */}
+                <MenuItem
+                    onClick={handleSettings}
+                    sx={{
+                        boxShadow: `0px 1px 0px ${theme.palette.divider}`,
+                    }}
+                >
+
+                    <ListItemText
                         primary={
                             <Typography variant="body2" fontWeight={500}>
-                                Theme Settings
+                                Settings
                             </Typography>
                         }
                         secondary={
                             <Typography variant="caption" color="text.secondary">
-                                Customize colors
+                                Account & Preferences
                             </Typography>
                         }
                     />
+
+                    <ListItemIcon>
+                        <Settings fontSize="small" sx={{ color: theme.palette.primary.main }} />
+                    </ListItemIcon>
+
                 </MenuItem>
 
-                <Divider sx={{ my: 1 }} />
+                {/* Theme Toggle Button */}
+                <MenuItem
+                    sx={{
+                        boxShadow: `0px 1px 0px ${theme.palette.divider}`,
+                    }}>
+                    <ListItemText
+                        primary={
+                            <Typography variant="body2">
+                                switch to {theme.palette.mode === "light" ? "dark" : "light"} mode
+                            </Typography>
+                        }
+                    />
+                    <ThemeToggleButton />
+                </MenuItem>
 
                 <Button
-                    variant="contained"
+                    variant="text"
                     fullWidth
                     onClick={handleLogout}
                     disabled={switchingAccount}
                     startIcon={<Logout />}
                     disableElevation
                     sx={{
-                        borderRadius: 10,
-                        bgcolor: theme.palette.primary.main,
+                        // borderRadius: 10,
+                        //bgcolor: theme.palette.primary.main,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: theme.palette.error.main,
+                        textTransform: 'none',
                         elevation: 0,
                         '&:hover': {
                             bgcolor: theme.palette.secondary.main

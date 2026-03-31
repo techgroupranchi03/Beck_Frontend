@@ -248,7 +248,7 @@ export const getAllClientTasks = async (filters = {}, searchText = "", page = 1,
     const token = getClientToken();
     try {
         const params = { page, limit };
-        //if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.assigned_to?.length) params.assigned_to = filters.assigned_to;
         if (filters.property_id) params.property_id = filters.property_id;
         // if (filters.status) params.status = filters.status;
         if (filters.schedule_type) params.schedule_type = filters.schedule_type;

@@ -9,9 +9,10 @@ export const getAllTeamTasks = async (filters = {}, searchText = "", page = 1, l
     const token = getTeamToken();
     try {
         const params = { page, limit };
-        if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+        if (filters.assigned_to?.length) params.assigned_to = filters.assigned_to;
         if (filters.status) params.status = filters.status;
         if (filters.property_id) params.property_id = filters.property_id;
+        if (filters.schedule_type?.length) params.schedule_type = filters.schedule_type;
         if (searchText) params.search = searchText;
         const response = await axios.get(
             `${BASE_URL}/team/tasks`,

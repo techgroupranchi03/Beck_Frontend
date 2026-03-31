@@ -282,18 +282,18 @@ const ThemeSettings = () => {
     const [loading, setLoading] = useState(false);
     console.log('ThemeSettings user:', user);
     const isTeamUser = user?.role === 'team';
-    
-    const { 
-        selectedLightThemeId, 
+
+    const {
+        selectedLightThemeId,
         selectedDarkThemeId,
         setSelectedLightThemeId,
         setSelectedDarkThemeId,
-        syncUserTheme, 
-        presetThemes, 
-        customThemes, 
-        themesLoading, 
-        mode, 
-        reloadThemes 
+        syncUserTheme,
+        presetThemes,
+        customThemes,
+        themesLoading,
+        mode,
+        reloadThemes
     } = useThemeMode();
 
     // Custom theme state
@@ -548,12 +548,12 @@ const ThemeSettings = () => {
         () => [...presetThemes, ...(customThemes || [])],
         [presetThemes, customThemes]
     );
-    
+
     const lightThemes = useMemo(
         () => allThemes.filter(t => t.is_dark === 0),
         [allThemes]
     );
-    
+
     const darkThemes = useMemo(
         () => allThemes.filter(t => t.is_dark === 1),
         [allThemes]
@@ -885,7 +885,7 @@ const ThemeSettings = () => {
                     </Stack>
                 </Paper>
             )}
-            
+
         </Container>
     );
 };

@@ -7,9 +7,9 @@ const authHeaders = () => ({
     headers: { Authorization: `Bearer ${getTeamToken()}` }
 });
 
-export const getTeamDashboard = async () => {
+export const getTeamDashboard = async (days = 7) => {
     try {
-        const response = await axios.get(`${BASE_URL}/team/dashboard`, authHeaders());
+        const response = await axios.get(`${BASE_URL}/team/dashboard?days=${days}`, authHeaders());
         return response.data;
     } catch (error) {
         return Promise.reject(error.response?.data || { message: 'Failed to fetch dashboard' });

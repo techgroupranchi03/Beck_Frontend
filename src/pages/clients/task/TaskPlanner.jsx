@@ -807,7 +807,7 @@ const TaskPlanner = () => {
                                 <IconButton
                                     onClick={() => {
                                         const duplicatedData = { ...row.original };
-                                        delete duplicatedData.id; 
+                                        delete duplicatedData.id;
                                         const newCreatingRow = createRow(table, duplicatedData);
                                         table.setCreatingRow(newCreatingRow);
                                     }}

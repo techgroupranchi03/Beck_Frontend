@@ -2,11 +2,18 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Card, CardHeader, CardContent, Typography, Box, Divider,
     List, ListItem, ListItemIcon, ListItemText, Chip, Tabs, Tab,
-    CircularProgress, useTheme
+    CircularProgress, useTheme, IconButton,
+    Tooltip
 } from '@mui/material';
-import { TrendingDown, FiberNew, Inventory2 } from '@mui/icons-material';
+import { TrendingDown, FiberNew, Inventory2, AddShoppingCart, LocationCityOutlined, BusinessCenterOutlined, HomeWorkOutlined, Business, Inventory } from '@mui/icons-material';
+import { categoriess } from '../constant';
 
-const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
+const getCategoryIcon = (category) => {
+    const cat = categoriess.find(c => c.value === category);
+    return cat ? cat.icon : null;
+};
+
+const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory, onPurchaseTask }) => {
     const [tab, setTab] = useState(0);
     const theme = useTheme();
 
@@ -78,16 +85,14 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
 
     return (
         <Card elevation={0} sx={{
-            border: '1px solid',
-            borderColor: depTotal > 0 ? 'warning.main' : 'divider',
-            borderRadius: 2, height: '100%',
+            height: '100%',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
+            border: `1px solid ${theme.palette.divider}`, borderRadius: 2,
+            // transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
         }}>
             <CardHeader
                 title={
                     <Box display="flex" alignItems="center" gap={1}>
-                        <Inventory2 sx={{ color: 'warning.main', fontSize: 22 }} />
                         <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
                             Inventory Alerts
                         </Typography>
@@ -106,7 +111,7 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
                 />
                 <Tab
                     label={<Box display="flex" alignItems="center" gap={0.5}>
-                        <FiberNew sx={{ fontSize: 18 }} />
+                        <Inventory sx={{ fontSize: 18 }} />
                         <span>Newly Added ({newTotal})</span>
                     </Box>}
                     sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
@@ -123,7 +128,12 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
                         </Box>
                     ) : (
                         <Box ref={depScrollRef} onScroll={handleDepScroll}
-                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5 }}>
+                            sx={{
+                                maxHeight: 370, overflowY: 'auto', pr: 0.5,
+                                '&::-webkit-scrollbar': { width: 8 },
+                                '&::-webkit-scrollbar-track': { bgcolor: theme.palette.background.default, borderRadius: 3 },
+                                '&::-webkit-scrollbar-thumb': { bgcolor: theme.palette.primary.main, borderRadius: 3 },
+                            }}>
                             <List dense sx={{ p: 0 }}>
                                 {depleting.map((item) => (
                                     <ListItem key={item.id} sx={{ px: 0, py: 0.75 }}>
@@ -131,19 +141,44 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
                                             <TrendingDown sx={{ color: 'error.main', fontSize: 20 }} />
                                         </ListItemIcon>
                                         <ListItemText
-                                            primary={<Typography variant="body2" fontWeight={600}>{item.name}</Typography>}
+                                            primary={
+                                                <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
+                                                    {item.name}
+                                                </Typography>}
                                             secondary={
-                                                <Typography variant="caption" color="text.secondary">
-                                                    📍 {item.property_name} {item.category && `• ${item.category}`}
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                                                    <Business sx={{ fontSize: 14 }} />
+                                                    {item.property_name}
+                                                    {item.category && (() => {
+                                                        const CatIcon = getCategoryIcon(item.category);
+                                                        return <>
+                                                            {' • '}
+                                                            {CatIcon && <CatIcon sx={{ fontSize: 14 }} />}
+                                                            {item.category}
+                                                        </>;
+                                                    })()}
                                                 </Typography>
                                             }
                                         />
+                                        {onPurchaseTask && (
+                                            <Tooltip title="Create Purchase Task" placement="top" arrow>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => onPurchaseTask(item)}
+                                                    sx={{ mr: 0.5, color: 'primary.main' }}
+                                                >
+                                                    <AddShoppingCart sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
                                         <Chip
                                             label={`${item.quantity}${item.unit ? ` ${item.unit}` : ''}`}
                                             size="small"
                                             sx={{
-                                                bgcolor: parseInt(item.quantity) === 0 ? 'error.main' : 'warning.main',
-                                                color: 'common.white', fontWeight: 700, minWidth: 50
+                                                textTransform: 'capitalize',
+                                                bgcolor: parseInt(item.quantity) === 0 ? '#f00c0c' : '#ff9800',
+                                                color: theme.palette.getContrastText(parseInt(item.quantity) === 0 ? '#f00c0c' : '#ff9800'),
+                                                fontWeight: 700, minWidth: 50, height: 22
                                             }}
                                         />
                                     </ListItem>
@@ -174,18 +209,22 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory }) => {
                                             <FiberNew sx={{ color: 'success.main', fontSize: 20 }} />
                                         </ListItemIcon>
                                         <ListItemText
-                                            primary={<Typography variant="body2" fontWeight={600}>{item.name}</Typography>}
+                                            primary={
+                                                <Typography variant="body1" sx={{ textTransform: 'capitalize' }}>
+                                                    {item.name}
+                                                </Typography>}
                                             secondary={
                                                 <Typography variant="caption" color="text.secondary">
-                                                    📍 {item.property_name}
+                                                    <Business sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.3 }} />
+                                                    {item.property_name}
                                                     {` • Added ${new Date(item.created_at).toLocaleDateString()}`}
                                                 </Typography>
                                             }
                                         />
                                         <Chip
                                             label={`${item.quantity}${item.unit ? ` ${item.unit}` : ''}`}
-                                            size="small" color="success" variant="outlined"
-                                            sx={{ fontWeight: 600, minWidth: 50 }}
+                                            size="small" color="success" variant="contained"
+                                            sx={{ minWidth: 50, height: 22 }}
                                         />
                                     </ListItem>
                                 ))}

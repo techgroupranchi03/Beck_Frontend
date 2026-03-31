@@ -110,12 +110,10 @@ const GroupTasksList = ({
                                 <ViewMoreText text={task.description} limit={150} />
 
                                 <Stack direction="row" gap={1} mt={1} flexWrap="wrap">
-                                    {task.assigned_to && (
-                                        <IconLabel
-                                            icon={Person}
-                                            label={task.assigned_to.name || 'Unassigned'}
-                                        />
-                                    )}
+                                    <IconLabel
+                                        icon={Person}
+                                        label={task.assigned_to?.name || 'Myself'}
+                                    />
                                     {task.property && (
                                         <IconLabel
                                             icon={Business}

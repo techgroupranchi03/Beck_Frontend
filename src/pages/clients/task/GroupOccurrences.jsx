@@ -56,8 +56,10 @@ const GroupOccurrences = ({
     const [pagination, setPagination] = useState({ hasNextPage: false, page: 1 });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [realTotal, setRealTotal] = useState(0);
     const observerTarget = useRef(null);
     const isFetchingRef = useRef(false);
+    const MAX_OCCURRENCES = 30;
 
     console.log('GroupOccurrences', groupOccurrences);
 
@@ -74,6 +76,7 @@ const GroupOccurrences = ({
                         hasNextPage: response.pagination?.hasNextPage || false,
                         page: response.pagination?.page || 1
                     });
+                    setRealTotal(response.pagination?.realTotal || response.pagination?.total || 0);
                     setCurrentPage(1);
                 }
             } catch (error) {
@@ -87,7 +90,7 @@ const GroupOccurrences = ({
 
     // Load more occurrences for infinite scroll
     const loadMoreOccurrences = useCallback(async () => {
-        if (!pagination.hasNextPage || isLoadingMore || loading || isFetchingRef.current) {
+        if (!pagination.hasNextPage || isLoadingMore || loading || isFetchingRef.current || groupOccurrences.length >= MAX_OCCURRENCES) {
             return;
         }
 
@@ -117,7 +120,7 @@ const GroupOccurrences = ({
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && pagination.hasNextPage && !isLoadingMore && !loading) {
+                if (entries[0].isIntersecting && pagination.hasNextPage && !isLoadingMore && !loading && groupOccurrences.length < MAX_OCCURRENCES) {
                     loadMoreOccurrences();
                 }
             },
@@ -430,8 +433,15 @@ const GroupOccurrences = ({
             )}
 
             {/* Observer Target for Infinite Scroll */}
-            {pagination.hasNextPage && !isLoadingMore && (
+            {pagination.hasNextPage && !isLoadingMore && groupOccurrences.length < MAX_OCCURRENCES && (
                 <Box ref={observerTarget} sx={{ height: 20, visibility: 'hidden' }} />
+            )}
+
+            {/* Show message when capped at 30 */}
+            {realTotal > groupOccurrences.length && groupOccurrences.length >= MAX_OCCURRENCES && (
+                <Typography variant="body2" color="text.secondary" textAlign="center" py={1}>
+                    Showing last {groupOccurrences.length} of {realTotal} occurrences
+                </Typography>
             )}
 
             {/* Task Completion Dialog */}

@@ -1,31 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Card, CardHeader, CardContent, Typography, Box, Divider,
-    List, ListItem, ListItemIcon, ListItemText, Chip, Tabs, Tab,
+    List, ListItem, ListItemIcon, ListItemText, Chip,
     CircularProgress, useTheme
 } from '@mui/material';
-import { Warning, Inventory2, AccessTime } from '@mui/icons-material';
+import {
+    ReportProblem,
+    AccessTime,
+    LocationOnOutlined,
+    PersonOutline,
+    Assignment,
+} from '@mui/icons-material';
 
-const EscalationCard = ({ fetchEscalatedTasks, fetchDepletedInventory }) => {
-    const [tab, setTab] = useState(0);
+const EscalationCard = ({ fetchEscalatedTasks }) => {
     const theme = useTheme();
 
-    // Escalated tasks state
     const [tasks, setTasks] = useState([]);
     const [tasksPage, setTasksPage] = useState(1);
     const [tasksHasMore, setTasksHasMore] = useState(true);
     const [tasksLoading, setTasksLoading] = useState(false);
     const [tasksTotal, setTasksTotal] = useState(0);
 
-    // Depleted inventory state
-    const [inventory, setInventory] = useState([]);
-    const [invPage, setInvPage] = useState(1);
-    const [invHasMore, setInvHasMore] = useState(true);
-    const [invLoading, setInvLoading] = useState(false);
-    const [invTotal, setInvTotal] = useState(0);
+    const scrollRef = useRef(null);
 
-    const tasksScrollRef = useRef(null);
-    const invScrollRef = useRef(null);
 
     const loadTasks = useCallback(async (pageNum) => {
         if (tasksLoading) return;
@@ -41,174 +38,138 @@ const EscalationCard = ({ fetchEscalatedTasks, fetchDepletedInventory }) => {
         setTasksLoading(false);
     }, [fetchEscalatedTasks, tasksLoading]);
 
-    const loadInventory = useCallback(async (pageNum) => {
-        if (invLoading) return;
-        setInvLoading(true);
-        try {
-            const res = await fetchDepletedInventory(pageNum, 5);
-            if (res.success) {
-                setInventory(prev => pageNum === 1 ? res.data : [...prev, ...res.data]);
-                setInvHasMore(res.pagination.hasNextPage);
-                setInvTotal(res.pagination.total);
-            }
-        } catch (err) { console.error(err); }
-        setInvLoading(false);
-    }, [fetchDepletedInventory, invLoading]);
-
     useEffect(() => { loadTasks(1); }, []);
-    useEffect(() => { loadInventory(1); }, []);
 
-    const handleTasksScroll = (e) => {
+    const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
-        if (scrollHeight - scrollTop - clientHeight < 50 && tasksHasMore && !tasksLoading) {
-            const nextPage = tasksPage + 1;
-            setTasksPage(nextPage);
-            loadTasks(nextPage);
+        if (scrollHeight - scrollTop - clientHeight < 50) {
+            if (tasksHasMore && !tasksLoading) {
+                const nextPage = tasksPage + 1;
+                setTasksPage(nextPage);
+                loadTasks(nextPage);
+            }
         }
     };
 
-    const handleInvScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.target;
-        if (scrollHeight - scrollTop - clientHeight < 50 && invHasMore && !invLoading) {
-            const nextPage = invPage + 1;
-            setInvPage(nextPage);
-            loadInventory(nextPage);
-        }
-    };
+    const isLoading = tasksLoading;
+    const isEmpty = tasks.length === 0 && !isLoading;
 
-    const totalEscalations = tasksTotal + invTotal;
+    const allItems = [
+        ...tasks.map(task => ({ type: 'task', data: task })),
+    ];
+
 
     return (
         <Card elevation={0} sx={{
-            border: '1px solid',
-            borderColor: totalEscalations > 0 ? 'error.main' : 'divider',
-            borderRadius: 2, height: '100%',
+            height: '100%',
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
+            border: `1px solid ${theme.palette.divider}`, borderRadius: 2,
         }}>
             <CardHeader
                 title={
-                    <Box display="flex" alignItems="center" gap={1}>
-                        <Warning sx={{ color: 'error.main', fontSize: 22 }} />
+                    <Box display="flex" alignItems="center" >
                         <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
                             Escalations & Disputes
                         </Typography>
-                        {totalEscalations > 0 && (
-                            <Chip label={totalEscalations} size="small" color="error" sx={{ fontWeight: 700 }} />
-                        )}
                     </Box>
                 }
-                sx={{ pb: 0 }}
+                subheader={
+                    tasksTotal > 0 && (
+                        <Box display="flex" gap={2} mt={0.5}>
+                            <Typography variant="caption" color="error.main" fontWeight={500}
+                                sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                                <Assignment sx={{ fontSize: 16 }} />
+                                Tasks: {tasksTotal}
+                            </Typography>
+                        </Box>
+                    )
+                }
+                sx={{ pb: 1 }}
             />
-
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2 }} variant="fullWidth">
-                <Tab
-                    label={<Box display="flex" alignItems="center" gap={0.5}>
-                        <AccessTime sx={{ fontSize: 18 }} />
-                        <span>Tasks ({tasksTotal})</span>
-                    </Box>}
-                    sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
-                />
-                <Tab
-                    label={<Box display="flex" alignItems="center" gap={0.5}>
-                        <Inventory2 sx={{ fontSize: 18 }} />
-                        <span>Inventory ({invTotal})</span>
-                    </Box>}
-                    sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.85rem' }}
-                />
-            </Tabs>
             <Divider />
 
-            <CardContent sx={{ pt: 1, pb: 2, flex: 1, overflow: 'hidden' }}>
-                {/* Escalated Tasks Tab */}
-                {tab === 0 && (
-                    tasks.length === 0 && !tasksLoading ? (
-                        <Box display="flex" alignItems="center" justifyContent="center" minHeight={100}>
-                            <Typography variant="body1" color="text.secondary">
-                                🎉 No escalated tasks
-                            </Typography>
-                        </Box>
-                    ) : (
-                        <Box ref={tasksScrollRef} onScroll={handleTasksScroll}
-                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5 }}>
-                            <List dense sx={{ p: 0 }}>
-                                {tasks.map((task) => (
-                                    <ListItem key={`task-${task.id}`} sx={{ px: 0, py: 0.75, alignItems: 'flex-start' }}>
-                                        <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                                            <AccessTime sx={{ color: 'error.main', fontSize: 20 }} />
-                                        </ListItemIcon>
-                                        <ListItemText
-                                            primary={<Typography variant="body2" fontWeight={600}>{task.task_title}</Typography>}
-                                            secondary={
-                                                <Box component="span">
-                                                    <Typography variant="caption" color="text.secondary" display="block">
-                                                        {task.property_name && `📍 ${task.property_name}`}
-                                                        {task.assigned_to_name && ` • 👤 ${task.assigned_to_name}`}
-                                                    </Typography>
-                                                    <Typography variant="caption" color="error.main" fontWeight={500}>
-                                                        Pending since {new Date(task.scheduled_date).toLocaleDateString()}
-                                                    </Typography>
-                                                </Box>
-                                            }
-                                        />
-                                        <Chip label={task.status} size="small" sx={{
-                                            bgcolor: theme.palette.taskStatus[task.status] || 'default',
-                                            color: theme.palette.getContrastText(theme.palette.taskStatus[task.status] || theme.palette.background.paper),
-                                            fontWeight: 500, textTransform: 'capitalize', mt: 0.5
-                                        }} />
-                                    </ListItem>
-                                ))}
-                            </List>
-                            {tasksLoading && (
-                                <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
-                                </Box>
-                            )}
-                        </Box>
-                    )
-                )}
+            <CardContent sx={{ pt: 0, pb: '0 !important', flex: 1, overflow: 'hidden', px: 0 }}>
+                {isEmpty ? (
+                    <Box display="flex" alignItems="center" justifyContent="center" minHeight={100}>
+                        <Typography variant="body1" color="text.secondary">
+                            No escalations
+                        </Typography>
+                    </Box>
+                ) : (
+                    <Box
+                        ref={scrollRef}
+                        onScroll={handleScroll}
+                        sx={{
+                            maxHeight: 370, overflowY: 'auto',
+                            '&::-webkit-scrollbar': { width: 8 },
+                            '&::-webkit-scrollbar-track': { bgcolor: theme.palette.background.paper, borderRadius: 3 },
+                            '&::-webkit-scrollbar-thumb': { bgcolor: theme.palette.primary.main, borderRadius: 3 },
+                        }}
 
-                {/* Depleted Inventory Tab */}
-                {tab === 1 && (
-                    inventory.length === 0 && !invLoading ? (
-                        <Box display="flex" alignItems="center" justifyContent="center" minHeight={100}>
-                            <Typography variant="body1" color="text.secondary">
-                                ✅ No depleted inventory
-                            </Typography>
-                        </Box>
-                    ) : (
-                        <Box ref={invScrollRef} onScroll={handleInvScroll}
-                            sx={{ maxHeight: 370, overflowY: 'auto', pr: 0.5 }}>
-                            <List dense sx={{ p: 0 }}>
-                                {inventory.map((item) => (
-                                    <ListItem key={`inv-${item.id}`} sx={{ px: 0, py: 0.75, alignItems: 'flex-start' }}>
-                                        <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                                            <Inventory2 sx={{ color: 'warning.main', fontSize: 20 }} />
-                                        </ListItemIcon>
-                                        <ListItemText
-                                            primary={<Typography variant="body2" fontWeight={600}>{item.name}</Typography>}
-                                            secondary={
-                                                <Box component="span">
-                                                    <Typography variant="caption" color="text.secondary" display="block">
-                                                        {item.property_name && `📍 ${item.property_name}`}
-                                                        {item.category && ` • ${item.category}`}
+                    >
+                        <List disablePadding>
+                            {allItems.map((entry, index) => {
+                                const item = entry.data;
+
+                                return (
+                                    <React.Fragment key={`task-${item.id}`}>
+                                        <ListItem>
+                                            <ListItemIcon sx={{ minWidth: 36, alignSelf: 'center' }}>
+                                                <AccessTime sx={{ color: 'error.main', fontSize: 22 }} />
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={
+                                                    <Typography variant="body1" sx={{ mb: 0.3, textTransform: 'capitalize' }}>
+                                                        {item.task_title}
                                                     </Typography>
-                                                    <Typography variant="caption" color="warning.dark" fontWeight={500}>
-                                                        Depleted — Qty: {item.quantity} {item.unit || ''}
-                                                    </Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </ListItem>
-                                ))}
-                            </List>
-                            {invLoading && (
-                                <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
-                                </Box>
-                            )}
-                        </Box>
-                    )
+                                                }
+                                                secondary={
+                                                    <Box component="span">
+                                                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.4, mb: 0.2 }}>
+                                                            {item.property_name && (
+                                                                <Typography variant="caption" color="text.secondary"
+                                                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
+                                                                    <LocationOnOutlined sx={{ fontSize: 16 }} />
+                                                                    {item.property_name}
+                                                                </Typography>
+                                                            )}
+                                                            {item.assigned_to_name && (
+                                                                <Typography variant="caption" color="text.secondary"
+                                                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.2 }}>
+                                                                    <PersonOutline sx={{ fontSize: 16 }} />
+                                                                    {item.assigned_to_name}
+                                                                </Typography>
+                                                            )}
+                                                        </Box>
+                                                        <Typography variant="caption" color="error.main" display="block">
+                                                            Pending since {new Date(item.scheduled_date).toLocaleDateString()}
+                                                        </Typography>
+                                                    </Box>
+                                                }
+                                            />
+                                            <Chip
+                                                label={item.status?.replace(/_/g, ' ')}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: theme.palette.taskStatus?.[item.status] || 'default',
+                                                    color: '#000',
+                                                    textTransform: 'capitalize',
+                                                    alignSelf: 'center',
+                                                }}
+                                            />
+                                        </ListItem>
+                                        {index < allItems.length - 1 && <Divider component="li" />}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </List>
+
+                        {isLoading && (
+                            <Box display="flex" justifyContent="center" py={1}>
+                                <CircularProgress size={24} />
+                            </Box>
+                        )}
+                    </Box>
                 )}
             </CardContent>
         </Card>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+
 import {
     Box,
     Container,
@@ -16,6 +17,8 @@ import {
     CardHeader,
     TextField,
     CircularProgress,
+    Tabs,
+    Tab,
 } from "@mui/material";
 import {
     Business,
@@ -69,6 +72,10 @@ const TileViewTaskStaff = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [activeNameTab, setActiveNameTab] = useState("");
+    const [taskTypeTab, setTaskTypeTab] = useState(() => {
+        const saved = localStorage.getItem('taskTypeTabIndex');
+        return saved ? Number(saved) : 0;
+    });
     const isFetchingRef = useRef(false);
 
     const {
@@ -89,22 +96,26 @@ const TileViewTaskStaff = () => {
         if (!taskToView) return;
         const basePath = location.pathname.startsWith('/teams') ? '/teams' : '/clients';
 
-        const taskSlug = taskToView.title.toLowerCase().replace(/\s+/g, '-');
-        navigate(`${basePath}/task-management/task/${taskSlug}`, {
-            state: { taskId: taskToView.id },
-        });
+        navigate(`${basePath}/task-management/task/${taskToView.id}`);
     };
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [filters, searchText]);
+    }, [filters, searchText, taskTypeTab]);
+
+    const handleTaskTypeTabChange = (event, newValue) => {
+        setTaskTypeTab(newValue);
+        localStorage.setItem('taskTypeTabIndex', newValue);
+    };
 
     const tasksToRender = useMemo(() => {
         if (!allTasksData) return [];
         const groupTasks = (allTasksData.group_task || []).map(g => ({ ...g, is_task_group: true }));
         const tasks = allTasksData.tasks || [];
+        if (taskTypeTab === 1) return groupTasks;
+        if (taskTypeTab === 2) return tasks;
         return [...groupTasks, ...tasks];
-    }, [allTasksData]);
+    }, [allTasksData, taskTypeTab]);
 
 
     const loadMoreTasks = useCallback(async () => {
@@ -341,7 +352,25 @@ const TileViewTaskStaff = () => {
                 initialFilters={filters}
             />
 
-            <Divider sx={{ my: 2 }} />
+            <Tabs
+                value={taskTypeTab}
+                onChange={handleTaskTypeTabChange}
+                sx={{
+                    minHeight: 36,
+                    '& .MuiTab-root': {
+                        textTransform: 'none',
+                        minHeight: 36,
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                    },
+                }}
+            >
+                <Tab label="All" />
+                <Tab label="Group" />
+                <Tab label="Individual" />
+            </Tabs>
+
+            <Divider sx={{ mb: 2 }} />
 
             {/* show skeleton when loading intial data  */}
             {loading && tasksToRender.length === 0 && (
@@ -523,6 +552,27 @@ const TileViewTaskStaff = () => {
                                                 </Tooltip>
                                             </Box>
                                         </Stack>
+
+                                        {(task.last_occurrence || task.next_occurrence) && (
+                                            <Stack direction="row" spacing={1} sx={{ mt: 0.5, flexWrap: 'wrap' }} alignItems="center">
+                                                {task.last_occurrence && (
+                                                    <Chip
+                                                        label={`Last: ${formatDate(task.last_occurrence.date)}${task.last_occurrence.status === 'completed' || task.last_occurrence.status === 'skipped' ? '' : ' (Pending)'}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color={task.last_occurrence.status === 'completed' ? 'success' : task.last_occurrence.status === 'skipped' ? 'default' : 'warning'}
+                                                    />
+                                                )}
+                                                {task.next_occurrence && (
+                                                    <Chip
+                                                        label={`Next: ${formatDate(task.next_occurrence.date)}${task.next_occurrence.date === new Date().toISOString().slice(0, 10) ? ' (Today)' : ''}`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="info"
+                                                    />
+                                                )}
+                                            </Stack>
+                                        )}
                                     </CardContent>
                                 </Card>
                             )}
@@ -538,8 +588,16 @@ const TileViewTaskStaff = () => {
                     <CircularProgress size={24} />
                 </Box>
             )}
+            {/* give the message no more tasks to load  */}
+            {!allTaskPagination?.hasNextPage && tasksToRender.length > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        No more tasks to load.
+                    </Typography>
+                </Box>
+            )}
 
-            {allTaskPagination && tasksToRender.length > 8 && (
+            {/* {allTaskPagination && tasksToRender.length > 8 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                         Page {allTaskPagination.page} of {allTaskPagination.totalPages}  • Total: {allTaskPagination.total}
@@ -553,7 +611,7 @@ const TileViewTaskStaff = () => {
                         Page {allTaskPagination.page} of {allTaskPagination.totalPages}  • Total: {allTaskPagination.total}
                     </Typography>
                 </Box>
-            )}
+            )} */}
 
             <ImageViewer
                 open={openImage}

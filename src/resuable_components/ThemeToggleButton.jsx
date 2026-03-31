@@ -1,5 +1,5 @@
 import React from "react";
-import { IconButton, Tooltip } from "@mui/material";
+import { IconButton, Switch, Tooltip } from "@mui/material";
 import { Brightness4, Brightness7, DarkModeTwoTone, LightMode, } from "@mui/icons-material";
 import { useThemeMode } from "../context/ThemeContext";
 
@@ -8,14 +8,21 @@ export default function ThemeToggleButton() {
 
     return (
         <Tooltip title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}>
-            <IconButton onClick={toggleTheme} color="inherit">
+            {/* <IconButton onClick={toggleTheme} color="inherit">
                 {
                     mode === "light" ?
                         <LightMode />
                         :
                          <DarkModeTwoTone />
                         }
-            </IconButton>
+            </IconButton> */}
+
+            {/* USE SWITCH BUTTON */}
+            <Switch
+                checked={mode === "dark"}
+                onChange={toggleTheme}
+                color="default"
+            />
         </Tooltip>
     );
 }

@@ -1,32 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Box, IconButton, Tooltip, Button, useTheme, MenuItem, Checkbox, Select, Autocomplete, TextField, Chip, Avatar, Typography } from '@mui/material'
-import { MaterialReactTable , createRow} from 'material-react-table'
+import { MaterialReactTable, createRow } from 'material-react-table'
 import { Edit as EditIcon, Close as CloseIcon, Save as SaveIcon, Delete as DeleteIcon, FileCopy } from '@mui/icons-material'
 import { getInventoryById } from '../../../service/Clients/Inventory'
 import { getTeamMembers } from '../../../service/Clients/Team'
 import {
-     createClientTask,
-      updateTaskPlanner,
-       updateActiveTask,
-        createClientActiveTask,
-         deleteOneTime,
-          deleteClientTask,
-        //    updateClientTaskStatusCompleted
-         } from '../../../service/Clients/Task'
+    createClientTask,
+    updateTaskPlanner,
+    updateActiveTask,
+    createClientActiveTask,
+    deleteOneTime,
+    deleteClientTask,
+    //    updateClientTaskStatusCompleted
+} from '../../../service/Clients/Task'
 import { useSnackbar } from '../../../resuable_components/Snackbar'
 import { taskTypes, scheduleTypes, recurringTypes, statusOpts, daysOfWeek, monthsOfYear, datesOfMonth, taskTypesOptions } from '../../../constant';
 import { formatDate } from '../../../utils/dateFormat'
 import { useAuth } from '../../../context/AuthContext'
 import {
-     createTeamActiveTask,
-      createTeamTask,
-       getTeamsTeamMembers,
-        updateTeamsActiveTask,
-         updateTeamsTaskPlanner,
-          deleteTeamOneTimeTask, 
-          deleteTeamRecurringTask,
-        //    updateTeamTaskStatusCompleted 
-        } from '../../../service/Teams/Team_Task'
+    createTeamActiveTask,
+    createTeamTask,
+    getTeamsTeamMembers,
+    updateTeamsActiveTask,
+    updateTeamsTaskPlanner,
+    deleteTeamOneTimeTask,
+    deleteTeamRecurringTask,
+    //    updateTeamTaskStatusCompleted 
+} from '../../../service/Teams/Team_Task'
 import { getTeamInventoryById } from '../../../service/Teams/Team_Inventory'
 import ConfirmationDialog from '../../../dialoge/clients/Confirmation_dialog'
 import TaskCompletionDialog from '../../../dialoge/clients/TaskCompletionDialog'
@@ -1426,7 +1426,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                                     <IconButton
                                         onClick={() => {
                                             const duplicatedData = { ...row.original };
-                                            delete duplicatedData.id; 
+                                            delete duplicatedData.id;
                                             // Create a proper MRT row with pre-filled data
                                             const newCreatingRow = createRow(table, duplicatedData);
                                             // Open the creation row pre-filled
@@ -1530,7 +1530,7 @@ const Task_Accordian = ({ inventoryId, create_tasks, onTaskCreate }) => {
                     isTeamUser ? updateTeamTaskStatusCompleted : updateClientTaskStatusCompleted
                 }
             />
-            
+
             <ImageViewer
                 open={openImage}
                 onClose={() => setOpenImage(false)}

@@ -18,7 +18,11 @@ import {
     RadioGroup,
     Radio,
     FormLabel,
+    Stepper,
+    Step,
+    StepLabel,
 } from '@mui/material'
+import { NavigateBefore, NavigateNext } from '@mui/icons-material'
 import CloseIcon from '@mui/icons-material/Close';
 import { scheduleTypes, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useInventoryContext } from './InventoryManagement';
@@ -59,9 +63,9 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
     const [inventorySearchText, setInventorySearchText] = useState('');
     const propertySearchTimer = useRef(null);
     const inventorySearchTimer = useRef(null);
+    const [activeStep, setActiveStep] = useState(0);
 
-    // console.log('task in dialog:', task);
-    // console.log('inventoryData :', inventoryData);
+    const steps = ['Details', 'Schedule', 'Assignment'];
 
     const [formData, setFormData] = useState({
         title: '',
@@ -114,6 +118,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
             setRepeatData({});
         }
         setValidationErrors({});
+        setActiveStep(0);
     }, [task, isEdit, isDuplicate, open, inventoryId, inventoryData]);
 
     // Sync propertyOptions with properties from context, merging in selected property when editing
@@ -204,6 +209,31 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
             ...prev,
             allows_inventory_update: event.target.checked
         }));
+    };
+
+    const validateStep = (step) => {
+        const errors = {};
+        if (step === 0) {
+            if (!formData.title?.trim()) errors.title = 'Title is required';
+        }
+        if (step === 1) {
+            if (!formData.schedule_type) errors.schedule_type = 'Schedule type is required';
+        }
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (!validateStep(activeStep)) return;
+        if (activeStep === steps.length - 1) {
+            handleCreateUpdate();
+        } else {
+            setActiveStep(prev => prev + 1);
+        }
+    };
+
+    const handleBack = () => {
+        setActiveStep(prev => prev - 1);
     };
 
     const buildPayload = () => {
@@ -311,7 +341,17 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                 </DialogTitle>
 
                 <DialogContent dividers>
-                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                    <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1 }} alternativeLabel>
+                        {steps.map((label) => (
+                            <Step key={label}>
+                                <StepLabel>{label}</StepLabel>
+                            </Step>
+                        ))}
+                    </Stepper>
+
+                    {/* Step 0: Details */}
+                    {activeStep === 0 && (
+                    <Grid container spacing={2}>
 
                         <Grid size={{ xs: 12 }}>
                             <TextField
@@ -352,35 +392,6 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                     },
                                 }}
                             />
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-                            <FormControl component="fieldset">
-                                <FormLabel component="legend"
-                                    sx={{
-                                        color: validationErrors.schedule_type ? 'error.main' : 'inherit'
-                                    }}
-                                >
-                                    Schedule Type
-                                </FormLabel>
-                                <RadioGroup
-                                    row
-                                    value={formData.schedule_type}
-                                    onChange={(e) => {
-                                        handleChange('schedule_type')(e);
-                                        setRepeatData({});
-                                    }}
-                                >
-                                    {scheduleTypes.map((type) => (
-                                        <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} />
-                                    ))}
-                                </RadioGroup>
-                                {validationErrors.schedule_type && (
-                                    <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
-                                        {validationErrors.schedule_type}
-                                    </Box>
-                                )}
-                            </FormControl>
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
@@ -478,6 +489,41 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 )}
                                 isOptionEqualToValue={(option, value) => option.id === value.id}
                             />
+                        </Grid>
+                    </Grid>
+                    )}
+
+                    {/* Step 1: Schedule */}
+                    {activeStep === 1 && (
+                    <Grid container spacing={2}>
+
+                        <Grid size={{ xs: 12 }}>
+                            <FormControl component="fieldset">
+                                <FormLabel component="legend"
+                                    sx={{
+                                        color: validationErrors.schedule_type ? 'error.main' : 'inherit'
+                                    }}
+                                >
+                                    Schedule Type
+                                </FormLabel>
+                                <RadioGroup
+                                    row
+                                    value={formData.schedule_type}
+                                    onChange={(e) => {
+                                        handleChange('schedule_type')(e);
+                                        setRepeatData({});
+                                    }}
+                                >
+                                    {scheduleTypes.map((type) => (
+                                        <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} />
+                                    ))}
+                                </RadioGroup>
+                                {validationErrors.schedule_type && (
+                                    <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
+                                        {validationErrors.schedule_type}
+                                    </Box>
+                                )}
+                            </FormControl>
                         </Grid>
 
                         {formData.schedule_type && formData.schedule_type !== 'fixed_dates' && (
@@ -678,13 +724,19 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                                 </Grid>
                             </>
                         )}
+                    </Grid>
+                    )}
 
-                        <Grid size={{ xs: 12, sm: 6 }}>
+                    {/* Step 2: Assignment */}
+                    {activeStep === 2 && (
+                    <Grid container spacing={2}>
+
+                        <Grid size={{ xs: 12 }}>
                             <Autocomplete
                                 size="small"
-                                options={teamMembers}
+                                options={[{ id: '', name: 'Myself' }, ...(teamMembers || [])]}
                                 getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={teamMembers.find((item) => item.id === formData.assigned_to) || null}
+                                value={[{ id: '', name: 'Myself' }, ...(teamMembers || [])].find((item) => item.id === (formData.assigned_to || '')) || null}
                                 onChange={(e, newValue) => {
                                     handleChange("assigned_to")({ target: { value: newValue ? newValue.id : "" } });
                                 }}
@@ -703,52 +755,72 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                         <Grid size={{ xs: 12 }} container spacing={2}>
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <FormControlLabel
+                                        label="A Photo Proof is Required"
+                                        labelPlacement='start'
                                     control={
                                         <Checkbox
                                             checked={!!formData.requires_photo}
                                             onChange={handlePhotoChange}
                                         />
                                     }
-                                    label="A Photo Proof is Required"
                                 />
                             </Grid>
 
                             <Grid size={{ xs: 12, sm: 6 }}>
                                 <FormControlLabel
+                                        label="Update Inventory Quantity"
+                                        labelPlacement='start'
                                     control={
                                         <Checkbox
                                             checked={!!formData.allows_inventory_update}
                                             onChange={handleInventoryChange}
                                         />
                                     }
-                                    label="Update Inventory Quantity"
                                 />
                             </Grid>
-
                         </Grid>
 
                     </Grid>
+                    )}
 
                 </DialogContent>
 
-                <DialogActions sx={{ px: 3, py: 2 }}>
-
+                <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+                    <Button
+                        variant='outlined'
+                        size='small'
+                        disabled={activeStep === 0}
+                        onClick={handleBack}
+                        startIcon={<NavigateBefore />}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 10,
+                            visibility: activeStep === 0 ? 'hidden' : 'visible',
+                        }}
+                    >
+                        Back
+                    </Button>
                     <Button
                         variant='contained'
                         disableElevation
-                        size='medium'
-                        onClick={handleCreateUpdate}
+                        size='small'
+                        onClick={handleNext}
                         disabled={loading}
+                        endIcon={activeStep < steps.length - 1 ? <NavigateNext /> : null}
                         sx={{
                             textTransform: 'none',
                             backgroundColor: palette.primary.main,
                             '&:hover': { backgroundColor: palette.secondary.main },
-                            borderRadius: 100,
+                            borderRadius: 10,
                         }}
                     >
-                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Create Task')}
+                        {loading
+                            ? 'Saving...'
+                            : activeStep === steps.length - 1
+                                ? (isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Create Task')
+                                : 'Next'
+                        }
                     </Button>
-
                 </DialogActions>
 
             </Dialog>

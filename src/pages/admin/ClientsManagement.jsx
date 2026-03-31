@@ -13,7 +13,8 @@ export const ClientContext = createContext(null);
 export const useClientContext = () => {
     const context = useContext(ClientContext);
     if (!context) {
-        throw new Error('useClientContext must be used within ClientsManagement');
+        console.warn('useClientContext called outside ClientsManagement provider');
+        return {};
     }
     return context;
 };

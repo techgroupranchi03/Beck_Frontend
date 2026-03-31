@@ -43,7 +43,7 @@ export const SnackbarProvider = ({ children }) => {
           severity={snackbar.severity}
           sx={{
             bgcolor: palette.primary.light,
-            color: "white",
+            color: "#000",
             fontWeight: 500,
             boxShadow: 3,
           }}

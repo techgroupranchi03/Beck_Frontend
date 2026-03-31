@@ -18,7 +18,11 @@ import {
     Autocomplete,
     DialogActions,
     Button,
+    Stepper,
+    Step,
+    StepLabel,
 } from '@mui/material'
+import { NavigateBefore, NavigateNext } from '@mui/icons-material'
 import CloseIcon from '@mui/icons-material/Close';
 import { scheduleTypes, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
@@ -53,6 +57,9 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
     });
     const [repeatData, setRepeatData] = useState({});
     const [selectedProperty, setSelectedProperty] = useState(null);
+    const [activeStep, setActiveStep] = useState(0);
+
+    const steps = ['Details', 'Schedule'];
 
 
     //console.log("group task details ",task );
@@ -93,6 +100,7 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
             fetchProperties(1, false, '');
         }
         setValidationErrors({});
+        setActiveStep(0);
     }, [task, isEdit, isDuplicate, open, fetchProperties]);
 
 
@@ -109,6 +117,31 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                 [field]: undefined,
             }));
         }
+    };
+
+    const validateStep = (step) => {
+        const errors = {};
+        if (step === 0) {
+            if (!formData.title?.trim()) errors.title = 'Title is required';
+        }
+        if (step === 1) {
+            if (!formData.schedule_type) errors.schedule_type = 'Schedule type is required';
+        }
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (!validateStep(activeStep)) return;
+        if (activeStep === steps.length - 1) {
+            handleSubmit();
+        } else {
+            setActiveStep(prev => prev + 1);
+        }
+    };
+
+    const handleStepBack = () => {
+        setActiveStep(prev => prev - 1);
     };
 
     const handleSubmit = async () => {
@@ -201,7 +234,17 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                 </DialogTitle>
 
                 <DialogContent dividers>
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                    <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1 }} alternativeLabel>
+                        {steps.map((label) => (
+                            <Step key={label}>
+                                <StepLabel>{label}</StepLabel>
+                            </Step>
+                        ))}
+                    </Stepper>
+
+                    {/* Step 0: Details */}
+                    {activeStep === 0 && (
+                    <Grid container spacing={2}>
 
                         <Grid size={{ xs: 12 }}>
                             <TextField
@@ -214,8 +257,39 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                                 error={!!validationErrors.title}
                                 helperText={validationErrors.title}
                             />
-
                         </Grid>
+
+                        <Grid size={{ xs: 12, sm: 12 }}>
+                            <PaginatedAutocomplete
+                                label="Property"
+                                value={selectedProperty}
+                                options={properties}
+                                getOptionLabel={(option) => option.name || ''}
+                                onChange={(event, newValue) => {
+                                    setSelectedProperty(newValue);
+                                    setFormData(prev => ({ 
+                                        ...prev, 
+                                        property_id: newValue ? newValue.id : '' 
+                                    }));
+                                    if (validationErrors.property_id) {
+                                        setValidationErrors((prevErrors) => ({
+                                            ...prevErrors,
+                                            property_id: undefined,
+                                        }));
+                                    }
+                                }}
+                                fetchData={fetchProperties}
+                                pagination={propertyPagination}
+                                error={!!validationErrors.property_id}
+                                helperText={validationErrors.property_id}
+                            />
+                        </Grid>
+                    </Grid>
+                    )}
+
+                    {/* Step 1: Schedule */}
+                    {activeStep === 1 && (
+                    <Grid container spacing={2}>
 
                         <Grid size={{ xs: 12 }}>
                             <FormControl component="fieldset" fullWidth>
@@ -429,42 +503,33 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                                 </Grid>
                             </>
                         )}
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <PaginatedAutocomplete
-                                label="Property"
-                                value={selectedProperty}
-                                options={properties}
-                                getOptionLabel={(option) => option.name || ''}
-                                onChange={(event, newValue) => {
-                                    setSelectedProperty(newValue);
-                                    setFormData(prev => ({ 
-                                        ...prev, 
-                                        property_id: newValue ? newValue.id : '' 
-                                    }));
-                                    if (validationErrors.property_id) {
-                                        setValidationErrors((prevErrors) => ({
-                                            ...prevErrors,
-                                            property_id: undefined,
-                                        }));
-                                    }
-                                }}
-                                fetchData={fetchProperties}
-                                pagination={propertyPagination}
-                                error={!!validationErrors.property_id}
-                                helperText={validationErrors.property_id}
-                            />
-                        </Grid>
                     </Grid>
+                    )}
+
                 </DialogContent>
 
-                <DialogActions sx={{ px: 3, py: 2 }}>
+                <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+                    <Button
+                        variant='outlined'
+                        size='small'
+                        disabled={activeStep === 0}
+                        onClick={handleStepBack}
+                        startIcon={<NavigateBefore />}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 10,
+                            visibility: activeStep === 0 ? 'hidden' : 'visible',
+                        }}
+                    >
+                        Back
+                    </Button>
                     <Button
                         variant='contained'
                         disableElevation
                         size='small'
-                        onClick={handleSubmit}
+                        onClick={handleNext}
                         disabled={loading}
+                        endIcon={activeStep < steps.length - 1 ? <NavigateNext /> : null}
                         sx={{
                             textTransform: 'none',
                             backgroundColor: palette.primary.main,
@@ -472,7 +537,12 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                             borderRadius: 10,
                         }}
                     >
-                        {loading ? 'Saving...' : (isEdit ? 'Update Group Task' : isDuplicate ? 'Duplicate Group Task' : 'Create Group Task')}
+                        {loading
+                            ? 'Saving...'
+                            : activeStep === steps.length - 1
+                                ? (isEdit ? 'Update Group Task' : isDuplicate ? 'Duplicate Group Task' : 'Create Group Task')
+                                : 'Next'
+                        }
                     </Button>
                 </DialogActions>
 

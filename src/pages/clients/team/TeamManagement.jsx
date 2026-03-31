@@ -13,7 +13,8 @@ export const TeamContext = createContext(null);
 export const useTeamContext = () => {
     const context = useContext(TeamContext);
     if (!context) {
-        throw new Error('useTeamContext must be used within TeamManagement');
+        console.warn('useTeamContext called outside TeamManagement provider');
+        return {};
     }
     return context;
 };

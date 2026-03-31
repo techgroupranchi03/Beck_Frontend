@@ -14,7 +14,8 @@ export const TaskContext = createContext(null);
 export const useTaskContext = () => {
     const context = useContext(TaskContext);
     if (!context) {
-        throw new Error('useTaskContext must be used within TaskManagement');
+        console.warn('useTaskContext called outside TaskManagement provider');
+        return {};
     }
     return context;
 };

@@ -40,8 +40,8 @@ const TeamsRoutes = () => {
                     <Route index element={<Navigate to="dashboard" replace />} />
                     <Route path="dashboard" element={<TeamsDashboard />} />
                     <Route path="task-management" element={<TaskManagement />} />
-                    <Route path="task-management/group/:groupTaskName" element={<GroupTaskDetails />} />
-                    <Route path="task-management/task/:taskName" element={<TaskDetails />} />
+                    <Route path="task-management/group/:groupId" element={<GroupTaskDetails />} />
+                    <Route path="task-management/task/:taskId" element={<TaskDetails />} />
                     <Route path="inventory-management" element={<InventoryManagement />} />
                     <Route path="property-management" element={<PropertyManagement />} />
                     <Route path="team-management" element={<TeamManagement />} />

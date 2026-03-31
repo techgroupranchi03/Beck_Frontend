@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     createClientTask,
     updateClientTask,
@@ -63,7 +63,7 @@ export const useTaskData = () => {
     const [error, setError] = useState(null);
     const isTeamUser = user?.role === 'team';
 
-    const fetchAllTasks = useCallback(async (filters = {}, searchText = "", page = 1, append = false, limit = 5) => {
+    const fetchAllTasks = useCallback(async (filters = {}, searchText = "", page = 1, append = false, limit = 10) => {
         try {
             if (!append) {
                 setLoading(true);
@@ -89,6 +89,8 @@ export const useTaskData = () => {
                 hasPreviousPage: pagination?.hasPreviousPage || false,
                 page: pagination?.page || 1,
                 total: pagination?.total || 0,
+                groupTotal: pagination?.groupTotal || 0,
+                taskTotal: pagination?.taskTotal || 0,
                 totalPages: pagination?.totalPages || 1,
             });
             return res.data;
@@ -408,7 +410,7 @@ export const useTaskData = () => {
         }
     };
 
-    return {
+    return useMemo(() => ({
         allTasksData,
         allTaskPagination,
         properties,
@@ -426,7 +428,6 @@ export const useTaskData = () => {
         updateTaskOccurrenceStatus,
         addConfirmationImageInTask,
         updateConfirmationImageInTask,
-        
 
         // Group Task Operations
         createGroupTask,
@@ -448,5 +449,15 @@ export const useTaskData = () => {
 
         // General Operations
         refetchAll: fetchAllData,
-    };
+    }), [
+        allTasksData, allTaskPagination, properties, propertyPagination,
+        inventoryItems, inventoryPagination, teamMembers, loading, error,
+        createTask, updateTask, deleteTask, updateTaskOccurrenceStatus,
+        addConfirmationImageInTask, updateConfirmationImageInTask,
+        createGroupTask, updateGroupTask, deleteGroupTask,
+        createSubTaskInsideGroup, updateSubTaskInsideGroup, deleteSubTaskInsideGroup,
+        fetchAllTasks, fetchProperties, fetchInventoryItems, fetchInventoryByProperty,
+        fetchGroupTasksByGroupId, fetchTaskById, fetchTaskGroupOccurrecesByGroupId,
+        fetchTaskOccurrencesByTaskGroupOccurrenceId, fetchAllData,
+    ]);
 };

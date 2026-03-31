@@ -35,7 +35,7 @@ const ProtectedRoute = ({
           gap: 2
         }}
       >
-        <CircularProgress size={60} />
+        <CircularProgress size={24} />
         <Typography variant="h6" color="text.secondary">
           Loading...
         </Typography>

@@ -12,7 +12,7 @@ const TaskManagement = lazy(() => import('../../pages/clients/task/TaskManagemen
 const InventoryManagement = lazy(() => import('../../pages/clients/inventory/InventoryManagement.jsx'));
 const GroupTaskDetails = lazy(() => import('../../pages/clients/task/GroupTaskDetails.jsx'));
 const TaskDetails = lazy(() => import('../../pages/clients/task/TaskDetails.jsx'));
-const ThemeSettings = lazy(() => import('../../pages/ThemeSettings.jsx'));
+const ClientSettings = lazy(() => import('../../pages/clients/ClientSettings.jsx'));
 
 const Loader = () => (
   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -41,17 +41,16 @@ const ClientsRoutes = () => (
         <Route path="property-management" element={<PropertyManagement />} />
         <Route path="inventory-management" element={<InventoryManagement />} />
         <Route path="task-management" element={<TaskManagement />} />
-        <Route path="task-management/group/:groupTaskName" element={<GroupTaskDetails />} />
-        <Route path="task-management/task/:taskName" element={<TaskDetails />} />
+        <Route path="task-management/group/:groupId" element={<GroupTaskDetails />} />
+        <Route path="task-management/task/:taskId" element={<TaskDetails />} />
         <Route path="team-management" element={<TeamManagement />} />
-        <Route path="themeSetting" element={<ThemeSettings />} />
+        <Route path="settings" element={<ClientSettings />} />
+        {/* Redirect old themeSetting route to settings */}
+        <Route path="themeSetting" element={<Navigate to="/clients/settings" replace />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
-        {/* <Route path="all-task" element={<TaskList />} /> */}
-        {/* <Route path="task-management" element={<AllTask />} /> */}
       </Route>
     </Routes>
   </Suspense>
 );
 
 export default ClientsRoutes;
-

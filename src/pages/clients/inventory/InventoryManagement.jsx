@@ -10,7 +10,8 @@ export const InventoryContext = createContext(null);
 export const useInventoryContext = () => {
   const context = useContext(InventoryContext);
   if (!context) {
-    throw new Error('useInventoryContext must be used within InventoryManagement');
+    console.warn('useInventoryContext called outside InventoryManagement provider');
+    return {};
   }
   return context;
 };

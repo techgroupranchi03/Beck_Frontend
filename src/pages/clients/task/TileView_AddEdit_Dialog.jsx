@@ -19,7 +19,11 @@ import {
     RadioGroup,
     Radio,
     FormLabel,
+    Stepper,
+    Step,
+    StepLabel,
 } from '@mui/material'
+import { NavigateBefore, NavigateNext } from '@mui/icons-material'
 import CloseIcon from '@mui/icons-material/Close';
 import { scheduleTypes, daysOfWeek, monthsOfYear, datesOfMonth } from '../../../constant';
 import { useTaskContext } from './TaskManagement';
@@ -30,10 +34,10 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
+const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) => {
 
-    const isEdit = !!task && !!task.id;
-    const isDuplicate = !!task && !task.id;
+    const isEdit = !purchaseMode && !!task && !!task.id;
+    const isDuplicate = !purchaseMode && !!task && !task.id;
     const theme = useTheme();
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
@@ -69,7 +73,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
         start_date: '',
         end_date: '',
         assigned_to: '',
-        requires_photo: false,
+        requires_photo: true,
         allows_inventory_update: false,
     });
 
@@ -82,9 +86,12 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
     const propertySearchTimer = useRef(null);
     const inventorySearchTimer = useRef(null);
     const [repeatData, setRepeatData] = useState({});
+    const [activeStep, setActiveStep] = useState(0);
+
+    const steps = ['Details', 'Schedule', 'Assignment'];
 
     useEffect(() => {
-        if ((isEdit || isDuplicate) && task) {
+        if ((isEdit || isDuplicate || purchaseMode) && task) {
             const schedule = task.schedule || {};
             const recurrenceRule = schedule.recurrence_rule || {};
 
@@ -101,7 +108,18 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 allows_inventory_update: !!task.allows_inventory_update,
             });
 
-            setRepeatData(recurrenceRule);
+            // For purchase mode with fixed_dates, add today's date by default
+            if (purchaseMode && (schedule.type === 'fixed_dates' || !schedule.type)) {
+                const today = new Date().toISOString().split('T')[0];
+                const existingDates = recurrenceRule.dates || [];
+                const dates = existingDates.includes(today) ? existingDates : [...existingDates, today].sort();
+                setRepeatData({ ...recurrenceRule, dates });
+                if (!schedule.type) {
+                    setFormData(prev => ({ ...prev, schedule_type: 'fixed_dates' }));
+                }
+            } else {
+                setRepeatData(recurrenceRule);
+            }
 
             // Fetch inventory for the task's property when editing/duplicating
             const propId = task.property?.id || task.property_id;
@@ -131,7 +149,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 start_date: '',
                 end_date: '',
                 assigned_to: '',
-                requires_photo: false,
+                requires_photo: true,
                 allows_inventory_update: false,
             });
             setRepeatData({});
@@ -140,25 +158,26 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
         setPropertySearchText('');
         setInventorySearchText('');
         setValidationErrors({});
-    }, [task, isEdit, isDuplicate, open]);
+        setActiveStep(0);
+    }, [task, isEdit, isDuplicate, purchaseMode, open]);
 
-    // Sync propertyOptions with properties from context, merging in selected property when editing
+    // Sync propertyOptions with properties from context, merging in selected property when editing/purchaseMode
     useEffect(() => {
         let merged = [...(properties || [])];
-        if ((isEdit || isDuplicate) && task?.property) {
+        if ((isEdit || isDuplicate || purchaseMode) && task?.property) {
             const selectedProp = task.property;
             if (selectedProp?.id && !merged.find(p => p.id === selectedProp.id)) {
                 merged = [selectedProp, ...merged];
             }
         }
         setPropertyOptions(merged);
-    }, [properties, task, isEdit, isDuplicate]);
+    }, [properties, task, isEdit, isDuplicate, purchaseMode]);
 
-    // Sync inventoryOptions with inventoryItems, merging in selected inventory when editing
+    // Sync inventoryOptions with inventoryItems, merging in selected inventory when editing/purchaseMode
     useEffect(() => {
         if (!formData.property_id) {
             let merged = [...(inventoryItems || [])];
-            if ((isEdit || isDuplicate) && task?.inventory_details) {
+            if ((isEdit || isDuplicate || purchaseMode) && task?.inventory_details) {
                 const selectedInv = task.inventory_details;
                 if (selectedInv?.id && !merged.find(i => i.id === selectedInv.id)) {
                     merged = [selectedInv, ...merged];
@@ -166,7 +185,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
             }
             setInventoryOptions(merged);
         }
-    }, [inventoryItems, formData.property_id]);
+    }, [inventoryItems, formData.property_id, purchaseMode]);
 
     // Cleanup search timers on unmount
     useEffect(() => {
@@ -235,6 +254,31 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
             fetchInventoryItems({}, '', 1, false);
         }
     }, [fetchInventoryItems, formData.property_id]);
+
+    const validateStep = (step) => {
+        const errors = {};
+        if (step === 0) {
+            if (!formData.title?.trim()) errors.title = 'Title is required';
+        }
+        if (step === 1) {
+            if (!formData.schedule_type) errors.schedule_type = 'Schedule type is required';
+        }
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleNext = () => {
+        if (!validateStep(activeStep)) return;
+        if (activeStep === steps.length - 1) {
+            handleCreateUpdate();
+        } else {
+            setActiveStep(prev => prev + 1);
+        }
+    };
+
+    const handleBack = () => {
+        setActiveStep(prev => prev - 1);
+    };
 
     const buildPayload = () => {
         const isFixedDates = formData.schedule_type === 'fixed_dates';
@@ -328,7 +372,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 TransitionComponent={Transition}
             >
                 <DialogTitle>
-                    {isEdit ? 'Edit Task' : isDuplicate ? 'Duplicate Task' : 'Create New Task'}
+                    {purchaseMode ? 'Purchase Task' : isEdit ? 'Edit Task' : isDuplicate ? 'Duplicate Task' : 'Create New Task'}
                     <IconButton
                         aria-label="close"
                         onClick={onClose}
@@ -344,469 +388,508 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                 </DialogTitle>
 
                 <DialogContent dividers>
+                    <Stepper activeStep={activeStep} sx={{ mb: 3, mt: 1 }} alternativeLabel>
+                        {steps.map((label) => (
+                            <Step key={label}>
+                                <StepLabel>{label}</StepLabel>
+                            </Step>
+                        ))}
+                    </Stepper>
 
-                    <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                    {/* Step 0: Details */}
+                    {activeStep === 0 && (
+                        <Grid container spacing={2}>
 
-                        <Grid size={{ xs: 12 }}>
-
-                            <TextField
-                                label="Title"
-                                value={formData.title}
-                                onChange={handleChange('title')}
-                                fullWidth
-                                size="small"
-                                required
-                                error={!!validationErrors.title}
-                                helperText={validationErrors.title}
-                            />
-
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-
-                            <TextField
-                                label="Description"
-                                value={formData.description}
-                                onChange={handleChange('description')}
-                                fullWidth
-                                size="small"
-                                multiline
-                                rows={3}
-                                error={!!validationErrors.description}
-                                inputProps={{ maxLength: 500 }}
-                                helperText={
-                                    <>
-                                        <span>{validationErrors.description}</span>
-                                        <span>{formData.description.length}/500</span>
-                                    </>
-                                }
-                                slotProps={{
-                                    formHelperText: {
-                                        sx: {
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                        },
-                                    },
-                                }}
-                            />
-
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-                            <FormControl component="fieldset">
-                                <FormLabel component="legend"
-                                    sx={{
-                                        color: validationErrors.schedule_type ? 'error.main' : 'inherit'
-                                    }}
-                                >
-                                    Schedule Type
-                                </FormLabel>
-                                <RadioGroup
-                                    row
-                                    value={formData.schedule_type}
-                                    onChange={(e) => {
-                                        handleChange('schedule_type')(e);
-                                        setRepeatData({});
-                                    }}
-                                >
-                                    {scheduleTypes.map((type) => (
-                                        <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} />
-                                    ))}
-                                </RadioGroup>
-                                {validationErrors.schedule_type && (
-                                    <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
-                                        {validationErrors.schedule_type}
-                                    </Box>
-                                )}
-                            </FormControl>
-                        </Grid>
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-
-                            <Autocomplete
-                                size="small"
-                                options={propertyOptions}
-                                getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={propertyOptions.find((item) => item.id === formData.property_id) || null}
-                                onInputChange={handlePropertySearchInput}
-                                filterOptions={(x) => x}
-                                onChange={(e, newValue) => {
-                                    const propId = newValue ? newValue.id : "";
-                                    handleChange("property_id")({ target: { value: propId } });
-
-                                    if (newValue) {
-                                        fetchInventoryByProperty(newValue.id)
-                                            .then((data) => {
-                                                setInventoryOptions(data || []);
-                                                // clear inventory_id if it's not in the fetched list
-                                                if (!data || !data.find((it) => it.id === formData.inventory_id)) {
-                                                    setFormData((prev) => ({ ...prev, inventory_id: '' }));
-                                                }
-                                            })
-                                            .catch(() => setInventoryOptions([]));
-                                    } else {
-                                        setInventoryOptions(inventoryItems || []);
-                                        setFormData((prev) => ({ ...prev, inventory_id: '' }));
-                                    }
-                                }}
-                                ListboxProps={{
-                                    onScroll: async (event) => {
-                                        const listboxNode = event.currentTarget;
-                                        if (
-                                            listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
-                                            propertyPagination?.hasNextPage &&
-                                            !isLoadingMoreProperties
-                                        ) {
-                                            setIsLoadingMoreProperties(true);
-                                            try {
-                                                await fetchProperties((propertyPagination.page || 1) + 1, true, propertySearchText);
-                                            } catch (err) {
-                                                console.error('Error loading more properties:', err);
-                                            } finally {
-                                                setIsLoadingMoreProperties(false);
-                                            }
-                                        }
-                                    },
-                                }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Select Property"
-                                        error={!!validationErrors.property_id}
-                                        helperText={validationErrors.property_id}
-                                    />
-                                )}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                            />
-
-                        </Grid>
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-
-                            <Autocomplete
-                                size="small"
-                                options={inventoryOptions}
-                                getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={inventoryOptions.find((item) => item.id === formData.inventory_id) || null}
-                                onInputChange={handleInventorySearchInput}
-                                filterOptions={!formData.property_id ? (x) => x : undefined}
-                                renderOption={(props, option) => (
-                                    <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
-                                        {(option.property_image_url) && (
-                                            <img
-                                                src={option.property_image_url}
-                                                alt={option.name || ''}
-                                                style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
-                                            />
-                                        )}
-                                    </li>
-                                )}
-                                onChange={(e, newValue) => {
-                                    handleChange("inventory_id")({
-                                        target: { value: newValue ? newValue.id : "" }
-                                    });
-
-                                    // Auto-select property when inventory is selected
-                                    if (newValue && newValue.property_id) {
-                                        handleChange("property_id")({
-                                            target: { value: newValue.property_id }
-                                        });
-                                    }
-                                }}
-                                ListboxProps={{
-                                    onScroll: async (event) => {
-                                        const listboxNode = event.currentTarget;
-                                        if (
-                                            listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
-                                            inventoryPagination?.hasNextPage &&
-                                            !isLoadingMoreInventory
-                                        ) {
-                                            setIsLoadingMoreInventory(true);
-                                            try {
-                                                await fetchInventoryItems({}, inventorySearchText, (inventoryPagination.page || 1) + 1, true);
-                                            } catch (err) {
-                                                console.error('Error loading more inventory:', err);
-                                            } finally {
-                                                setIsLoadingMoreInventory(false);
-                                            }
-                                        }
-                                    },
-                                }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Select Inventory"
-                                        error={!!validationErrors.inventory_id}
-                                        helperText={validationErrors.inventory_id}
-                                    />
-                                )}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                            />
-
-                        </Grid>
-
-                        {formData.schedule_type && formData.schedule_type !== 'fixed_dates' && (
-                            <>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        type="date"
-                                        label="Start Date"
-                                        value={formData.start_date}
-                                        onChange={handleChange('start_date')}
-                                        fullWidth
-                                        size="small"
-                                        disabled={isEdit && !isDuplicate}
-                                        error={!!validationErrors.start_date}
-                                        helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
-                                        InputLabelProps={{
-                                            shrink: true,
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        type="date"
-                                        label="End Date"
-                                        value={formData.end_date}
-                                        onChange={handleChange('end_date')}
-                                        fullWidth
-                                        size="small"
-                                        error={!!validationErrors.end_date}
-                                        helperText={validationErrors.end_date}
-                                        InputLabelProps={{
-                                            shrink: true,
-                                        }}
-                                    />
-                                </Grid>
-                            </>
-                        )}
-
-                        {formData.schedule_type === 'fixed_dates' && (
                             <Grid size={{ xs: 12 }}>
                                 <TextField
-                                    type="date"
-                                    label="Select Date"
+                                    label="Title"
+                                    value={formData.title}
+                                    onChange={handleChange('title')}
                                     fullWidth
                                     size="small"
-                                    InputLabelProps={{ shrink: true }}
-                                    onChange={(e) => {
-                                        const dateVal = e.target.value;
-                                        if (dateVal && !repeatData.dates?.includes(dateVal)) {
-                                            setRepeatData(prev => ({
-                                                ...prev,
-                                                dates: [...(prev.dates || []), dateVal].sort()
-                                            }));
+                                    required
+                                    error={!!validationErrors.title}
+                                    helperText={validationErrors.title}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    label="Description"
+                                    value={formData.description}
+                                    onChange={handleChange('description')}
+                                    fullWidth
+                                    size="small"
+                                    multiline
+                                    rows={3}
+                                    error={!!validationErrors.description}
+                                    inputProps={{ maxLength: 500 }}
+                                    helperText={
+                                        <>
+                                            <span>{validationErrors.description}</span>
+                                            <span>{formData.description.length}/500</span>
+                                        </>
+                                    }
+                                    slotProps={{
+                                        formHelperText: {
+                                            sx: {
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                            },
+                                        },
+                                    }}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+
+                                <Autocomplete
+                                    size="small"
+                                    options={propertyOptions}
+                                    getOptionLabel={(option) => option.name ? String(option.name) : ""}
+                                    value={propertyOptions.find((item) => item.id === formData.property_id) || null}
+                                    onInputChange={handlePropertySearchInput}
+                                    filterOptions={(x) => x}
+                                    onChange={(e, newValue) => {
+                                        const propId = newValue ? newValue.id : "";
+                                        handleChange("property_id")({ target: { value: propId } });
+
+                                        if (newValue) {
+                                            fetchInventoryByProperty(newValue.id)
+                                                .then((data) => {
+                                                    setInventoryOptions(data || []);
+                                                    // clear inventory_id if it's not in the fetched list
+                                                    if (!data || !data.find((it) => it.id === formData.inventory_id)) {
+                                                        setFormData((prev) => ({ ...prev, inventory_id: '' }));
+                                                    }
+                                                })
+                                                .catch(() => setInventoryOptions([]));
+                                        } else {
+                                            setInventoryOptions(inventoryItems || []);
+                                            setFormData((prev) => ({ ...prev, inventory_id: '' }));
                                         }
                                     }}
-                                    error={!!validationErrors.repeat_on}
-                                    helperText={validationErrors.repeat_on || 'Pick dates to add them'}
+                                    disabled={purchaseMode}
+                                    ListboxProps={{
+                                        onScroll: async (event) => {
+                                            const listboxNode = event.currentTarget;
+                                            if (
+                                                listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
+                                                propertyPagination?.hasNextPage &&
+                                                !isLoadingMoreProperties
+                                            ) {
+                                                setIsLoadingMoreProperties(true);
+                                                try {
+                                                    await fetchProperties((propertyPagination.page || 1) + 1, true, propertySearchText);
+                                                } catch (err) {
+                                                    console.error('Error loading more properties:', err);
+                                                } finally {
+                                                    setIsLoadingMoreProperties(false);
+                                                }
+                                            }
+                                        },
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Property"
+                                            error={!!validationErrors.property_id}
+                                            helperText={validationErrors.property_id}
+                                        />
+                                    )}
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
                                 />
-                                {repeatData.dates && repeatData.dates.length > 0 && (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                                        {repeatData.dates.map((date) => (
-                                            <Box
-                                                key={date}
-                                                sx={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    bgcolor: palette.background.customPaper,
-                                                    borderRadius: 2,
-                                                    px: 1,
-                                                    py: 0.3,
-                                                    fontSize: '0.8rem',
-                                                    gap: 0.5,
-                                                }}
-                                            >
-                                                {date}
-                                                <IconButton
-                                                    size="small"
-                                                    sx={{ p: 0, ml: 0.5 }}
-                                                    onClick={() => {
-                                                        setRepeatData(prev => ({
-                                                            ...prev,
-                                                            dates: prev.dates.filter(d => d !== date)
-                                                        }));
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Autocomplete
+                                    size="small"
+                                    options={inventoryOptions}
+                                    getOptionLabel={(option) => option.name ? String(option.name) : ""}
+                                    value={inventoryOptions.find((item) => item.id === formData.inventory_id) || null}
+                                    onInputChange={handleInventorySearchInput}
+                                    filterOptions={!formData.property_id ? (x) => x : undefined}
+                                    renderOption={(props, option) => (
+                                        <li {...props} key={option.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.name}</span>
+                                            {(option.property_image_url) && (
+                                                <img
+                                                    src={option.property_image_url}
+                                                    alt={option.name || ''}
+                                                    style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 100, marginLeft: 8 }}
+                                                />
+                                            )}
+                                        </li>
+                                    )}
+                                    onChange={(e, newValue) => {
+                                        handleChange("inventory_id")({
+                                            target: { value: newValue ? newValue.id : "" }
+                                        });
+
+                                        // Auto-select property when inventory is selected
+                                        if (newValue && newValue.property_id) {
+                                            handleChange("property_id")({
+                                                target: { value: newValue.property_id }
+                                            });
+                                        }
+
+                                        // Auto-check inventory update when inventory is selected
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            allows_inventory_update: !!newValue,
+                                        }));
+                                    }}
+                                    ListboxProps={{
+                                        onScroll: async (event) => {
+                                            const listboxNode = event.currentTarget;
+                                            if (
+                                                listboxNode.scrollHeight - listboxNode.scrollTop - listboxNode.clientHeight <= 10 &&
+                                                inventoryPagination?.hasNextPage &&
+                                                !isLoadingMoreInventory
+                                            ) {
+                                                setIsLoadingMoreInventory(true);
+                                                try {
+                                                    await fetchInventoryItems({}, inventorySearchText, (inventoryPagination.page || 1) + 1, true);
+                                                } catch (err) {
+                                                    console.error('Error loading more inventory:', err);
+                                                } finally {
+                                                    setIsLoadingMoreInventory(false);
+                                                }
+                                            }
+                                        },
+                                    }}
+                                    disabled={purchaseMode}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Select Inventory"
+                                            error={!!validationErrors.inventory_id}
+                                            helperText={validationErrors.inventory_id}
+                                        />
+                                    )}
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                                />
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {/* Step 1: Schedule */}
+                    {activeStep === 1 && (
+                        <Grid container spacing={2}>
+
+                            <Grid size={{ xs: 12 }}>
+                                <FormControl component="fieldset">
+                                    <FormLabel component="legend"
+                                        sx={{
+                                            color: validationErrors.schedule_type ? 'error.main' : 'inherit'
+                                        }}
+                                    >
+                                        Schedule Type
+                                    </FormLabel>
+                                    <RadioGroup
+                                        row
+                                        value={formData.schedule_type}
+                                        onChange={(e) => {
+                                            handleChange('schedule_type')(e);
+                                            setRepeatData({});
+                                        }}
+                                    >
+                                        {scheduleTypes.map((type) => (
+                                            <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} disabled={purchaseMode && type !== 'fixed_dates'} />
+                                        ))}
+                                    </RadioGroup>
+                                    {validationErrors.schedule_type && (
+                                        <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
+                                            {validationErrors.schedule_type}
+                                        </Box>
+                                    )}
+                                </FormControl>
+                            </Grid>
+
+                            {formData.schedule_type && formData.schedule_type !== 'fixed_dates' && (
+                                <>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <TextField
+                                            type="date"
+                                            label="Start Date"
+                                            value={formData.start_date}
+                                            onChange={handleChange('start_date')}
+                                            fullWidth
+                                            size="small"
+                                            disabled={isEdit && !isDuplicate}
+                                            error={!!validationErrors.start_date}
+                                            helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <TextField
+                                            type="date"
+                                            label="End Date"
+                                            value={formData.end_date}
+                                            onChange={handleChange('end_date')}
+                                            fullWidth
+                                            size="small"
+                                            error={!!validationErrors.end_date}
+                                            helperText={validationErrors.end_date}
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                        />
+                                    </Grid>
+                                </>
+                            )}
+
+                            {formData.schedule_type === 'fixed_dates' && (
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        type="date"
+                                        label="Select Date"
+                                        fullWidth
+                                        size="small"
+                                        InputLabelProps={{ shrink: true }}
+                                        onChange={(e) => {
+                                            const dateVal = e.target.value;
+                                            if (dateVal && !repeatData.dates?.includes(dateVal)) {
+                                                setRepeatData(prev => ({
+                                                    ...prev,
+                                                    dates: [...(prev.dates || []), dateVal].sort()
+                                                }));
+                                            }
+                                        }}
+                                        error={!!validationErrors.repeat_on}
+                                        helperText={validationErrors.repeat_on || 'Pick dates to add them'}
+                                    />
+                                    {repeatData.dates && repeatData.dates.length > 0 && (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                            {repeatData.dates.map((date) => (
+                                                <Box
+                                                    key={date}
+                                                    sx={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        bgcolor: palette.background.customPaper,
+                                                        borderRadius: 2,
+                                                        px: 1,
+                                                        py: 0.3,
+                                                        fontSize: '0.8rem',
+                                                        gap: 0.5,
                                                     }}
                                                 >
-                                                    <CloseIcon sx={{ fontSize: 14 }} />
-                                                </IconButton>
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                )}
-                            </Grid>
-                        )}
-
-                        {formData.schedule_type === 'weekly' && (
-                            <Grid size={{ xs: 12 }}>
-                                <Autocomplete
-                                    multiple
-                                    limitTags={3}
-                                    size="small"
-                                    options={daysOfWeek}
-                                    getOptionLabel={(option) => option.label}
-                                    value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
-                                    onChange={(event, newValue) => {
-                                        // Extract only the numeric values
-                                        const dayValues = newValue.map(day => day.value);
-                                        setRepeatData({ days: dayValues });
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Select Days"
-                                            placeholder="Choose days of the week"
-                                            required
-                                            error={!!validationErrors.repeat_on}
-                                            helperText={validationErrors.repeat_on || 'Select days of the week'}
-                                        />
+                                                    {date}
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{ p: 0, ml: 0.5 }}
+                                                        onClick={() => {
+                                                            setRepeatData(prev => ({
+                                                                ...prev,
+                                                                dates: prev.dates.filter(d => d !== date)
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <CloseIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Box>
+                                            ))}
+                                        </Box>
                                     )}
-                                    isOptionEqualToValue={(option, value) => option.value === value.value}
-                                />
-                            </Grid>
-                        )}
+                                </Grid>
+                            )}
 
-                        {formData.schedule_type === 'monthly' && (
-                            <Grid size={{ xs: 12 }}>
-                                <Autocomplete
-                                    multiple
-                                    limitTags={5}
-                                    size="small"
-                                    options={datesOfMonth}
-                                    getOptionLabel={(option) => String(option)}
-                                    value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
-                                    onChange={(event, newValue) => {
-                                        setRepeatData({ dates: newValue.sort((a, b) => a - b) });
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Select Dates"
-                                            placeholder="Choose dates of the month"
-                                            required
-                                            error={!!validationErrors.repeat_on}
-                                            helperText={validationErrors.repeat_on || 'Select dates of the month (1-31)'}
-                                        />
-                                    )}
-                                />
-                            </Grid>
-                        )}
-
-                        {formData.schedule_type === 'yearly' && (
-                            <>
-                                <Grid size={{ xs: 12, sm: 6 }}>
+                            {formData.schedule_type === 'weekly' && (
+                                <Grid size={{ xs: 12 }}>
                                     <Autocomplete
                                         multiple
                                         limitTags={3}
                                         size="small"
-                                        options={monthsOfYear}
+                                        options={daysOfWeek}
                                         getOptionLabel={(option) => option.label}
-                                        value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
+                                        value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
                                         onChange={(event, newValue) => {
-                                            const monthValues = newValue.map(month => month.value);
-                                            setRepeatData({ ...repeatData, months: monthValues });
+                                            // Extract only the numeric values
+                                            const dayValues = newValue.map(day => day.value);
+                                            setRepeatData({ days: dayValues });
                                         }}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
-                                                label="Select Months"
-                                                placeholder="Choose months"
+                                                label="Select Days"
+                                                placeholder="Choose days of the week"
                                                 required
                                                 error={!!validationErrors.repeat_on}
-                                                helperText={validationErrors.repeat_on || 'Select months of the year'}
+                                                helperText={validationErrors.repeat_on || 'Select days of the week'}
                                             />
                                         )}
                                         isOptionEqualToValue={(option, value) => option.value === value.value}
                                     />
                                 </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
+                            )}
+
+                            {formData.schedule_type === 'monthly' && (
+                                <Grid size={{ xs: 12 }}>
                                     <Autocomplete
                                         multiple
-                                        limitTags={3}
+                                        limitTags={5}
                                         size="small"
                                         options={datesOfMonth}
                                         getOptionLabel={(option) => String(option)}
                                         value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
                                         onChange={(event, newValue) => {
-                                            setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
+                                            setRepeatData({ dates: newValue.sort((a, b) => a - b) });
                                         }}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
                                                 label="Select Dates"
-                                                placeholder="Choose dates"
+                                                placeholder="Choose dates of the month"
                                                 required
                                                 error={!!validationErrors.repeat_on}
-                                                helperText={validationErrors.repeat_on || 'Select dates (1-31)'}
+                                                helperText={validationErrors.repeat_on || 'Select dates of the month (1-31)'}
                                             />
                                         )}
                                     />
                                 </Grid>
-                            </>
-                        )}
+                            )}
 
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Autocomplete
-                                size="small"
-                                options={teamMembers}
-                                getOptionLabel={(option) => option.name ? String(option.name) : ""}
-                                value={teamMembers.find((item) => item.id === formData.assigned_to) || null}
-                                onChange={(e, newValue) => {
-                                    handleChange("assigned_to")({ target: { value: newValue ? newValue.id : "" } });
-                                }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Assigned To"
-                                        error={!!validationErrors.assigned_to}
-                                        helperText={validationErrors.assigned_to}
+                            {formData.schedule_type === 'yearly' && (
+                                <>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Autocomplete
+                                            multiple
+                                            limitTags={3}
+                                            size="small"
+                                            options={monthsOfYear}
+                                            getOptionLabel={(option) => option.label}
+                                            value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
+                                            onChange={(event, newValue) => {
+                                                const monthValues = newValue.map(month => month.value);
+                                                setRepeatData({ ...repeatData, months: monthValues });
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Select Months"
+                                                    placeholder="Choose months"
+                                                    required
+                                                    error={!!validationErrors.repeat_on}
+                                                    helperText={validationErrors.repeat_on || 'Select months of the year'}
+                                                />
+                                            )}
+                                            isOptionEqualToValue={(option, value) => option.value === value.value}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <Autocomplete
+                                            multiple
+                                            limitTags={3}
+                                            size="small"
+                                            options={datesOfMonth}
+                                            getOptionLabel={(option) => String(option)}
+                                            value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
+                                            onChange={(event, newValue) => {
+                                                setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Select Dates"
+                                                    placeholder="Choose dates"
+                                                    required
+                                                    error={!!validationErrors.repeat_on}
+                                                    helperText={validationErrors.repeat_on || 'Select dates (1-31)'}
+                                                />
+                                            )}
+                                        />
+                                    </Grid>
+                                </>
+                            )}
+                        </Grid>
+                    )}
+
+                    {/* Step 2: Assignment */}
+                    {activeStep === 2 && (
+                        <Grid container spacing={2}>
+
+                            <Grid size={{ xs: 12, }}>
+                                <Autocomplete
+                                    size="small"
+                                    options={[{ id: '', name: 'Myself' }, ...(teamMembers || [])]}
+                                    getOptionLabel={(option) => option.name ? String(option.name) : ""}
+                                    value={[{ id: '', name: 'Myself' }, ...(teamMembers || [])].find((item) => item.id === (formData.assigned_to || '')) || null}
+                                    onChange={(e, newValue) => {
+                                        handleChange("assigned_to")({ target: { value: newValue ? newValue.id : "" } });
+                                    }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Assigned To"
+                                            error={!!validationErrors.assigned_to}
+                                            helperText={validationErrors.assigned_to}
+                                        />
+                                    )}
+                                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                                />
+                            </Grid>
+
+                            <Grid size={{ xs: 12 }} container spacing={2}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <FormControlLabel
+                                            label="A Photo Proof is Required"
+                                            labelPlacement='start'
+                                        control={
+                                            <Checkbox
+                                                checked={!!formData.requires_photo}
+                                                onChange={handlePhotoChange}
+                                            />
+                                        }
                                     />
+                                </Grid>
+
+                                {formData.inventory_id && (
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                                label="Update Inventory Quantity"
+                                                labelPlacement='start'
+                                            control={
+                                                <Checkbox
+                                                    checked={!!formData.allows_inventory_update}
+                                                    onChange={handleInventoryChange}
+                                                />
+                                            }
+                                        />
+                                    </Grid>
                                 )}
-                                isOptionEqualToValue={(option, value) => option.id === value.id}
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }} container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={!!formData.requires_photo}
-                                            onChange={handlePhotoChange}
-                                        />
-                                    }
-                                    label="A Photo Proof is Required"
-                                />
                             </Grid>
-                            {/* update inventory checkbox  */}
 
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={!!formData.allows_inventory_update}
-                                            onChange={handleInventoryChange}
-                                        />
-                                    }
-                                    label="Update Inventory Quantity"
-                                />
-                            </Grid>
                         </Grid>
-
-                    </Grid>
+                    )}
 
                 </DialogContent>
 
-                <DialogActions sx={{ px: 3, py: 2 }}>
-
+                <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+                    <Button
+                        variant='outlined'
+                        size='small'
+                        disabled={activeStep === 0}
+                        onClick={handleBack}
+                        startIcon={<NavigateBefore />}
+                        sx={{
+                            textTransform: 'none',
+                            borderRadius: 10,
+                            visibility: activeStep === 0 ? 'hidden' : 'visible',
+                        }}
+                    >
+                        Back
+                    </Button>
                     <Button
                         variant='contained'
                         disableElevation
                         size='small'
-                        margin='normal'
-                        onClick={handleCreateUpdate}
+                        onClick={handleNext}
                         disabled={loading}
+                        endIcon={activeStep < steps.length - 1 ? <NavigateNext /> : null}
                         sx={{
                             textTransform: 'none',
                             backgroundColor: palette.primary.main,
@@ -814,9 +897,13 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task }) => {
                             borderRadius: 10,
                         }}
                     >
-                        {loading ? 'Saving...' : (isEdit ? 'Update Task' : isDuplicate ? 'Duplicate Task' : 'Create Task')}
+                        {loading
+                            ? 'Saving...'
+                            : activeStep === steps.length - 1
+                                ? (isEdit ? 'Update Task' : 'Create Task')
+                                : 'Next'
+                        }
                     </Button>
-
                 </DialogActions>
 
             </Dialog>

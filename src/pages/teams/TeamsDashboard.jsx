@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Container, Grid, Typography, CircularProgress, Alert,
-  Card, useTheme
+  Card, useTheme, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import {
   Apartment, CheckBox, Inventory, People,
@@ -16,10 +16,14 @@ import EscalationCard from '../../resuable_components/EscalationCard';
 import InventoryAlertCard from '../../resuable_components/InventoryAlertCard';
 import StaffTaskList from '../../resuable_components/StaffTaskList';
 import {
-  getTeamDashboard, getEscalatedTasks, getDepletedInventory,
+  getTeamDashboard, getEscalatedTasks,
   getLowStockInventory, getNewInventory, getStaffTodayTasks, getStaffPendingTasks
 } from '../../service/Teams/Dashboard';
 import { useAuth } from '../../context/AuthContext';
+import { createTeamTask, getTeamsTeamMembers, getTeamInventoryByPropertyId } from '../../service/Teams/Team_Task';
+import { TaskContext } from '../clients/task/TaskManagement';
+import TileView_AddEdit_Dialog from '../clients/task/TileView_AddEdit_Dialog';
+import { ROLES } from '../../utils/permissions';
 
 const TeamsDashboard = () => {
   const theme = useTheme();
@@ -27,17 +31,64 @@ const TeamsDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [purchaseTask, setPurchaseTask] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [trendDays, setTrendDays] = useState(7);
+  const [trendLoading, setTrendLoading] = useState(false);
+
+  const canCreateTask = [ROLES.PROPERTY_MANAGER, ROLES.PROPERTY_SUPERVISOR].includes(user?.teamRole);
+
+  const fetchInventoryByProperty = useCallback(async (propertyId) => {
+    try {
+      const res = await getTeamInventoryByPropertyId(propertyId);
+      return res.data || [];
+    } catch { return []; }
+  }, []);
+
+  const miniTaskContext = {
+    inventoryItems: [],
+    properties: [],
+    propertyPagination: {},
+    inventoryPagination: {},
+    teamMembers,
+    createTask: createTeamTask,
+    updateTask: async () => { },
+    fetchInventoryByProperty,
+    fetchProperties: async () => { },
+    fetchInventoryItems: async () => { },
+    updateTaskCompletionStatus: async () => { },
+  };
+
+  const handlePurchaseTask = (item) => {
+    setPurchaseTask({
+      title: `Purchase ${item.name}`,
+      description: '',
+      property: { id: item.property_id, name: item.property_name },
+      property_id: item.property_id,
+      inventory_details: { id: item.id, name: item.name },
+      inventory_id: item.id,
+      schedule: { type: 'fixed_dates' },
+      requires_photo: true,
+      allows_inventory_update: true,
+    });
+    setPurchaseDialogOpen(true);
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         setLoading(true);
-        const res = await getTeamDashboard();
-        if (res.success) {
-          setData(res.data);
+        const [dashRes, membersRes] = await Promise.all([
+          getTeamDashboard(trendDays),
+          getTeamsTeamMembers().catch(() => ({ data: [] }))
+        ]);
+        if (dashRes.success) {
+          setData(dashRes.data);
         } else {
           setError('Failed to load dashboard data');
         }
+        setTeamMembers(membersRes.data || []);
       } catch (err) {
         setError(err.message || 'Failed to load dashboard');
       } finally {
@@ -46,6 +97,25 @@ const TeamsDashboard = () => {
     };
     fetchDashboard();
   }, []);
+
+  // Refetch only chart data when trendDays changes (skip initial load)
+  useEffect(() => {
+    if (!data) return;
+    const refetchTrend = async () => {
+      try {
+        setTrendLoading(true);
+        const dashRes = await getTeamDashboard(trendDays);
+        if (dashRes.success && dashRes.data.tasksDonePerDay) {
+          setData(prev => ({ ...prev, tasksDonePerDay: dashRes.data.tasksDonePerDay }));
+        }
+      } catch (err) {
+        console.error('Failed to refetch trend data:', err);
+      } finally {
+        setTrendLoading(false);
+      }
+    };
+    refetchTrend();
+  }, [trendDays]);
 
   if (loading) {
     return (
@@ -76,7 +146,7 @@ const TeamsDashboard = () => {
 
     return (
       <React.Fragment>
-                <Container maxWidth="xl" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+        <Container maxWidth="xl" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
           {/* Welcome Banner */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="h6" fontWeight={700}>
@@ -88,7 +158,7 @@ const TeamsDashboard = () => {
           </Box>
 
           {/* Stats Grid */}
-          <Grid container spacing={2} mb={2}>
+          {/* <Grid container spacing={2} mb={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard
                 title="Total Properties"
@@ -131,20 +201,20 @@ const TeamsDashboard = () => {
                 iconBgColor="error.main"
               />
             </Grid>
-          </Grid>
+          </Grid> */}
 
           {/* Escalations & Inventory Alerts */}
           <Grid container spacing={2} mb={2}>
             <Grid size={{ xs: 12, md: 6 }}>
               <EscalationCard
                 fetchEscalatedTasks={getEscalatedTasks}
-                fetchDepletedInventory={getDepletedInventory}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <InventoryAlertCard
                 fetchLowStock={getLowStockInventory}
                 fetchNewInventory={getNewInventory}
+                onPurchaseTask={canCreateTask ? handlePurchaseTask : undefined}
               />
             </Grid>
           </Grid>
@@ -157,12 +227,41 @@ const TeamsDashboard = () => {
                 p: 2, height: 450,
                 transition: 'box-shadow 0.3s ease', '&:hover': { boxShadow: 6 },
               }}>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.2rem', mb: 0.5 }}>
-                  Tasks Done Per Day
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Last 7 days completion trend
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                  <Box>
+                    <Typography variant="body1" sx={{ fontWeight: 'bold', fontSize: '1.2rem', mb: 0.5 }}>
+                      Tasks Trend Per Day
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Last {trendDays} days trend
+                    </Typography>
+                  </Box>
+                  <ToggleButtonGroup
+                    value={trendDays}
+                    exclusive
+                    onChange={(e, val) => val !== null && setTrendDays(val)}
+                    size="small"
+                    sx={{
+                      '& .MuiToggleButton-root': {
+                        px: 1.5, py: 0.25,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        borderColor: 'divider',
+                        color: 'text.secondary',
+                        '&.Mui-selected': {
+                          bgcolor: 'primary.main',
+                          color: 'primary.contrastText',
+                          '&:hover': { bgcolor: 'primary.dark' },
+                        },
+                      },
+                    }}
+                  >
+                    <ToggleButton value={3}>3D</ToggleButton>
+                    <ToggleButton value={7}>7D</ToggleButton>
+                    <ToggleButton value={15}>15D</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
                 <Box sx={{ height: 350, width: '100%' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -194,12 +293,12 @@ const TeamsDashboard = () => {
                       <Legend />
                       <Bar
                         dataKey="completed" name="Completed"
-                        fill={theme.palette.success.main}
+                        fill={theme.palette.taskStatus?.completed || theme.palette.success.main}
                         radius={[6, 6, 0, 0]}
                       />
                       <Bar
                         dataKey="pending" name="Pending"
-                        fill={theme.palette.warning.main}
+                        fill={theme.palette.taskStatus?.pending || theme.palette.warning.main}
                         radius={[6, 6, 0, 0]}
                       />
                     </BarChart>
@@ -260,11 +359,11 @@ const TeamsDashboard = () => {
                         <Legend />
                         <Bar
                           dataKey="completed_tasks" name="Completed" stackId="a"
-                          fill={theme.palette.success.main}
+                          fill={theme.palette.taskStatus?.completed || theme.palette.success.main}
                         />
                         <Bar
                           dataKey="pending_tasks" name="Pending" stackId="a"
-                          fill={theme.palette.warning.main}
+                          fill={theme.palette.taskStatus?.pending || theme.palette.warning.main}
                           radius={[0, 6, 6, 0]}
                         />
                       </BarChart>
@@ -275,6 +374,16 @@ const TeamsDashboard = () => {
             </Grid>
           </Grid>
         </Container>
+
+        {/* Purchase Task Dialog */}
+        <TaskContext.Provider value={miniTaskContext}>
+          <TileView_AddEdit_Dialog
+            open={purchaseDialogOpen}
+            onClose={() => setPurchaseDialogOpen(false)}
+            task={purchaseTask}
+            purchaseMode
+          />
+        </TaskContext.Provider>
       </React.Fragment>
     );
   }
@@ -286,7 +395,7 @@ const TeamsDashboard = () => {
 
   return (
     <React.Fragment>
-              <Container maxWidth="xl" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
+      <Container maxWidth="xl" sx={{ mt: 2, mb: 2, px: { xs: 2, sm: 3 } }}>
         {/* Welcome Banner */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="h6" fontWeight={700}>
@@ -296,48 +405,6 @@ const TeamsDashboard = () => {
             Here's your task overview for today
           </Typography>
         </Box>
-
-        {/* Quick Stats */}
-        <Grid container spacing={2} mb={2}>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard
-              title="Today's Total"
-              value={stats.todayTotal}
-              icon={Assignment}
-              iconColor="primary.contrastText"
-              iconBgColor="primary.main"
-            />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard
-              title="Completed"
-              value={stats.todayCompleted}
-              icon={TaskAlt}
-              iconColor="success.contrastText"
-              iconBgColor="success.main"
-            />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard
-              title="Pending"
-              value={stats.todayPending}
-              icon={PendingActions}
-              iconColor="warning.contrastText"
-              iconBgColor="warning.main"
-            />
-          </Grid>
-          <Grid size={{ xs: 6, sm: 3 }}>
-            <StatCard
-              title="Overdue"
-              value={stats.overdue}
-              change={stats.overdue > 0 ? 'needs attention' : 'all clear'}
-              changeType={stats.overdue > 0 ? 'negative' : 'positive'}
-              icon={Schedule}
-              iconColor="error.contrastText"
-              iconBgColor="error.main"
-            />
-          </Grid>
-        </Grid>
 
         {/* Task Lists */}
         <Grid container spacing={2}>

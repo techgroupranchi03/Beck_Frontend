@@ -637,7 +637,7 @@ const ActiveTask = () => {
                   sx={{ color: palette.secondary.light }}
                   onClick={() => {
                     const duplicatedData = { ...row.original };
-                    delete duplicatedData.id; 
+                    delete duplicatedData.id;
                     // Create a proper MRT row with pre-filled data
                     const newCreatingRow = createRow(table, duplicatedData);
                     // Open the creation row pre-filled

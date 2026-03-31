@@ -44,13 +44,15 @@ import {
     AssignmentTurnedIn,
     CameraAlt,
     FileCopy,
-    CalendarMonth
+    CalendarMonth,
+    ProductionQuantityLimitsOutlined
 } from '@mui/icons-material';
 import InventoryFilter from './InventoryFilter';
 import { useInventoryContext } from './InventoryManagement';
 import Tag from '../../../resuable_components/Tag';
 import TileView_addEdit_Inventory from './TileView_addEdit_Inventory';
 import InventoryTask_AddEdit_Dialog from './InventoryTask_AddEdit_Dialog';
+import UpdateInventoryDialog from './UpdateInventoryDialog';
 import ViewMoreText from '../../../resuable_components/ViewMore';
 import InventoryCardSkeleton from './InventoryCardSkeleton';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
@@ -63,6 +65,7 @@ import formatSchedule from '../../../utils/scheduleFormatter';
 import { formatDate } from '../../../utils/dateFormat';
 import { useAuth } from '../../../context/AuthContext';
 import { canCreate, canUpdate, canDelete, RESOURCES } from '../../../utils/permissions';
+import { containerOptions } from '../../../constant';
 import { useTopBar } from '../../../context/TopBarContext';
 
 
@@ -108,7 +111,11 @@ const Tile_View_Inventory = () => {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
     const observerTarget = useRef(null);
+    const isFetchingRef = useRef(false);
+    const searchDebounceRef = useRef(null);
     const [inventoryTaskDataMap, setInventoryTaskDataMap] = useState({});
+    const [openUpdateDialog, setOpenUpdateDialog] = useState(false);
+    const [updateItem, setUpdateItem] = useState(null);
 
     // Register search actions in top bar for mobile
     const { registerActions, clearActions } = useTopBar();
@@ -257,6 +264,17 @@ const Tile_View_Inventory = () => {
         setAnchorEl(null);
     };
 
+    const handleOpenUpdateInventory = (inventory) => {
+        setUpdateItem(inventory);
+        setOpenUpdateDialog(true);
+        setAnchorEl(null);
+    };
+
+    const handleCloseUpdateDialog = () => {
+        setOpenUpdateDialog(false);
+        setUpdateItem(null);
+    };
+
     const handleCloseDialog = () => {
         setOpenAddEditDialog(false);
         setSelectedItem(null);
@@ -318,15 +336,35 @@ const Tile_View_Inventory = () => {
         }
     };
 
-    const handleSearch = async (text) => {
+    const handleSearch = (text) => {
         setSearchText(text);
 
-        try {
-            await fetchInventoryItems(filters, text);
-        } catch (error) {
-            console.error("Error searching inventory:", error);
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
         }
+
+        searchDebounceRef.current = setTimeout(async () => {
+            if (isFetchingRef.current) return;
+
+            isFetchingRef.current = true;
+            setCurrentPage(1);
+            try {
+                await fetchInventoryItems(filters, text, 1, false);
+            } catch (error) {
+                console.error("Error searching inventory:", error);
+            } finally {
+                isFetchingRef.current = false;
+            }
+        }, 400);
     };
+
+    useEffect(() => {
+        return () => {
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -500,7 +538,7 @@ const Tile_View_Inventory = () => {
                     variant="outlined"
                     placeholder="Search Inventory..."
                     size="small"
-                    focused
+                    autoFocus
                     value={searchText}
                     onChange={(e) => handleSearch(e.target.value)}
                     InputProps={{
@@ -614,8 +652,27 @@ const Tile_View_Inventory = () => {
 
                                             <Tag
                                                 icon={<InventoryOutlined fontSize="small" />}
-                                                label={`Qty: ${item.quantity} ${item.unit}`}
-                                                bgcolor={palette.tagTask.quantity}
+                                                label={`Qty: ${item.unit?.toLowerCase() === 'container'
+                                                    ? (item.quantity || 'N/A')
+                                                      + (item.container_type ? ` (${item.container_type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())})` : '')
+                                                    : item.quantity} ${item.unit?.toLowerCase() === 'container' ? '' : item.unit || ''}`}
+                                                bgcolor={
+                                                    (() => {
+                                                        const unit = (item.unit || '').toLowerCase();
+                                                        // Parse quantity to numeric for comparison
+                                                        const parseQtyNum = (val) => {
+                                                            if (!val || val === 'empty') return 0;
+                                                            const str = String(val).replace('%', '');
+                                                            const num = parseFloat(str);
+                                                            return isNaN(num) ? null : num;
+                                                        };
+                                                        const numQty = parseQtyNum(item.quantity);
+                                                        const numLimit = parseQtyNum(item.lower_limit);
+                                                        if (numQty === 0 || item.quantity === 'empty') return '#ef535050';
+                                                        if (numLimit !== null && numQty !== null && numQty <= numLimit) return '#ff980050';
+                                                        return '#4caf5040';
+                                                    })()
+                                                }
                                                 color={palette.tagTask.color}
                                             />
 
@@ -627,30 +684,49 @@ const Tile_View_Inventory = () => {
                                             />
 
                                             <Tag
-                                                icon={<AccessTime fontSize="small" />}
-                                                label={`Low Limit: ${item.lower_limit}`}
+                                                icon={< ProductionQuantityLimitsOutlined fontSize="small" />}
+                                                label={`Reorder On  ${item.lower_limit || 'N/A'}`}
                                                 bgcolor={palette.tagTask.lower_limit}
                                                 color={palette.tagTask.color}
                                             />
+
                                         </Stack>
                                     </CardContent>
 
                                     {/* Menu */}
-                                    {(canUpdateInventory || canDeleteInventory) && (
-                                        <IconButton
-                                            onClick={(event) => {
-                                                setSelectedItem(item);
-                                                setAnchorEl(event.currentTarget);
-                                            }}
-                                            sx={{
-                                                position: "absolute",
-                                                top: 8,
-                                                right: 8,
-                                            }}
-                                        >
-                                            <MoreVert />
-                                        </IconButton>
-                                    )}
+                                    <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        {canUpdateInventory && (
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={() => handleOpenUpdateInventory(item)}
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    fontSize: '0.7rem',
+                                                    borderRadius: 2,
+                                                    py: 0.3,
+                                                    px: 1,
+                                                    minWidth: 'auto',
+                                                    borderColor: palette.primary.main,
+                                                    color: palette.primary.main,
+                                                    '&:hover': { borderColor: palette.secondary.main, color: palette.secondary.main },
+                                                }}
+                                            >
+                                                Update Quantity
+                                            </Button>
+                                        )}
+                                        {(canUpdateInventory || canDeleteInventory) && (
+                                            <IconButton
+                                                size="small"
+                                                onClick={(event) => {
+                                                    setSelectedItem(item);
+                                                    setAnchorEl(event.currentTarget);
+                                                }}
+                                            >
+                                                <MoreVert />
+                                            </IconButton>
+                                        )}
+                                    </Box>
                                 </Box>
 
                                 {/* Tasks Section */}
@@ -837,12 +913,10 @@ const Tile_View_Inventory = () => {
 
                                                                         {/* Assigned To & Property */}
                                                                         <Stack direction="row" flexWrap="wrap" gap={1} mt={1}>
-                                                                            {task.assigned_to?.name && (
-                                                                                <IconLabel
-                                                                                    icon={Person}
-                                                                                    label={task.assigned_to.name}
-                                                                                />
-                                                                            )}
+                                                                            <IconLabel
+                                                                                icon={Person}
+                                                                                label={task.assigned_to?.name || 'Myself'}
+                                                                            />
                                                                             {task.property?.name && (
                                                                                 <IconLabel
                                                                                     icon={Business}
@@ -1041,6 +1115,12 @@ const Tile_View_Inventory = () => {
                 onClose={handleCloseTaskDialog}
                 task={selectedTask}
                 inventoryId={selectedInventoryId}
+            />
+
+            <UpdateInventoryDialog
+                open={openUpdateDialog}
+                onClose={handleCloseUpdateDialog}
+                inventory={updateItem}
             />
 
             {/* Mobile floating filter tab */}
