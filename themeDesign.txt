@@ -1832,6 +1832,6 @@ Text Button          | transparent                 | primary    | secondary
 
 Last Updated: January 14, 2026
 Version: 2.0 (Semantic Naming Update)
-Maintained by: Beck Holiday Homes Development Team
+Maintained by: TaskBnB Development Team
 
 For questions or additions to this document, please contact the development team.

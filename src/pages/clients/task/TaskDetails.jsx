@@ -10,7 +10,7 @@ import {
     Chip,
     IconButton,
     Stack,
-    CircularProgress,
+
     useTheme,
     Container,
     CardHeader,
@@ -29,6 +29,7 @@ import {
     FormControl,
     Select,
 } from '@mui/material';
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
     ArrowBack,
     Person,
@@ -196,9 +197,7 @@ const TaskDetails = () => {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-                <CircularProgress />
-            </Box>
+            <Loader sx={{ minHeight: '60vh' }} />
         );
     }
 

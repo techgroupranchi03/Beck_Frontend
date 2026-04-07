@@ -18,8 +18,9 @@ import {
   Stack,
   Button,
   TextField,
-  CircularProgress,
+
 } from "@mui/material";
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
   MoreVert,
   Edit,
@@ -384,7 +385,7 @@ const Tile_View_Team = () => {
       {isLoadingMore && (
 
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
-          <CircularProgress size={24} />
+          <Loader inline size={24} />
         </Box>
 
       )}

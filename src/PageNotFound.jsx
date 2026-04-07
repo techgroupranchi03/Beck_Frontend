@@ -3,7 +3,7 @@ import { Box, Typography, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 
-// Your Beck HolidayHomes color palette
+// Your TaskBnB color palette
 const theme = createTheme({
   palette: {
     primary: { main: "#407f68" },

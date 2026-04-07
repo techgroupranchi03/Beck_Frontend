@@ -37,9 +37,10 @@ export const clientLogout = async () => {
     try {
         const response = await axios.post(
             `${BASE_URL}/client/auth/logout`,
+            {},
             {
                 headers: {
-                    token: `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );

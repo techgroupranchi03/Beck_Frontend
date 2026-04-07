@@ -36,9 +36,10 @@ export const teamsLogout = async () => {
     try {
         const response = await axios.post(
             `${BASE_URL}/team/auth/logout`,
+            {},
             {
                 headers: {
-                    token: `Bearer ${token}`,
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );

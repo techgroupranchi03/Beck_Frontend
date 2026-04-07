@@ -18,8 +18,9 @@ import {
   Typography,
   InputAdornment,
   FormHelperText,
-  CircularProgress,
+
 } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 import CloseIcon from '@mui/icons-material/Close';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { getClientbyId, editClient } from '../../service/Admin/Admin_auth';
@@ -187,7 +188,7 @@ export default function EditClientsDialog({ open, onClose, clientId, onSave }) {
       <DialogContent dividers sx={{ pt: 2 }}>
         {fetchingData ? (
           <Grid container justifyContent="center" alignItems="center" sx={{ minHeight: 300 }}>
-            <CircularProgress />
+            <Loader inline size={48} />
           </Grid>
         ) : (
           <Grid container spacing={3}>
@@ -366,7 +367,7 @@ export default function EditClientsDialog({ open, onClose, clientId, onSave }) {
             backgroundColor: palette.primary.main,
             '&:hover': { backgroundColor: palette.secondary.main },
           }}
-          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+          startIcon={loading ? <Loader inline size={20} /> : null}
         >
           {loading ? 'Updating...' : 'Update Client'}
         </Button>

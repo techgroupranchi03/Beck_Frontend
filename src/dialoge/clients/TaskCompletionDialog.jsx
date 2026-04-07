@@ -8,10 +8,11 @@ import {
     Box,
     IconButton,
     Typography,
-    CircularProgress,
+
     Slide,
     Stack
 } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -356,7 +357,7 @@ const TaskCompletionDialog = ({ open, onClose, task, updateTaskCompletionStatus,
                     onClick={handleSubmit}
                     variant="contained"
                     disabled={loading || photos.length === 0}
-                    startIcon={loading && <CircularProgress size={20} />}
+                    startIcon={loading && <Loader inline size={20} />}
                 >
                     {loading ? 'Submitting...' : 'Submit'}
                 </Button>

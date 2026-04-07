@@ -12,8 +12,8 @@ import {
     ListItemIcon,
     ListItemText,
     Chip,
-    CircularProgress,
 } from "@mui/material";
+import Loader from "./Loader.jsx";
 import { Logout, Business, CheckCircle, Person, Palette, Settings } from "@mui/icons-material";
 import ThemeToggleButton from "../resuable_components/ThemeToggleButton.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -238,7 +238,7 @@ export default function ProfileMenu() {
 
                         {loadingAccounts ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                                <CircularProgress size={20} />
+                                <Loader inline size={20} />
                             </Box>
                         ) : availableAccounts.length > 0 ? (
                             <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>

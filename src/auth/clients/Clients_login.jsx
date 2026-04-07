@@ -8,9 +8,9 @@ import {
     Typography,
     Avatar,
     useTheme,
-    CircularProgress,
     IconButton,
 } from "@mui/material";
+import Loader from "../../resuable_components/Loader.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowBack } from "@mui/icons-material";
 import { clientSendOtp, verfiyOtp } from "../../service/Clients/Clients_auth";
@@ -20,8 +20,8 @@ const Clients_login = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { login, isAuthenticated } = useAuth();
-    
-    const [step, setStep] = useState(1); 
+
+    const [step, setStep] = useState(1);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [otp, setOtp] = useState(["", "", "", ""]);
     const [error, setError] = useState("");
@@ -29,7 +29,7 @@ const Clients_login = () => {
     const [resendTimer, setResendTimer] = useState(0);
 
     // Refs for OTP input fields
-    const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+    const otpRefs = useRef([null, null, null, null]);
 
     // Redirect if already authenticated
     useEffect(() => {
@@ -49,8 +49,8 @@ const Clients_login = () => {
 
     // Auto-focus first OTP input when step changes to 2
     useEffect(() => {
-        if (step === 2 && otpRefs[0].current) {
-            otpRefs[0].current.focus();
+        if (step === 2 && otpRefs.current[0]) {
+            otpRefs.current[0].focus();
         }
     }, [step]);
 
@@ -66,7 +66,7 @@ const Clients_login = () => {
     const handleSendOTP = async () => {
         setError("");
         setLoading(true);
-        
+
         try {
             // TODO: Call API to send OTP to phone number
             const res = await clientSendOtp({ phone: phoneNumber });
@@ -84,19 +84,19 @@ const Clients_login = () => {
     const handleVerifyOTP = async () => {
         setError("");
         setLoading(true);
-        
+
         try {
             const otpString = otp.join("");
-            
+
             // Call verifyOtp API
-            const response = await verfiyOtp({ 
+            const response = await verfiyOtp({
                 phone: phoneNumber,
-                otp: otpString 
+                otp: otpString
             });
-            
-            
+
+
             // Extract token from response
-            const token = response.data?.token || response.token; 
+            const token = response.data?.token || response.token;
             if (!token) {
                 setError("Invalid response from server. Token not found.");
                 return;
@@ -119,7 +119,7 @@ const Clients_login = () => {
     const handleOTPChange = (index, value) => {
         // Only allow single digit
         const digit = value.replace(/\D/g, '').slice(-1);
-        
+
         const newOtp = [...otp];
         newOtp[index] = digit;
         setOtp(newOtp);
@@ -127,16 +127,16 @@ const Clients_login = () => {
 
         // Auto-focus next input
         if (digit && index < 3) {
-            otpRefs[index + 1].current?.focus();
+            otpRefs.current[index + 1]?.focus();
         }
     };
 
     const handleOTPKeyDown = (index, e) => {
         // Handle backspace
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            otpRefs[index - 1].current?.focus();
+            otpRefs.current[index - 1]?.focus();
         }
-        
+
         // Handle Enter key
         if (e.key === 'Enter' && otp.every(digit => digit) && !loading) {
             handleVerifyOTP();
@@ -146,17 +146,17 @@ const Clients_login = () => {
     const handleOTPPaste = (e) => {
         e.preventDefault();
         const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-        
+
         if (pastedData.length === 4) {
             const newOtp = pastedData.split('');
             setOtp(newOtp);
-            otpRefs[3].current?.focus();
+            otpRefs.current[3]?.focus();
         }
     };
 
     const handleResendOTP = async () => {
         if (resendTimer > 0) return;
-        
+
         setOtp(["", "", "", ""]);
         setError("");
         await handleSendOTP();
@@ -217,15 +217,15 @@ const Clients_login = () => {
                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mt: step === 2 ? 3 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
-                        alt="Beck HolidayHomes Logo"
+                        alt="TaskBnB Logo"
                         sx={{ width: 64, height: 64, mb: 1 }}
                     />
                     <Typography
                         variant="h5"
-                         mb={1}
+                        mb={1}
                         sx={{ color: theme.palette.text.primary, fontWeight: "bold" }}
                     >
-                        Beck HolidayHomes
+                        TaskBnB
                     </Typography>
                     <Typography
                         variant="body1"
@@ -233,7 +233,7 @@ const Clients_login = () => {
                     >
                         {step === 1 ? 'Client Login' : 'Enter Your OTP code here'}
                     </Typography>
-                    
+
                 </Box>
 
                 {step === 1 ? (
@@ -285,7 +285,7 @@ const Clients_login = () => {
                                 textTransform: "none",
                             }}
                         >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : "Send OTP"}
+                            {loading ? <Loader inline size={24} /> : "Send OTP"}
                         </Button>
                     </>
                 ) : (
@@ -303,7 +303,7 @@ const Clients_login = () => {
                             {otp.map((digit, index) => (
                                 <TextField
                                     key={index}
-                                    inputRef={otpRefs[index]}
+                                    inputRef={(el) => (otpRefs.current[index] = el)}
                                     value={digit}
                                     onChange={(e) => handleOTPChange(index, e.target.value)}
                                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
@@ -312,6 +312,9 @@ const Clients_login = () => {
                                     disabled={loading}
                                     inputProps={{
                                         maxLength: 1,
+                                        inputMode: 'numeric',
+                                        pattern: '[0-9]*',
+                                        type: 'tel',
                                         style: {
                                             textAlign: "center",
                                             fontSize: "24px",
@@ -347,7 +350,7 @@ const Clients_login = () => {
                         {resendTimer > 0 && (
                             <Typography
                                 variant="body2"
-                                sx={{ 
+                                sx={{
                                     color: theme.palette.text.secondary,
                                     mb: 2,
                                 }}
@@ -387,7 +390,7 @@ const Clients_login = () => {
                                 textTransform: "none",
                             }}
                         >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : "Verify OTP"}
+                            {loading ? <Loader inline size={24} /> : "Verify OTP"}
                         </Button>
 
                         {/* Resend OTP */}

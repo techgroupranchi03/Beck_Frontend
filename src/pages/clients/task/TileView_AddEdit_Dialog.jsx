@@ -87,6 +87,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
     const inventorySearchTimer = useRef(null);
     const [repeatData, setRepeatData] = useState({});
     const [activeStep, setActiveStep] = useState(0);
+    const [showStartDateInput, setShowStartDateInput] = useState(false);
 
     const steps = ['Details', 'Schedule', 'Assignment'];
 
@@ -146,7 +147,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
                 property_id: '',
                 inventory_id: null,
                 schedule_type: 'weekly',
-                start_date: '',
+                start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
                 assigned_to: '',
                 requires_photo: true,
@@ -159,6 +160,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
         setInventorySearchText('');
         setValidationErrors({});
         setActiveStep(0);
+        setShowStartDateInput(false);
     }, [task, isEdit, isDuplicate, purchaseMode, open]);
 
     // Sync propertyOptions with properties from context, merging in selected property when editing/purchaseMode
@@ -194,6 +196,78 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
             if (inventorySearchTimer.current) clearTimeout(inventorySearchTimer.current);
         };
     }, []);
+
+    // Helper to format date as DD-MM-YYYY
+    const formatDateDisplay = (dateStr) => {
+        if (!dateStr) return '';
+        const [y, m, d] = dateStr.split('-');
+        return `${d}-${m}-${y}`;
+    };
+
+    // Calculate first occurrence date based on schedule type and repeat data
+    const calculateFirstOccurrence = (scheduleType, data) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (scheduleType === 'weekly' && data.days?.length > 0) {
+            const todayDay = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+            let minDaysAhead = Infinity;
+            for (const dayValue of data.days) {
+                const jsDay = dayValue % 7; // 1=Mon→1, 7=Sun→0
+                let daysAhead = jsDay - todayDay;
+                if (daysAhead < 0) daysAhead += 7;
+                if (daysAhead < minDaysAhead) minDaysAhead = daysAhead;
+            }
+            if (minDaysAhead !== Infinity) {
+                const firstDate = new Date(today);
+                firstDate.setDate(firstDate.getDate() + minDaysAhead);
+                return firstDate.toISOString().split('T')[0];
+            }
+        }
+
+        if (scheduleType === 'monthly' && data.dates?.length > 0) {
+            const currentDate = today.getDate();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const sortedDates = [...data.dates].sort((a, b) => a - b);
+            for (const date of sortedDates) {
+                if (date >= currentDate) {
+                    return new Date(currentYear, currentMonth, date).toISOString().split('T')[0];
+                }
+            }
+            return new Date(currentYear, currentMonth + 1, sortedDates[0]).toISOString().split('T')[0];
+        }
+
+        if (scheduleType === 'yearly' && data.months?.length > 0 && data.dates?.length > 0) {
+            const currentMonth = today.getMonth() + 1;
+            const currentDate = today.getDate();
+            const currentYear = today.getFullYear();
+            const sortedMonths = [...data.months].sort((a, b) => a - b);
+            const sortedDates = [...data.dates].sort((a, b) => a - b);
+            for (const month of sortedMonths) {
+                for (const date of sortedDates) {
+                    if (month > currentMonth || (month === currentMonth && date >= currentDate)) {
+                        return new Date(currentYear, month - 1, date).toISOString().split('T')[0];
+                    }
+                }
+            }
+            return new Date(currentYear + 1, sortedMonths[0] - 1, sortedDates[0]).toISOString().split('T')[0];
+        }
+
+        return null;
+    };
+
+    // Auto-calculate start_date when repeat data changes (for new tasks)
+    useEffect(() => {
+        if (isEdit && !isDuplicate) return;
+        if (showStartDateInput) return;
+        if (formData.schedule_type === 'fixed_dates') return;
+
+        const firstDate = calculateFirstOccurrence(formData.schedule_type, repeatData);
+        if (firstDate) {
+            setFormData(prev => ({ ...prev, start_date: firstDate }));
+        }
+    }, [formData.schedule_type, repeatData, isEdit, isDuplicate, showStartDateInput]);
 
     const handleChange = (field) => (event) => {
         const value = event.target.value;
@@ -592,6 +666,7 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
                                         onChange={(e) => {
                                             handleChange('schedule_type')(e);
                                             setRepeatData({});
+                                            setShowStartDateInput(false);
                                         }}
                                     >
                                         {scheduleTypes.map((type) => (
@@ -608,21 +683,40 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
 
                             {formData.schedule_type && formData.schedule_type !== 'fixed_dates' && (
                                 <>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <TextField
-                                            type="date"
-                                            label="Start Date"
-                                            value={formData.start_date}
-                                            onChange={handleChange('start_date')}
-                                            fullWidth
-                                            size="small"
-                                            disabled={isEdit && !isDuplicate}
-                                            error={!!validationErrors.start_date}
-                                            helperText={validationErrors.start_date || (isEdit && !isDuplicate ? 'Cannot change start date' : '')}
-                                            InputLabelProps={{
-                                                shrink: true,
-                                            }}
-                                        />
+                                    <Grid size={{ xs: 12 }}>
+                                        {showStartDateInput ? (
+                                            <TextField
+                                                type="date"
+                                                label="Start Date"
+                                                value={formData.start_date}
+                                                onChange={handleChange('start_date')}
+                                                fullWidth
+                                                size="small"
+                                                autoFocus
+                                                error={!!validationErrors.start_date}
+                                                helperText={validationErrors.start_date}
+                                                InputLabelProps={{ shrink: true }}
+                                                onBlur={() => {
+                                                    if (formData.start_date) setShowStartDateInput(false);
+                                                }}
+                                            />
+                                        ) : formData.start_date ? (
+                                            <Box
+                                                onClick={() => !(isEdit && !isDuplicate) && setShowStartDateInput(true)}
+                                                sx={{
+                                                    cursor: (isEdit && !isDuplicate) ? 'default' : 'pointer',
+                                                    color: palette.primary.main,
+                                                    fontSize: '0.875rem',
+                                                    py: 0.5,
+                                                    '&:hover': !(isEdit && !isDuplicate) ? { textDecoration: 'underline' } : {},
+                                                }}
+                                            >
+                                                Recurrence starts from {formatDateDisplay(formData.start_date)}
+                                                {!(isEdit && !isDuplicate) && (
+                                                    <span style={{ fontSize: '0.75rem', marginLeft: 8, opacity: 0.7 }}>(click to change)</span>
+                                                )}
+                                            </Box>
+                                        ) : null}
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
@@ -700,30 +794,46 @@ const TileView_AddEdit_Dialog = ({ open, onClose, task, purchaseMode = false }) 
 
                             {formData.schedule_type === 'weekly' && (
                                 <Grid size={{ xs: 12 }}>
-                                    <Autocomplete
-                                        multiple
-                                        limitTags={3}
-                                        size="small"
-                                        options={daysOfWeek}
-                                        getOptionLabel={(option) => option.label}
-                                        value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
-                                        onChange={(event, newValue) => {
-                                            // Extract only the numeric values
-                                            const dayValues = newValue.map(day => day.value);
-                                            setRepeatData({ days: dayValues });
-                                        }}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Select Days"
-                                                placeholder="Choose days of the week"
-                                                required
-                                                error={!!validationErrors.repeat_on}
-                                                helperText={validationErrors.repeat_on || 'Select days of the week'}
-                                            />
+                                    <FormControl component="fieldset" fullWidth>
+                                        <FormLabel component="legend" sx={{ mb: 1 }}>Select days of the week</FormLabel>
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                            {daysOfWeek.map((day) => {
+                                                const isSelected = repeatData.days?.includes(day.value);
+                                                return (
+                                                    <Button
+                                                        key={day.value}
+                                                        variant={isSelected ? 'contained' : 'outlined'}
+                                                        onClick={() => {
+                                                            const currentDays = repeatData.days || [];
+                                                            const newDays = isSelected
+                                                                ? currentDays.filter(d => d !== day.value)
+                                                                : [...currentDays, day.value];
+                                                            setRepeatData({ days: newDays });
+                                                        }}
+                                                        sx={{
+                                                            textTransform: 'none',
+                                                            borderRadius: 2,
+                                                            minWidth: 'auto',
+                                                            px: 2,
+                                                            py: 0.75,
+                                                            ...(isSelected && {
+                                                                backgroundColor: palette.primary.main,
+                                                                color: palette.primary.contrastText,
+                                                                '&:hover': { backgroundColor: palette.secondary.main },
+                                                            }),
+                                                        }}
+                                                    >
+                                                        {day.label}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </Box>
+                                        {validationErrors.repeat_on && (
+                                            <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                                                {validationErrors.repeat_on}
+                                            </Box>
                                         )}
-                                        isOptionEqualToValue={(option, value) => option.value === value.value}
-                                    />
+                                    </FormControl>
                                 </Grid>
                             )}
 

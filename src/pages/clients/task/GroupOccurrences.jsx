@@ -5,12 +5,13 @@ import {
     Chip,
     Stack,
     useTheme,
-    CircularProgress,
+
     FormControl,
     Select,
     MenuItem,
     IconButton,
 } from '@mui/material';
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
     Edit,
     KeyboardArrowDown,
@@ -216,7 +217,7 @@ const GroupOccurrences = ({
     if (loading && groupOccurrences.length === 0) {
         return (
             <Box display="flex" justifyContent="center" py={6}>
-                <CircularProgress size={24} />
+                <Loader inline size={24} />
             </Box>
         );
     }
@@ -299,7 +300,7 @@ const GroupOccurrences = ({
                                     {/* Loading */}
                                     {isLoadingOccurrenceTasks && (
                                         <Box display="flex" justifyContent="center" py={4}>
-                                            <CircularProgress size={20} />
+                                            <Loader inline size={20} />
                                         </Box>
                                     )}
 
@@ -428,7 +429,7 @@ const GroupOccurrences = ({
             {/* Loading More Indicator */}
             {isLoadingMore && (
                 <Box display="flex" justifyContent="center" py={2}>
-                    <CircularProgress size={24} />
+                    <Loader inline size={24} />
                 </Box>
             )}
 

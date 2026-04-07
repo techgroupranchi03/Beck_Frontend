@@ -47,6 +47,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     const [validationErrors, setValidationErrors] = useState({});
     const [selectedUnit, setSelectedUnit] = useState('');
     const [activeStep, setActiveStep] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
     const [createTasks, setCreateTasks] = useState(false);
     const [taskFormData, setTaskFormData] = useState({
         task_title: '',
@@ -69,8 +70,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 property_id: inventory.property_id || '',
                 located_at: inventory.located_at || '',
                 lower_limit: inventory.lower_limit || '',
-                unit: inventory.unit || '',
-                quantity: inventory.quantity || '',
+                unit: inventory.unit ?? '',
+                quantity: inventory.quantity ?? '',
                 container_type: inventory.container_type || '',
                 auto_purchase_order: Boolean(inventory.auto_purchase_order),
             });
@@ -96,12 +97,13 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         setValidationErrors({});
         // Reset task form data
         setCreateTasks(false);
+        setSubmitting(false);
         setTaskFormData({
             task_title: '',
             task_description: '',
             task_assigned_to: '',
             task_schedule_type: 'weekly',
-            task_start_date: '',
+            task_start_date: new Date().toISOString().split('T')[0],
             task_end_date: '',
             task_requires_photo: false,
             task_allows_inventory_update: false,
@@ -256,6 +258,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     };
 
     const handleCreateUpdate = async () => {
+        if (submitting) return;
+        setSubmitting(true);
         try {
             const formDataToSend = new FormData();
             formDataToSend.append('name', formData.name);
@@ -328,6 +332,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             }
             showSnackbar(error.message || `Failed to ${isEdit ? 'update' : 'create'} inventory`, 'error');
             console.error(`Error ${isEdit ? 'updating' : 'creating'} inventory:`, error);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -384,7 +390,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <FormControl fullWidth error={!!validationErrors?.category}>
+                            <FormControl fullWidth error={!!validationErrors?.category} required>
                                 <InputLabel id="category-label" size='small'>Category</InputLabel>
                                 <Select
                                     label="Category *"
@@ -473,12 +479,13 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     <Grid container spacing={2}>
                         {!isEdit && (
                             <Grid size={{ xs: 12, sm: 12 }}>
-                                <FormControl fullWidth error={!!validationErrors?.unit}>
+                                <FormControl fullWidth error={!!validationErrors?.unit} required>
                                     <InputLabel id="unit-label" size='small'>Unit</InputLabel>
                                     <Select
-                                        label="Unit"
+                                        label="Unit *"
                                         variant="outlined"
                                         size='small'
+                                        required
                                         value={formData.unit}
                                         onChange={(e) => handleUnitChange(e.target.value)}
                                         fullWidth
@@ -505,7 +512,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     value={formData.quantity}
                                     onChange={(val) => handleChange('quantity', val)}
                                     error={validationErrors?.quantity}
-                                    label="Quantity"
+                                    label="Quantity *"
                                     containerType={formData.container_type}
                                     onContainerTypeChange={(val) => {
                                         handleChange('container_type', val);
@@ -974,6 +981,8 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         onChange={(e, newValue) => {
                                             handleTaskChange('task_assigned_to', newValue ? newValue.id : '');
                                         }}
+                                        options={teamMembers || []}
+                                        getOptionLabel={(option) => option.name ? String(option.name) : ''}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
@@ -1044,7 +1053,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                     variant="contained"
                     size='small'
                     disableElevation
-                    disabled={loading}
+                    disabled={loading || submitting}
                     onClick={handleNext}
                     endIcon={activeStep < steps.length - 1 ? <NavigateNext /> : null}
                     sx={{
@@ -1055,7 +1064,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         px: 2,
                     }}
                 >
-                    {loading
+                    {submitting
                         ? 'Saving...'
                         : activeStep === steps.length - 1
                             ? (isEdit ? 'Update' : 'Create Inventory')

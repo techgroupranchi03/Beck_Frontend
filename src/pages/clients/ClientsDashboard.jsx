@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Grid, Typography, CircularProgress, Alert, Card, useTheme, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { Box, Container, Grid, Typography, Alert, Card, useTheme, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 import { Apartment, CheckBox, Inventory, People } from '@mui/icons-material';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
@@ -106,12 +107,8 @@ const ClientsDashboard = () => {
     refetchTrend();
   }, [trendDays]);
 
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
-      </Box>
-    );
+  if (loading || !data) {
+    return <Loader sx={{ minHeight: 400 }} />;
   }
 
   if (error) {
@@ -122,7 +119,7 @@ const ClientsDashboard = () => {
     );
   }
 
-  const { stats, tasksDonePerDay, tasksPerStaff } = data;
+  const { tasksDonePerDay, tasksPerStaff } = data;
 
   const tickColor = theme.palette.text.secondary;
   const tooltipBg = theme.palette.background.paper;

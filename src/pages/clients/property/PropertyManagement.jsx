@@ -12,7 +12,7 @@ import {
   useTheme,
   useMediaQuery,
   Grid,
-  CircularProgress,
+
   TextField,
   IconButton,
   InputAdornment,
@@ -141,7 +141,8 @@ const PropertyManagement = () => {
       } else {
         await deleteClientProperty(selectedProperty.id);
       }
-      // getAllProperties();
+      // Remove deleted property from the list
+      setPropertiesList((prev) => prev.filter((p) => p.id !== selectedProperty.id));
       showSnackbar("Property deleted successfully", "success");
       setDeleteDialogOpen(false);
       setSelectedProperty(null);
@@ -294,19 +295,21 @@ const PropertyManagement = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ pb: 0 }}>
                       {property.address}
                     </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      <a
-                        href={property.google_map_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: "#0288d1",
-                          textDecoration: "none"
-                        }}
-                      >
-                        View on Google Maps
-                      </a>
-                    </Typography>
+                    {property.google_map_link && (
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        <a
+                          href={property.google_map_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: "#0288d1",
+                            textDecoration: "none"
+                          }}
+                        >
+                          View on Google Maps
+                        </a>
+                      </Typography>
+                    )}
 
                   </CardContent>
                 </Card>

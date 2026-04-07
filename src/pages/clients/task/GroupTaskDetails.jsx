@@ -10,7 +10,7 @@ import {
     Chip,
     IconButton,
     Stack,
-    CircularProgress,
+
     useTheme,
     Container,
     CardHeader,
@@ -22,6 +22,7 @@ import {
     Tabs,
     Tab,
 } from '@mui/material';
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
     ArrowBack,
     CalendarMonth,
@@ -348,9 +349,7 @@ const GroupTaskDetails = () => {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-                <CircularProgress />
-            </Box>
+            <Loader sx={{ minHeight: '60vh' }} />
         );
     }
 
@@ -496,7 +495,7 @@ const GroupTaskDetails = () => {
                     {/* Loading More Indicator - Only for Group Tasks Tab */}
                     {activeNameTab === 0 && isLoadingMore && (
                         <Box display="flex" justifyContent="center" py={2}>
-                            <CircularProgress size={24} />
+                            <Loader inline size={24} />
                         </Box>
                     )}
 

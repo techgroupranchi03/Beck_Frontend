@@ -6,9 +6,6 @@ import { clientLogout } from '../service/Clients/Clients_auth';
 import { teamsLogout } from '../service/Teams/Teams_auth';
 import BASE_URL from '../config';
 
-// Add import at the top:
-import { trackAuthEvent } from '../utils/tracking';
-
 
 // Create the Auth Context
 const AuthContext = createContext(null);
@@ -59,8 +56,6 @@ export const AuthProvider = ({ children }) => {
             teamRole: userData.role || null
 
           });
-          // Track token validation success
-          await trackAuthEvent('Token Validation', role, 'success');
           return true;
         }
       }
@@ -68,9 +63,6 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Error fetching user details:', error);
 
-      // Track token validation failure
-      await trackAuthEvent('Token Validation', role, 'failed',
-        error.response?.status === 401 ? 'Unauthorized' : error.message);
       if (error.response?.status === 401) {
         if (role === 'admin') {
           localStorage.removeItem('admin_token');
@@ -134,11 +126,6 @@ export const AuthProvider = ({ children }) => {
   // Login function - only stores token, then fetches user details
   const login = async (token, role = 'admin') => {
     try {
-
-      // Track login attempt
-      await trackAuthEvent('Login Attempt', role, 'started');
-
-
       // Store token in localStorage based on role
       if (role === 'admin') {
         localStorage.setItem('admin_token', token);
@@ -153,14 +140,8 @@ export const AuthProvider = ({ children }) => {
       //console.log('Fetch user details success:', success);
 
       if (success) {
-        // Track successful login
-        await trackAuthEvent('Login', role, 'success');
         return true;
       } else {
-        // Track failed login
-        await trackAuthEvent('Login', role, 'failed', 'Failed to fetch user details');
-
-
         // If failed to fetch user details, remove token
         if (role === 'admin') {
           localStorage.removeItem('admin_token');
@@ -173,7 +154,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      await trackAuthEvent('Login', role, 'failed', error.message || 'Login error');
       return false;
     }
   };
@@ -182,50 +162,37 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     const userRole = user?.role;
 
-    // Track logout attempt
-    await trackAuthEvent('Logout', userRole || 'unknown', 'started');
-
     try {
       // Call logout API based on role
       if (userRole === 'admin') {
         const res = await adminLogout();
-        // Track successful logout
-        await trackAuthEvent('Logout', 'admin', 'success');
-        // console.log('adminLogout response:', res);
         localStorage.removeItem('admin_token');
         setUser(null);
-        navigate('/admin/login');
+        // navigate('/admin/login');
+        navigate('/');
       } else if (userRole === 'client') {
         const res = await clientLogout();
-        await trackAuthEvent('Logout', 'client', 'success');
-        //console.log('clientLogout response:', res);
         localStorage.removeItem('client_token');
         setUser(null);
-        navigate('/clients/login');
+        navigate('/');
       } else if (userRole === 'team') {
         const res = await teamsLogout();
-        await trackAuthEvent('Logout', 'team', 'success');
-        //console.log('teamsLogout response:', res);
         localStorage.removeItem('team_token');
         setUser(null);
-        navigate('/teams/login');
+        navigate('/');
       }
     } catch (error) {
       console.error('Logout error:', error);
-      await trackAuthEvent('Logout', userRole || 'unknown', 'failed', error.message);
       if (userRole === 'admin') {
         localStorage.removeItem('admin_token');
-        navigate('/admin/login');
       } else if (userRole === 'client') {
         localStorage.removeItem('client_token');
-        navigate('/clients/login');
       } else if (userRole === 'team') {
         localStorage.removeItem('team_token');
-        navigate('/teams/login');
       } else {
         localStorage.clear();
-        navigate('/');
       }
+      navigate('/');
       setUser(null);
     }
   };

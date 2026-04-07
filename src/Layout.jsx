@@ -16,12 +16,15 @@ import {
   SpeedDialIcon,
   useTheme,
   useMediaQuery,
+
 } from "@mui/material";
 import { People, TrendingUp, Menu as MenuIcon, Business, Inventory, Assignment, Add, GroupWork, Home, Search, SearchOff } from "@mui/icons-material";
 import ProfileMenu from "./resuable_components/profile_menu.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useThemeMode } from "./context/ThemeContext.jsx";
 import { TopBarProvider, useTopBar } from "./context/TopBarContext.jsx";
+import PWAInstallPrompt from "./resuable_components/PWAInstallPrompt.jsx";
+import Loader from "./resuable_components/Loader.jsx";
 
 const getPageTitle = (pathname) => {
   const path = pathname.split(/[?#]/)[0];
@@ -467,7 +470,9 @@ function LayoutInner({
             overflowX: "hidden",
           }}
         >
-          <Outlet />
+          <React.Suspense fallback={<Loader />}>
+            <Outlet />
+          </React.Suspense>
         </Box>
 
       </Box>
@@ -591,6 +596,9 @@ function LayoutInner({
           </BottomNavigation>
         </Paper>
       )}
+
+      {/* PWA Install Prompt Banner */}
+      <PWAInstallPrompt />
 
     </Box>
   );

@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Card, CardHeader, CardContent, Typography, Box, Divider,
     List, ListItem, ListItemIcon, ListItemText, Chip,
-    CircularProgress, useTheme
+    useTheme
 } from '@mui/material';
+import Loader from './Loader.jsx';
 import {
     ReportProblem,
     AccessTime,
@@ -166,7 +167,7 @@ const EscalationCard = ({ fetchEscalatedTasks }) => {
 
                         {isLoading && (
                             <Box display="flex" justifyContent="center" py={1}>
-                                <CircularProgress size={24} />
+                                <Loader inline size={24} />
                             </Box>
                         )}
                     </Box>

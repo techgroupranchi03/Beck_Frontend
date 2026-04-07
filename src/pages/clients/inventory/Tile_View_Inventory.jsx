@@ -22,8 +22,9 @@ import {
     Collapse,
     Chip,
     Tooltip,
-    CircularProgress
+
 } from '@mui/material';
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
     Clear,
     FilterList,
@@ -553,8 +554,8 @@ const Tile_View_Inventory = () => {
                 />
             )}
 
-           
-            <Divider sx={{ my: 2 , display: { xs: 'none', md: 'block' }}} />
+
+            <Divider sx={{ my: 2, display: { xs: 'none', md: 'block' } }} />
 
             {/* show skeleton when loading initial data */}
             {loading && inventoryData.length === 0 && (
@@ -626,7 +627,19 @@ const Tile_View_Inventory = () => {
                                             flex: 1,
                                         }}
                                     >
-                                        <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1rem' }} gutterBottom>
+                                        <Typography variant="body1"
+                                            sx={{
+                                                textTransform: 'capitalize',
+                                                fontWeight: 'bold',
+                                                fontSize: '1rem',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 1,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                pr: isMobile ? '100px' : '110px', 
+                                            }}
+                                        >
                                             {item.name}
                                         </Typography>
 
@@ -654,7 +667,7 @@ const Tile_View_Inventory = () => {
                                                 icon={<InventoryOutlined fontSize="small" />}
                                                 label={`Qty: ${item.unit?.toLowerCase() === 'container'
                                                     ? (item.quantity || 'N/A')
-                                                      + (item.container_type ? ` (${item.container_type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())})` : '')
+                                                    + (item.container_type ? ` (${item.container_type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())})` : '')
                                                     : item.quantity} ${item.unit?.toLowerCase() === 'container' ? '' : item.unit || ''}`}
                                                 bgcolor={
                                                     (() => {
@@ -694,7 +707,7 @@ const Tile_View_Inventory = () => {
                                     </CardContent>
 
                                     {/* Menu */}
-                                    <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 0 }}>
                                         {canUpdateInventory && (
                                             <Button
                                                 size="small"
@@ -712,7 +725,7 @@ const Tile_View_Inventory = () => {
                                                     '&:hover': { borderColor: palette.secondary.main, color: palette.secondary.main },
                                                 }}
                                             >
-                                                Update Quantity
+                                                {isMobile ? "Update Qty" : "Update Quantity"}
                                             </Button>
                                         )}
                                         {(canUpdateInventory || canDeleteInventory) && (
@@ -976,7 +989,7 @@ const Tile_View_Inventory = () => {
             {/* Loading indicator for infinite scroll */}
             {isLoadingMore && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                    <CircularProgress size={24} />
+                    <Loader inline size={24} />
                 </Box>
             )}
 

@@ -14,7 +14,7 @@ const Transition = React.forwardRef(function Transition(props, ref) {
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-export default function ConfirmationDialog({ open, onCancel, onDelete, title, message }) {
+export default function ConfirmationDialog({ open, onCancel, onDelete, title, message, loading }) {
     const theme = useTheme();
     const palette = theme.palette;
     return (
@@ -43,11 +43,12 @@ export default function ConfirmationDialog({ open, onCancel, onDelete, title, me
                     <Button
                         onClick={onDelete}
                         disableElevation
+                        disabled={loading}
                         sx={{ fontSize: "1.1rem", textTransform: "none", '&:hover': { backgroundColor: palette.secondary.main } }}
                         variant="contained"
 
                     >
-                        Delete
+                        {loading ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>

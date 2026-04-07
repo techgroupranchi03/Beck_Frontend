@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Card, CardHeader, CardContent, Typography, Box, Divider,
     List, ListItem, ListItemIcon, ListItemText, Chip, Tabs, Tab,
-    CircularProgress, useTheme, IconButton,
+    useTheme, IconButton,
     Tooltip
 } from '@mui/material';
+import Loader from './Loader.jsx';
 import { TrendingDown, FiberNew, Inventory2, AddShoppingCart, LocationCityOutlined, BusinessCenterOutlined, HomeWorkOutlined, Business, Inventory } from '@mui/icons-material';
 import { categoriess } from '../constant';
 
@@ -186,7 +187,7 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory, onPurchaseTask }
                             </List>
                             {depLoading && (
                                 <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
+                                    <Loader inline size={24} />
                                 </Box>
                             )}
                         </Box>
@@ -231,7 +232,7 @@ const InventoryAlertCard = ({ fetchLowStock, fetchNewInventory, onPurchaseTask }
                             </List>
                             {newLoading && (
                                 <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
+                                    <Loader inline size={24} />
                                 </Box>
                             )}
                         </Box>

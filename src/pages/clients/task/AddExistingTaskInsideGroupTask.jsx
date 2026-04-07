@@ -9,7 +9,7 @@ import {
   Typography,
   TextField,
   Checkbox,
-  CircularProgress,
+
   List,
   ListItem,
   ListItemText,
@@ -21,6 +21,7 @@ import {
   Divider,
   Avatar,
 } from '@mui/material';
+import Loader from '../../../resuable_components/Loader.jsx';
 import CloseIcon from '@mui/icons-material/Close';
 import {
   FilterList,
@@ -261,7 +262,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
             value={searchText}
             onChange={handleSearchChange}
             InputProps={{
-              endAdornment: loading && <CircularProgress size={10} sx={{ ml: 1 }} />
+              endAdornment: loading && <Loader inline size={10} />
             }}
           />
           <Button
@@ -403,7 +404,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
         >
           {loading && currentPage === 1 ? (
             <Box sx={{ py: 5, textAlign: 'center' }}>
-              <CircularProgress />
+              <Loader inline size={48} />
             </Box>
           ) : allTaskData.length === 0 ? (
             <Box sx={{ py: 5, textAlign: 'center', color: 'text.secondary' }}>
@@ -497,7 +498,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
 
               {isLoadingMore && (
                 <Box sx={{ py: 2, textAlign: 'center' }}>
-                  <CircularProgress size={24} />
+                  <Loader inline size={24} />
                 </Box>
               )}
             </List>
@@ -510,7 +511,7 @@ const AddExistingTaskInsideGroupTask = ({ open, onClose, groupId }) => {
           variant="contained"
           onClick={handleSave}
           disabled={selectedTasks.length === 0 || isSaving}
-          startIcon={isSaving ? <CircularProgress size={20} /> : null}
+          startIcon={isSaving ? <Loader inline size={20} /> : null}
           sx={{
             borderRadius: 10,
             px: 4,

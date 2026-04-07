@@ -23,13 +23,14 @@ import {
     ListItemText,
     TextField,
     Select,
-    CircularProgress,
+
     Switch,
     FormControlLabel,
     Icon,
     Tabs,
     Tab
 } from "@mui/material";
+import Loader from '../../../resuable_components/Loader.jsx';
 import {
     Business,
     CalendarMonth,
@@ -437,7 +438,7 @@ export const Tile_View_task = () => {
 
                 </Stack>}
 
-                <Stack direction="row" spacing={1} sx={{ display: isMobile ? 'none' : 'flex', py: 1 }}>
+                <Stack direction="row" spacing={1} sx={{ display: isMobile ? 'none' : 'flex', py: 1,mt: 2 }} alignItems="center">
                     <IconButton
                         onClick={handleFilterToggle}
                         sx={{
@@ -457,7 +458,7 @@ export const Tile_View_task = () => {
                         sx={{
                             bgcolor: isSearchVisible ? palette.secondary.main : "transparent",
                             color: isSearchVisible ? "#ffffff" : palette.text.primary,
-                            "&:hover": { bgcolor: palette.primary.main, color: "#ffffff" }
+                            "&:hover": { bgcolor: palette.primary.main, color: "#ffffff" },
                         }}
                     >
                         {isSearchVisible ? <SearchOff /> : <Search />}

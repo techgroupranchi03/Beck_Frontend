@@ -9,13 +9,12 @@ import {
     IconButton,
     Avatar,
     useTheme,
-    CircularProgress,
 } from "@mui/material";
+import Loader from "../../resuable_components/Loader.jsx";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { adminLogin } from "../../service/Admin/Admin_auth";
 import { useAuth } from "../../context/AuthContext";
-import { trackAuthEvent, trackFormSubmit } from '../../utils/tracking';
 
 const Admin_login = () => {
     const theme = useTheme();
@@ -42,9 +41,6 @@ const Admin_login = () => {
         setError("");
         setLoading(true);
 
-        // Track login attempt start
-        await trackFormSubmit('Admin Login Form', true);
-
         try {
             // Call login API
             const response = await adminLogin({ username, password });
@@ -52,8 +48,6 @@ const Admin_login = () => {
 
             if (!token) {
                 setError("Invalid response from server. Token not found.");
-                await trackFormSubmit('Admin Login Form', false, 'Token not found');
-                await trackAuthEvent('Login', 'admin', 'failed', 'Token not found');
                 setLoading(false);
                 return;
             }
@@ -63,17 +57,12 @@ const Admin_login = () => {
             const success = await login(token, 'admin');
 
             if (success) {
-                // Track successful login
-                await trackAuthEvent('Login', 'admin', 'success');
                 const from = location.state?.from || '/admin/dashboard';
                 navigate(from, { replace: true });
             } else {
-                await trackAuthEvent('Login', 'admin', 'failed', 'Auth context login failed');
+                setError("Login failed. Please try again.");
             }
         } catch (error) {
-            // Track failed login
-            await trackAuthEvent('Login', 'admin', 'failed', error.message || 'Unknown error');
-            await trackFormSubmit('Admin Login Form', false, error.message);
             if (error.errors && Array.isArray(error.errors)) {
                 const apiErrors = {}
                 error.errors.forEach((err) => {
@@ -87,13 +76,6 @@ const Admin_login = () => {
             setLoading(false);
         }
     };
-    // Add page view tracking in useEffect:
-    useEffect(() => {
-        if (!isAuthenticated()) {
-            trackAuthEvent('Page View', 'admin', 'success', 'Login page viewed');
-        }
-    }, [isAuthenticated]);
-
     // Handle Enter key press
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && username && password && !loading) {
@@ -126,7 +108,7 @@ const Admin_login = () => {
                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
                     <Avatar
                         src="../images/logo.png"
-                        alt="Beck HolidayHomes Logo"
+                        alt="TaskBnB Logo"
                         sx={{ width: 60, height: 60, mb: 1 }}
                     />
                     <Typography
@@ -134,7 +116,7 @@ const Admin_login = () => {
                         fontWeight="bold"
                         sx={{ color: theme.palette.text.primary }}
                     >
-                        Beck HolidayHomes
+                        TaskBnB
                     </Typography>
                     <Typography
                         variant="h6"
@@ -215,7 +197,7 @@ const Admin_login = () => {
                         textTransform: "none",
                     }}
                 >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : "Login"}
+                    {loading ? <Loader inline size={24} /> : "Login"}
                 </Button>
             </Container>
         </Box>

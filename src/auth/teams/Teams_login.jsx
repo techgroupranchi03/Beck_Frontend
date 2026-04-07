@@ -8,7 +8,6 @@ import {
     Typography,
     Avatar,
     useTheme,
-    CircularProgress,
     IconButton,
     List,
     ListItem,
@@ -16,6 +15,7 @@ import {
     ListItemAvatar
 
 } from "@mui/material";
+import Loader from "../../resuable_components/Loader.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowBack, Person } from "@mui/icons-material";
 import { teamsSendOtp, verifyOtp } from "../../service/Teams/Teams_auth";
@@ -38,7 +38,7 @@ const Teams_login = () => {
     
 
     // Refs for OTP input fields
-    const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+    const otpRefs = useRef([null, null, null, null]);
 
     // Redirect if already authenticated
     useEffect(() => {
@@ -58,8 +58,8 @@ const Teams_login = () => {
 
     // Auto-focus first OTP input when step changes to 2
     useEffect(() => {
-        if (step === 2 && otpRefs[0].current) {
-            otpRefs[0].current.focus();
+        if (step === 2 && otpRefs.current[0]) {
+            otpRefs.current[0].focus();
         }
     }, [step]);
 
@@ -146,14 +146,14 @@ const Teams_login = () => {
 
         // Auto-focus next input
         if (digit && index < 3) {
-            otpRefs[index + 1].current?.focus();
+            otpRefs.current[index + 1]?.focus();
         }
     };
 
     const handleOTPKeyDown = (index, e) => {
         // Handle backspace
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            otpRefs[index - 1].current?.focus();
+            otpRefs.current[index - 1]?.focus();
         }
 
         // Handle Enter key
@@ -169,7 +169,7 @@ const Teams_login = () => {
         if (pastedData.length === 4) {
             const newOtp = pastedData.split('');
             setOtp(newOtp);
-            otpRefs[3].current?.focus();
+            otpRefs.current[3]?.focus();
         }
     };
 
@@ -267,7 +267,7 @@ const Teams_login = () => {
                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 1, mt: step !== 1 ? 2 : 0 }}>
                     <Avatar
                         src="../images/logo.png"
-                        alt="Beck HolidayHomes Logo"
+                        alt="TaskBnB Logo"
                         sx={{ width: 64, height: 64, mb: 1 }}
                     />
                     <Typography
@@ -275,7 +275,7 @@ const Teams_login = () => {
                         fontWeight="bold"
                         sx={{ color: theme.palette.text.primary }}
                     >
-                        Beck HolidayHomes
+                        TaskBnB
                     </Typography>
                     <Typography
                         variant="body1"
@@ -333,7 +333,7 @@ const Teams_login = () => {
                                 textTransform: "none",
                             }}
                         >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : "Send OTP"}
+                            {loading ? <Loader inline size={24} /> : "Send OTP"}
                         </Button>
                     </>
                 ) : step === 1.5 ? (
@@ -416,7 +416,7 @@ const Teams_login = () => {
 
                         {loading && (
                             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                                <CircularProgress size={24} />
+                                <Loader inline size={24} />
                             </Box>
                         )}
                     </>
@@ -435,7 +435,7 @@ const Teams_login = () => {
                             {otp.map((digit, index) => (
                                 <TextField
                                     key={index}
-                                    inputRef={otpRefs[index]}
+                                    inputRef={(el) => (otpRefs.current[index] = el)}
                                     value={digit}
                                     onChange={(e) => handleOTPChange(index, e.target.value)}
                                     onKeyDown={(e) => handleOTPKeyDown(index, e)}
@@ -444,6 +444,9 @@ const Teams_login = () => {
                                     disabled={loading}
                                     inputProps={{
                                         maxLength: 1,
+                                        inputMode: 'numeric',
+                                        pattern: '[0-9]*',
+                                        type: 'tel',
                                         style: {
                                             textAlign: "center",
                                             fontSize: "24px",
@@ -519,7 +522,7 @@ const Teams_login = () => {
                                 textTransform: "none",
                             }}
                         >
-                            {loading ? <CircularProgress size={24} color="inherit" /> : "Verify OTP"}
+                            {loading ? <Loader inline size={24} /> : "Verify OTP"}
                         </Button>
 
                         {/* Resend OTP */}

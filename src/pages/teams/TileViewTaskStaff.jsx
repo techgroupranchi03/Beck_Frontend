@@ -16,10 +16,11 @@ import {
     Tooltip,
     CardHeader,
     TextField,
-    CircularProgress,
+
     Tabs,
     Tab,
 } from "@mui/material";
+import Loader from '../../resuable_components/Loader.jsx';
 import {
     Business,
     CalendarMonth,
@@ -585,7 +586,7 @@ const TileViewTaskStaff = () => {
 
             {isLoadingMore && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                    <CircularProgress size={24} />
+                    <Loader inline size={24} />
                 </Box>
             )}
             {/* give the message no more tasks to load  */}

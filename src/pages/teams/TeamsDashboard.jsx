@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Container, Grid, Typography, CircularProgress, Alert,
+  Box, Container, Grid, Typography, Alert,
   Card, useTheme, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 import {
   Apartment, CheckBox, Inventory, People,
   TaskAlt, PendingActions, Schedule, Assignment
@@ -118,11 +119,7 @@ const TeamsDashboard = () => {
   }, [trendDays]);
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader sx={{ minHeight: 400 }} />;
   }
 
   if (error) {

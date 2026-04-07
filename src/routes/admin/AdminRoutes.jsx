@@ -24,21 +24,17 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '../../Layout.jsx';
 import ProtectedRoute from '../ProtectedRoute.jsx';
-import { CircularProgress, Box } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 
 const Dashboard = lazy(() => import('../../pages/admin/Dashboard.jsx'));
 const ClientsManagement = lazy(() => import('../../pages/admin/ClientsManagement.jsx'));
 const Admin_login = lazy(() => import('../../auth/admin/Admin_login.jsx'));
 const ThemeSettings = lazy(() => import('../../pages/ThemeSettings.jsx'));
 
-const Loader = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-    <CircularProgress />
-  </Box>
-);
+const RouteLoader = () => <Loader />;
 
 const AdminRoutes = () => (
-  <Suspense fallback={<Loader />}>
+  <Suspense fallback={<RouteLoader />}>
     <Routes>
       {/* Public route - Login page */}
       <Route path="/login" element={<Admin_login />} />

@@ -23,6 +23,7 @@ export const adminLogout = async () => {
     try {
         const response = await axios.post(
             `${BASE_URL}/admin/auth/logout`,
+            {},
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

@@ -109,7 +109,7 @@ const InventoryTask_AddEdit_Dialog = ({ open, onClose, task, inventoryId }) => {
                 property_id: selectedInventory?.property_id || '',
                 inventory_id: inventoryId || null,
                 schedule_type: 'weekly',
-                start_date: '',
+                start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
                 assigned_to: '',
                 requires_photo: false,

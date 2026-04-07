@@ -91,7 +91,7 @@ const TileVeiwAddEditGroupTaskDialog = ({ open, onClose, task }) => {
                 title: '',
                 property_id: '',
                 schedule_type: 'weekly',
-                start_date: '',
+                start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
             });
             setRepeatData({});

@@ -48,7 +48,6 @@ export default function App() {
   return (
     <ViewModeProvider>
       <Routes>
-        {/* <Route path="/" element={<Navigate to="/clients/login" replace />} /> */}
         <Route path="/" element={<CommingSoon />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
         <Route path="/clients/*" element={<ClientsRoutes />} />

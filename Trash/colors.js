@@ -1,4 +1,4 @@
-// Beck Holiday Homes - Color Palette Configuration
+// TaskBnB - Color Palette Configuration
 export const palette = {
 
     layout: '#132421',

@@ -753,7 +753,7 @@ const ThemeSettings = () => {
 
                             {/* Theme Type */}
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="subtitle2" sx={{ mt: -4, mb: 1 }}>
+                                <Typography variant="subtitle2" sx={{ mt: { xs: 0, sm: 0 }, mb: 2 }}>
                                     Theme Type
                                 </Typography>
                                 <ToggleButtonGroup
@@ -878,7 +878,7 @@ const ThemeSettings = () => {
                             onClick={handleAddCustomTheme}
                             disableElevation
                             disabled={loading}
-                            sx={{ borderRadius: 10 }}
+                            sx={{ borderRadius: 10 , backgroundColor: editingTheme ? theme.palette.warning.main : theme.palette.primary.main }}
                         >
                             {loading ? 'Loading...' : (editingTheme ? 'Update Theme' : 'Create Theme')}
                         </Button>

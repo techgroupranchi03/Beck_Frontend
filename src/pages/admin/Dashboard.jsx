@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
   Grid, Card, CardContent, Typography, Box, Container, useTheme,
-  CircularProgress, Alert
+  Alert
 } from "@mui/material";
+import Loader from "../../resuable_components/Loader.jsx";
 import {
   People, PersonAdd, PersonOff, TrendingUp,
 } from "@mui/icons-material";
@@ -39,11 +40,7 @@ export default function Dashboard() {
   }, []);
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
-      </Box>
-    );
+    return <Loader sx={{ minHeight: 400 }} />;
   }
 
   if (error) {

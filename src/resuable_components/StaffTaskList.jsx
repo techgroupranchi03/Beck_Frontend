@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Card, CardHeader, CardContent, Typography, Box, Divider,
     List, ListItem, ListItemIcon, ListItemText, Chip, Tabs, Tab,
-    CircularProgress, useTheme
+    useTheme
 } from '@mui/material';
+import Loader from './Loader.jsx';
 import { TaskAlt, PendingActions, Schedule, PlayArrow, Assessment, Assignment, LocationOnOutlined, AssignmentLate, AssignmentLateOutlined } from '@mui/icons-material';
 
 const statusConfig = {
@@ -176,7 +177,7 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                             </List>
                             {todayLoading && (
                                 <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
+                                    <Loader inline size={24} />
                                 </Box>
                             )}
                         </Box>
@@ -203,7 +204,7 @@ const StaffTaskList = ({ fetchTodayTasks, fetchPendingTasks }) => {
                             </List>
                             {pendingLoading && (
                                 <Box display="flex" justifyContent="center" py={1}>
-                                    <CircularProgress size={24} />
+                                    <Loader inline size={24} />
                                 </Box>
                             )}
                         </Box>

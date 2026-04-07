@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react'
 import { Route, Routes, Navigate } from 'react-router-dom'
 import ProtectedRoute from '../ProtectedRoute'
 import Layout from '../../Layout'
-import { CircularProgress, Box } from '@mui/material'
+import Loader from '../../resuable_components/Loader.jsx'
 
 const Teams_login = lazy(() => import('../../auth/teams/Teams_login'))
 const TeamsDashboard = lazy(() => import('../../pages/teams/TeamsDashboard'))
@@ -14,15 +14,11 @@ const GroupTaskDetails = lazy(() => import('../../pages/clients/task/GroupTaskDe
 const TaskDetails = lazy(() => import('../../pages/clients/task/TaskDetails'))
 const ThemeSettings = lazy(() => import('../../pages/ThemeSettings.jsx'))
 
-const Loader = () => (
-  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-    <CircularProgress />
-  </Box>
-)
+const RouteLoader = () => <Loader />
 
 const TeamsRoutes = () => {
     return (
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={<RouteLoader />}>
             <Routes>
                 {/* public routes - login page  */}
                 <Route path="/login" element={<Teams_login />} />

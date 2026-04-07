@@ -10,8 +10,9 @@ import {
     Box,
     Slide,
     Button,
-    CircularProgress
+
 } from '@mui/material';
+import Loader from '../../resuable_components/Loader.jsx';
 import CloseIcon from '@mui/icons-material/Close';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -274,7 +275,7 @@ const TaskCompletionTabs = ({ open, onClose, task, addConfirmationImageInTask, u
                         variant="contained"
                         disableElevation
                         disabled={loading}
-                        startIcon={loading && <CircularProgress size={20} />}
+                        startIcon={loading && <Loader inline size={20} />}
                         sx={{
                             borderRadius: 10,
                             height: 36,

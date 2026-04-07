@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Box, CircularProgress, Typography } from '@mui/material';
-import { trackAuthEvent } from '../utils/tracking';
+import { Box } from '@mui/material';
+import Loader from '../resuable_components/Loader.jsx';
 
 /**
  * ProtectedRoute Component
@@ -24,30 +24,12 @@ const ProtectedRoute = ({
 
   // Show loading spinner while checking authentication
   if (loading) {
-    return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          gap: 2
-        }}
-      >
-        <CircularProgress size={24} />
-        <Typography variant="h6" color="text.secondary">
-          Loading...
-        </Typography>
-      </Box>
-    );
+    return <Loader fullPage />;
   }
 
   // Check if user is authenticated
   if (!isAuthenticated()) {
 
-    // Track unauthorized access attempt
-    trackAuthEvent('Unauthorized Access', requiredRole || 'unknown', 'failed', 'Not authenticated');
 
 
     // Determine redirect path based on required role
@@ -72,9 +54,6 @@ const ProtectedRoute = ({
   // Check if specific role is required
   if (requiredRole && !hasRole(requiredRole)) {
     // User is authenticated but doesn't have required role
-    // Track role mismatch
-    trackAuthEvent('Unauthorized Role', requiredRole, 'failed',
-      `User role: ${user?.role}, Required: ${requiredRole}`);
     // Redirect to their appropriate dashboard
     const dashboardPath = user.role === 'admin'
       ? '/admin/dashboard'
@@ -83,11 +62,6 @@ const ProtectedRoute = ({
         : '/clients/dashboard';
 
     return <Navigate to={dashboardPath} replace />;
-  }
-
-  // Track successful authorized access
-  if (user && requiredRole) {
-    trackAuthEvent('Authorized Access', requiredRole, 'success');
   }
 
   // User is authenticated and has required role (if specified)

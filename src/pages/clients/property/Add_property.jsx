@@ -10,6 +10,7 @@ import {
     Button,
     Box,
     FormHelperText,
+    Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { CloudUpload } from "@mui/icons-material";
@@ -101,10 +102,20 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
         const { name, value, files } = e.target;
         // Handle file input
         if (name === "image" && files && files[0]) {
+            const file = files[0];
+
+            // Revoke previous object URL to avoid memory leaks
+            if (formData.image && formData.image.startsWith("blob:")) {
+                URL.revokeObjectURL(formData.image);
+            }
+
+            // Generate preview using object URL (instant, memory-efficient)
+            const previewUrl = URL.createObjectURL(file);
+
             setFormData((prev) => ({
                 ...prev,
-                image: URL.createObjectURL(files[0]),
-                imageFile: files[0],
+                imageFile: file,
+                image: previewUrl,
             }));
             // Clear image error
             setErrors((prev) => ({ ...prev, image: "" }));
@@ -136,14 +147,6 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
 
         if (!formData.name.trim()) {
             newErrors.name = "Property name is required";
-        }
-
-        if (!formData.address.trim()) {
-            newErrors.address = "Address is required";
-        }
-
-        if (!formData.image && mode === "create") {
-            newErrors.image = "Property image is required";
         }
 
         // Validate Google Map Link URL
@@ -312,7 +315,6 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                             variant="outlined"
                             size="small"
                             error={!!errors.address}
-                            required
                             inputProps={{ maxLength: 200 }}
                             helperText={
                                 <>
@@ -335,21 +337,45 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                     <Grid size={{ xs: 12 }}>
 
                         {/* Image Preview */}
-                        {formData.image && (
+                        {(formData.image || formData.imageFile) && (
                             <Box mt={2} position="relative" display="inline-block" width="100%">
-                                <img
-                                    src={formData.image}
-                                    alt="Preview"
-                                    style={{
-                                        width: "100%",
-                                        maxHeight: "200px",
-                                        objectFit: "contain",
-                                        borderRadius: "8px",
-                                        border: `1px solid ${palette.divider}`,
-                                    }}
-                                />
+                                {formData.image ? (
+                                    <img
+                                        src={formData.image}
+                                        alt="Preview"
+                                        style={{
+                                            width: "100%",
+                                            maxHeight: "200px",
+                                            objectFit: "contain",
+                                            borderRadius: "8px",
+                                            border: `1px solid ${palette.divider}`,
+                                        }}
+                                    />
+                                ) : (
+                                    <Box
+                                        sx={{
+                                            width: "100%",
+                                            height: "80px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            borderRadius: "8px",
+                                            border: `1px solid ${palette.divider}`,
+                                            backgroundColor: palette.action.hover,
+                                        }}
+                                    >
+                                        <Typography variant="body2" color="text.secondary">
+                                            {formData.imageFile?.name} (preview not available)
+                                        </Typography>
+                                    </Box>
+                                )}
                                 <IconButton
-                                    onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
+                                    onClick={() => {
+                                        if (formData.image && formData.image.startsWith("blob:")) {
+                                            URL.revokeObjectURL(formData.image);
+                                        }
+                                        setFormData({ ...formData, image: "", imageFile: null });
+                                    }}
                                     sx={{
                                         position: "absolute",
                                         top: 8,
@@ -361,7 +387,6 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                                 >
                                     <CloseIcon
                                         fontSize="small"
-                                        onClick={() => setFormData({ ...formData, image: "", imageFile: null })}
                                     />
                                 </IconButton>
                             </Box>
@@ -382,7 +407,7 @@ const Add_property = ({ open, onClose, onSuccess, mode = "create", initialData =
                                 },
                             }}
                         >
-                            Upload Image *
+                            Upload Image
                             <input
                                 type="file"
                                 accept="image/*"

@@ -1,34 +1,13 @@
 import React, { useEffect } from 'react';
-import { Box, Container, Typography, useTheme, Paper, Stack, Chip } from '@mui/material';
-import { AccessTime, Notifications } from '@mui/icons-material';
-import { trackEvent, initTracking } from './utils/tracking';
+import { useNavigate } from 'react-router-dom';
+import { Box, Container, Typography, useTheme, Paper, Stack, Chip, Button, alpha } from '@mui/material';
+import { Notifications, ArrowForward } from '@mui/icons-material';
 
 const CommingSoon = () => {
   const theme = useTheme();
   const { palette } = theme;
+  const navigate = useNavigate();
 
-  // Initialize tracking on component mount
-  useEffect(() => {
-    initTracking();
-
-    // Track page view with session context
-    trackEvent('Page View', {
-      page_name: 'Coming Soon',
-      action: 'viewed',
-      page_category: 'marketing',
-      page_type: 'coming_soon'
-    });
-  }, []);
-
-  const handleStayTunedClick = async () => {
-    await trackEvent('Button Click', {
-      button_name: 'Stay Tuned',
-      page_name: 'Coming Soon',
-      action: 'clicked',
-      element_type: 'chip',
-      element_location: 'center'
-    });
-  };
 
   return (
     <Box
@@ -42,7 +21,7 @@ const CommingSoon = () => {
       <Paper
         elevation={0}
         sx={{
-          p: 6,
+          p: 4,
           borderRadius: 4,
           border: `1px solid ${palette.primary.main}`,
           bgcolor: palette.background.paper,
@@ -113,7 +92,6 @@ const CommingSoon = () => {
           <Chip
             icon={<Notifications />}
             label="Stay Tuned"
-            onClick={handleStayTunedClick}
             sx={{
               bgcolor: palette.custom?.cream || '#fff8e1',
               fontWeight: 600,
@@ -122,6 +100,42 @@ const CommingSoon = () => {
             }}
           />
 
+          {/* add two button  continue with client and continue with team */}
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            justifyContent={{ xs: 'center', sm: 'space-around' }}
+            sx={{ mt: 4 }}
+          >
+            <Button
+              variant="contained"
+              size="small"
+              disableElevation
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/clients/login')}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                fontSize: '1rem',
+              }}
+            >
+              Get Started as Client
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              disableElevation
+              endIcon={<ArrowForward />}
+              onClick={() => navigate('/teams/login')}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                fontSize: '1rem',
+              }}
+            >
+              Join as Team Member
+            </Button>
+          </Stack>
           <Typography
             variant="body2"
             sx={{ mt: 6, fontStyle: 'italic', color: palette.text.secondary }}
