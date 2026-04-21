@@ -156,10 +156,13 @@ const PropertyManagement = () => {
   return (
     <React.Fragment>
       <Container maxWidth="mx" sx={{ mt: 2, mb: 4, px: 0 }}>
+        
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+
           <Typography variant="body1" sx={{ textTransform: 'capitalize', fontWeight: 'bold', fontSize: '1.2rem' }} gutterBottom>
             List of Properties
           </Typography>
+
           <Stack direction="row" spacing={1} alignItems="center">
             {!isMobile && (
               <TextField
@@ -211,6 +214,7 @@ const PropertyManagement = () => {
               </Button>
             )}
           </Stack>
+
         </Stack>
 
         {/* Mobile search bar */}
@@ -321,7 +325,7 @@ const PropertyManagement = () => {
         {/* Infinite scroll observer target  need property card skeleton here */}
         <div ref={observerTarget} style={{ height: 1 }} />
         {isLoadingMore && (
-         <PropertyCardSkeleton count={3} />
+          <PropertyCardSkeleton count={3} />
 
         )}
 

@@ -124,6 +124,7 @@ const Tile_View_Inventory = () => {
         const val = filters[key];
         return Array.isArray(val) ? val.length > 0 : val;
     });
+
     useEffect(() => {
         if (isMobile) {
             registerActions({
@@ -143,26 +144,18 @@ const Tile_View_Inventory = () => {
         }
     }, [location.state?.openAdd]);
 
-    console.log("Inventory Task Data Map:", inventoryTaskDataMap);
-    console.log("SlectedInventoryId:", selectedInventoryId);
-    console.log("selectedItem:", selectedItem);
-
     const {
-        inventoryData,
+        inventoryData = [],
         loading,
         fetchInventoryItems,
         inventoryPagination,
         deleteInventory,
         deleteOneTimeTask,
         deleteRecurringTask,
-        properties,
-        units,
+        properties = [],
+        units = [],
         getInventoryDetails,
     } = useInventoryContext();
-
-
-    console.log("Inventory Data:", inventoryData);
-
 
     const handleFilterToggle = () => {
         setIsFilterVisible((prev) => !prev);
@@ -463,7 +456,6 @@ const Tile_View_Inventory = () => {
                     <Button
                         variant="contained"
                         disableElevation
-                        size="medium"
                         sx={{
                             bgcolor: palette.primary.main,
                             "&:hover": { bgcolor: palette.secondary.main },
@@ -710,15 +702,16 @@ const Tile_View_Inventory = () => {
                                     <Box sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 0 }}>
                                         {canUpdateInventory && (
                                             <Button
-                                                size="small"
+                                                // size="small"
+                                                disableElevation
                                                 variant="outlined"
                                                 onClick={() => handleOpenUpdateInventory(item)}
                                                 sx={{
                                                     textTransform: 'none',
                                                     fontSize: '0.7rem',
-                                                    borderRadius: 2,
-                                                    py: 0.3,
-                                                    px: 1,
+                                                    borderRadius: 10,
+                                                    // py: 0.3,
+                                                    // px: 1,
                                                     minWidth: 'auto',
                                                     borderColor: palette.primary.main,
                                                     color: palette.primary.main,

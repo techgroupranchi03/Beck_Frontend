@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { IconButton, Menu, MenuItem, ListItemIcon, useTheme, ListItemText } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -7,6 +7,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 const ActionMenu = ({ onEdit, onDelete }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
+    const theme = useTheme();
+    const { palette } = theme;
 
     const handleEdit = () => {
         setAnchorEl(null);
@@ -70,14 +72,14 @@ const ActionMenu = ({ onEdit, onDelete }) => {
             >
                 <MenuItem onClick={() => handleEdit()}>
                     <ListItemIcon>
-                        <EditIcon fontSize="small" />
+                        <EditIcon fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Edit</ListItemText>
                 </MenuItem>
 
                 <MenuItem onClick={handleDelete}>
                     <ListItemIcon>
-                        <DeleteIcon fontSize="small" color="error" />
+                        <DeleteIcon fontSize="small" sx={{ color: palette.secondary.main }} />
                     </ListItemIcon>
                     <ListItemText>Delete</ListItemText>
                 </MenuItem>

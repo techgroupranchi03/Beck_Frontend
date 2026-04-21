@@ -93,7 +93,6 @@ const CommingSoon = () => {
             icon={<Notifications />}
             label="Stay Tuned"
             sx={{
-              bgcolor: palette.custom?.cream || '#fff8e1',
               fontWeight: 600,
               px: 2,
               py: 2.5,

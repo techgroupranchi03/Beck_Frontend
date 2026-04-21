@@ -163,5 +163,11 @@ export default defineConfig({
     port: 7001,
     strictPort: true,
     allowedHosts: ["taskbnb.in", "www.taskbnb.in", "api.taskbnb.in", "app.taskbnb.in"],
+    fs: {
+      deny: [".git"],
+    },
+    watch: {
+      ignored: ["**/.git/**"],
+    },
   },
 });

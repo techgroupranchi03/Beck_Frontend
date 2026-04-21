@@ -109,6 +109,13 @@ const formatYearlySchedule = (repeat_on) => {
         return 'Yearly';
     }
     
+    // Handle yearly_pairs format
+    if (Array.isArray(repeat_on.yearly_pairs) && repeat_on.yearly_pairs.length > 0) {
+        const sorted = [...repeat_on.yearly_pairs].sort((a, b) => a.month - b.month || a.date - b.date);
+        const pairStrings = sorted.map(p => `${getOrdinalSuffix(p.date)} of ${MONTH_NAMES[p.month] || `Month ${p.month}`}`);
+        return `Every Year on ${formatList(pairStrings)}`;
+    }
+    
     const { months, dates } = repeat_on;
     
     if (!dates || dates.length === 0) {
@@ -118,7 +125,7 @@ const formatYearlySchedule = (repeat_on) => {
         const monthNames = months
             .sort((a, b) => a - b)
             .map(month => MONTH_NAMES[month] || `Month ${month}`);
-        return `Every ${formatList(monthNames)}`;
+        return `Every Year in ${formatList(monthNames)}`;
     }
     
     const dateStrings = dates
@@ -126,14 +133,14 @@ const formatYearlySchedule = (repeat_on) => {
         .map(date => getOrdinalSuffix(date));
     
     if (!months || months.length === 0) {
-        return `On ${formatList(dateStrings)} of every month`;
+        return `Every Year on ${formatList(dateStrings)} of every month`;
     }
     
     const monthNames = months
         .sort((a, b) => a - b)
         .map(month => MONTH_NAMES[month] || `Month ${month}`);
     
-    return `On ${formatList(dateStrings)} of ${formatList(monthNames)}`;
+    return `Every Year on ${formatList(dateStrings)} of ${formatList(monthNames)}`;
 };
 
 /**

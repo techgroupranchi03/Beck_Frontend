@@ -78,13 +78,13 @@ export const scheduleTypeOptions = [
 
 export const daysOfWeek = [
     // i need here value 1 to 7 for sunday to saturday
-    { value: 1, label: 'Monday' },
-    { value: 2, label: 'Tuesday' },
-    { value: 3, label: 'Wednesday' },
-    { value: 4, label: 'Thursday' },
-    { value: 5, label: 'Friday' },
-    { value: 6, label: 'Saturday' },
-    { value: 7, label: 'Sunday' }
+    { label: 'Monday', shortLabel: 'Mon', value: 1 },
+    { label: 'Tuesday', shortLabel: 'Tue', value: 2 },
+    { label: 'Wednesday', shortLabel: 'Wed', value: 3 },
+    { label: 'Thursday', shortLabel: 'Thu', value: 4 },
+    { label: 'Friday', shortLabel: 'Fri', value: 5 },
+    { label: 'Saturday', shortLabel: 'Sat', value: 6 },
+    { label: 'Sunday', shortLabel: 'Sun', value: 7 }
 ];
 
 export const monthsOfYear = [

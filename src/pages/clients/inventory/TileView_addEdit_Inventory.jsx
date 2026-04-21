@@ -1,8 +1,13 @@
 import { Close, Inventory, CloudUpload, ExpandMore, NavigateBefore, NavigateNext } from '@mui/icons-material';
-import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Checkbox, FormControlLabel, Radio, RadioGroup, FormLabel, Stepper, Step, StepLabel, Switch, Divider } from '@mui/material'
+import { Dialog, DialogContent, DialogTitle, IconButton, Typography, Slide, Grid, TextField, useTheme, useMediaQuery, DialogActions, Button, Select, MenuItem, FormControl, InputLabel, Autocomplete, Box, Checkbox, FormControlLabel, Radio, RadioGroup, FormLabel, Stepper, Step, StepLabel, Switch, Divider } from '@mui/material'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { scheduleTypes, daysOfWeek, monthsOfYear, datesOfMonth, categoriess } from '../../../constant';
+import { daysOfWeek, monthsOfYear, datesOfMonth, categoriess } from '../../../constant';
 import CloseIcon from '@mui/icons-material/Close';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { PickersDay } from '@mui/x-date-pickers/PickersDay';
+import dayjs from 'dayjs';
 import { useInventoryContext } from './InventoryManagement';
 import { useSnackbar } from '../../../resuable_components/Snackbar';
 import QuantityInput from '../../../resuable_components/QuantityInput';
@@ -14,6 +19,7 @@ const Transition = React.forwardRef(function transition(props, ref) {
 const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     const isEdit = !!inventory;
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { palette } = theme;
     const { showSnackbar } = useSnackbar();
     const {
@@ -61,6 +67,15 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
     });
 
     const [repeatData, setRepeatData] = useState({});
+    const [showStartDateInput, setShowStartDateInput] = useState(false);
+    const [yearlyMonth, setYearlyMonth] = useState('');
+    const [yearlyDate, setYearlyDate] = useState('');
+    const [isRepeat, setIsRepeat] = useState(false);
+    const [repeatScheduleType, setRepeatScheduleType] = useState('weekly');
+    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedDates, setSelectedDates] = useState([]);
+    const [datePickerOpen, setDatePickerOpen] = useState(false);
+    const datePickerRef = useRef(null);
 
     useEffect(() => {
         if (isEdit && inventory) {
@@ -98,17 +113,23 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
         // Reset task form data
         setCreateTasks(false);
         setSubmitting(false);
+        setShowStartDateInput(false);
         setTaskFormData({
             task_title: '',
             task_description: '',
             task_assigned_to: '',
-            task_schedule_type: 'weekly',
-            task_start_date: new Date().toISOString().split('T')[0],
+            task_schedule_type: 'fixed_dates',
+            task_start_date: '',
             task_end_date: '',
             task_requires_photo: false,
             task_allows_inventory_update: false,
         });
         setRepeatData({});
+        setIsRepeat(false);
+        setRepeatScheduleType('weekly');
+        setSelectedDate('');
+        setSelectedDates([]);
+        setDatePickerOpen(false);
         setPropertySearchText('');
         setActiveStep(0);
     }, [isEdit, inventory, open]);
@@ -132,6 +153,187 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             if (propertySearchTimer.current) clearTimeout(propertySearchTimer.current);
         };
     }, []);
+
+    // Helper to format date as DD-MM-YYYY
+    const formatDateDisplay = (dateStr) => {
+        if (!dateStr) return '';
+        const [y, m, d] = dateStr.split('-');
+        return `${d}-${m}-${y}`;
+    };
+
+    // Format a Date object as YYYY-MM-DD using local time
+    const toLocalDateString = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    // Auto-populate repeat data from a selected date (appends to existing)
+    const autoPopulateFromDate = (dateStr) => {
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+        const dateOfMonth = d.getDate();
+        const month = d.getMonth() + 1;
+
+        if (repeatScheduleType === 'weekly') {
+            setRepeatData(prev => {
+                const newDays = [...new Set([...(prev.days || []), dayOfWeek])];
+                handleTaskChange('task_repeat_on', JSON.stringify({ days: newDays }));
+                return { days: newDays };
+            });
+        } else if (repeatScheduleType === 'monthly') {
+            setRepeatData(prev => {
+                const newDates = [...new Set([...(prev.dates || []), dateOfMonth])].sort((a, b) => a - b);
+                handleTaskChange('task_repeat_on', JSON.stringify({ dates: newDates }));
+                return { dates: newDates };
+            });
+        } else if (repeatScheduleType === 'yearly') {
+            setRepeatData(prev => {
+                const exists = (prev.yearly_pairs || []).some(
+                    p => p.month === month && p.date === dateOfMonth
+                );
+                if (exists) return prev;
+                const newPairs = [...(prev.yearly_pairs || []), { month, date: dateOfMonth }]
+                    .sort((a, b) => a.month - b.month || a.date - b.date);
+                handleTaskChange('task_repeat_on', JSON.stringify({ yearly_pairs: newPairs }));
+                return { yearly_pairs: newPairs };
+            });
+        }
+    };
+
+    // Remove a date's contribution from repeat data
+    const removeFromRepeatData = (dateStr) => {
+        if (!dateStr) return;
+        const d = new Date(dateStr + 'T00:00:00');
+        const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+        const dateOfMonth = d.getDate();
+        const month = d.getMonth() + 1;
+
+        if (repeatScheduleType === 'weekly') {
+            setRepeatData(prev => {
+                const newDays = (prev.days || []).filter(day => day !== dayOfWeek);
+                handleTaskChange('task_repeat_on', JSON.stringify({ days: newDays }));
+                return { days: newDays };
+            });
+        } else if (repeatScheduleType === 'monthly') {
+            setRepeatData(prev => {
+                const newDates = (prev.dates || []).filter(date => date !== dateOfMonth);
+                handleTaskChange('task_repeat_on', JSON.stringify({ dates: newDates }));
+                return { dates: newDates };
+            });
+        } else if (repeatScheduleType === 'yearly') {
+            setRepeatData(prev => {
+                const newPairs = (prev.yearly_pairs || []).filter(
+                    p => !(p.month === month && p.date === dateOfMonth)
+                );
+                handleTaskChange('task_repeat_on', JSON.stringify({ yearly_pairs: newPairs }));
+                return { yearly_pairs: newPairs };
+            });
+        }
+    };
+
+    // Auto-populate repeat data from multiple dates at once
+    const autoPopulateFromMultipleDates = (dateStrings, type) => {
+        const schedType = type || repeatScheduleType;
+        const days = [];
+        const dates = [];
+        const yearlyPairs = [];
+
+        for (const dateStr of dateStrings) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
+            const dateOfMonth = d.getDate();
+            const month = d.getMonth() + 1;
+
+            if (!days.includes(dayOfWeek)) days.push(dayOfWeek);
+            if (!dates.includes(dateOfMonth)) dates.push(dateOfMonth);
+            if (!yearlyPairs.some(p => p.month === month && p.date === dateOfMonth)) {
+                yearlyPairs.push({ month, date: dateOfMonth });
+            }
+        }
+
+        switch (schedType) {
+            case 'weekly':
+                setRepeatData({ days });
+                handleTaskChange('task_repeat_on', JSON.stringify({ days }));
+                break;
+            case 'monthly':
+                setRepeatData({ dates: dates.sort((a, b) => a - b) });
+                handleTaskChange('task_repeat_on', JSON.stringify({ dates: dates.sort((a, b) => a - b) }));
+                break;
+            case 'yearly':
+                setRepeatData({ yearly_pairs: yearlyPairs.sort((a, b) => a.month - b.month || a.date - b.date) });
+                handleTaskChange('task_repeat_on', JSON.stringify({ yearly_pairs: yearlyPairs.sort((a, b) => a.month - b.month || a.date - b.date) }));
+                break;
+            default:
+                setRepeatData({});
+                break;
+        }
+    };
+
+    // Calculate first occurrence date based on schedule type and repeat data
+    const calculateFirstOccurrence = (scheduleType, data) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (scheduleType === 'weekly' && data.days?.length > 0) {
+            const todayDay = today.getDay();
+            let minDaysAhead = Infinity;
+            for (const dayValue of data.days) {
+                const jsDay = dayValue % 7;
+                let daysAhead = jsDay - todayDay;
+                if (daysAhead < 0) daysAhead += 7;
+                if (daysAhead < minDaysAhead) minDaysAhead = daysAhead;
+            }
+            if (minDaysAhead !== Infinity) {
+                const firstDate = new Date(today);
+                firstDate.setDate(firstDate.getDate() + minDaysAhead);
+                return toLocalDateString(firstDate);
+            }
+        }
+
+        if (scheduleType === 'monthly' && data.dates?.length > 0) {
+            const currentDate = today.getDate();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            const sortedDates = [...data.dates].sort((a, b) => a - b);
+            for (const date of sortedDates) {
+                if (date >= currentDate) {
+                    return toLocalDateString(new Date(currentYear, currentMonth, date));
+                }
+            }
+            return toLocalDateString(new Date(currentYear, currentMonth + 1, sortedDates[0]));
+        }
+
+        if (scheduleType === 'yearly' && data.yearly_pairs?.length > 0) {
+            const currentMonth = today.getMonth() + 1;
+            const currentDate = today.getDate();
+            const currentYear = today.getFullYear();
+            const sorted = [...data.yearly_pairs].sort((a, b) => a.month - b.month || a.date - b.date);
+            for (const pair of sorted) {
+                if (pair.month > currentMonth || (pair.month === currentMonth && pair.date >= currentDate)) {
+                    return toLocalDateString(new Date(currentYear, pair.month - 1, pair.date));
+                }
+            }
+            return toLocalDateString(new Date(currentYear + 1, sorted[0].month - 1, sorted[0].date));
+        }
+
+        return null;
+    };
+
+    // Auto-calculate task_start_date when repeat data changes
+    useEffect(() => {
+        if (!createTasks) return;
+        if (showStartDateInput) return;
+        if (taskFormData.task_schedule_type === 'fixed_dates') return;
+
+        const firstDate = calculateFirstOccurrence(taskFormData.task_schedule_type, repeatData);
+        if (firstDate) {
+            setTaskFormData(prev => ({ ...prev, task_start_date: firstDate }));
+        }
+    }, [taskFormData.task_schedule_type, repeatData, createTasks, showStartDateInput]);
 
     // Debounced search handler for property dropdown
     const handlePropertySearchInput = useCallback((event, value, reason) => {
@@ -299,8 +501,12 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 } else if (taskFormData.task_schedule_type === 'monthly') {
                     formDataToSend.append('repeat_date', JSON.stringify(repeatData.dates || []));
                 } else if (taskFormData.task_schedule_type === 'yearly') {
-                    formDataToSend.append('repeat_month', JSON.stringify(repeatData.months || []));
-                    formDataToSend.append('repeat_date', JSON.stringify(repeatData.dates || []));
+                    const pairs = repeatData.yearly_pairs || [];
+                    const months = [...new Set(pairs.map(p => p.month))].sort((a, b) => a - b);
+                    const dates = [...new Set(pairs.map(p => p.date))].sort((a, b) => a - b);
+                    formDataToSend.append('repeat_month', JSON.stringify(months));
+                    formDataToSend.append('repeat_date', JSON.stringify(dates));
+                    formDataToSend.append('yearly_pairs', JSON.stringify(pairs));
                 } else if (isFixedDates) {
                     formDataToSend.append('fixed_dates', JSON.stringify(repeatData.dates || []));
                 }
@@ -744,88 +950,105 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                     <Divider />
                                 </Grid>
 
-                                <Grid size={{ xs: 12 }}>
-                                    <FormControl component="fieldset">
-                                        <FormLabel component="legend"
-                                            sx={{
-                                                color: validationErrors.task_schedule_type ? 'error.main' : 'inherit'
-                                            }}
-                                        >
-                                            Schedule Type
-                                        </FormLabel>
-                                        <RadioGroup
-                                            row
-                                            value={taskFormData.task_schedule_type}
-                                            onChange={(e) => {
-                                                handleTaskChange('task_schedule_type', e.target.value);
-                                                setRepeatData({});
-                                            }}
-                                        >
-                                            {scheduleTypes.map((type) => (
-                                                <FormControlLabel key={type} value={type} control={<Radio />} label={type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')} />
-                                            ))}
-                                        </RadioGroup>
-                                        {validationErrors.task_schedule_type && (
-                                            <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.1 }}>
-                                                {validationErrors.task_schedule_type}
-                                            </Box>
-                                        )}
-                                    </FormControl>
+                                {/* Date Picker */}
+                                <Grid size={{ xs: 12, sm: 8 }}>
+                                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                            <DatePicker
+                                                ref={datePickerRef}
+                                                label="Select Date"
+                                                format="DD/MM/YYYY"
+                                                open={datePickerOpen}
+                                                onOpen={() => setDatePickerOpen(true)}
+                                                onClose={() => setDatePickerOpen(false)}
+                                                closeOnSelect={false}
+                                                value={selectedDate ? dayjs(selectedDate) : null}
+                                                onChange={(newValue) => {
+                                                    if (!newValue || !newValue.isValid()) return;
+                                                    const dateVal = newValue.format('YYYY-MM-DD');
+                                                    setSelectedDate(dateVal);
+                                                    const alreadySelected = selectedDates.includes(dateVal);
+                                                    if (alreadySelected) {
+                                                        setSelectedDates(prev => prev.filter(d => d !== dateVal));
+                                                        if (!isRepeat) {
+                                                            setRepeatData(prev => ({
+                                                                ...prev,
+                                                                dates: (prev.dates || []).filter(d => d !== dateVal)
+                                                            }));
+                                                        } else {
+                                                            removeFromRepeatData(dateVal);
+                                                        }
+                                                    } else {
+                                                        setSelectedDates(prev => [...prev, dateVal].sort());
+                                                        if (!isRepeat) {
+                                                            if (!repeatData.dates?.includes(dateVal)) {
+                                                                setRepeatData(prev => ({
+                                                                    ...prev,
+                                                                    dates: [...(prev.dates || []), dateVal].sort()
+                                                                }));
+                                                            }
+                                                        } else {
+                                                            handleTaskChange('task_start_date', dateVal);
+                                                            autoPopulateFromDate(dateVal);
+                                                        }
+                                                    }
+                                                }}
+                                                slots={{
+                                                    day: (dayProps) => {
+                                                        const dateStr = dayProps.day.format('YYYY-MM-DD');
+                                                        const isHighlighted = !isRepeat
+                                                            ? repeatData.dates?.includes(dateStr)
+                                                            : selectedDates.includes(dateStr);
+                                                        return <PickersDay {...dayProps} selected={dayProps.selected || isHighlighted} />;
+                                                    }
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        size: 'small',
+                                                        fullWidth: true,
+                                                        error: !isRepeat && !!validationErrors.task_repeat_on,
+                                                        helperText: !isRepeat ? (validationErrors.task_repeat_on || 'Pick dates to add them') : 'Pick a date to pre-fill repeat options',
+                                                        onClick: () => setDatePickerOpen(true),
+                                                    },
+                                                }}
+                                            />
+                                        </LocalizationProvider>
+
+                                        <FormControlLabel
+                                            labelPlacement="start"
+                                            control={
+                                                <Checkbox
+                                                    checked={isRepeat}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        setIsRepeat(checked);
+                                                        if (checked) {
+                                                            handleTaskChange('task_schedule_type', repeatScheduleType);
+                                                            if (selectedDates.length > 0) {
+                                                                autoPopulateFromMultipleDates(selectedDates, repeatScheduleType);
+                                                            } else if (selectedDate) {
+                                                                autoPopulateFromDate(selectedDate);
+                                                            } else {
+                                                                setRepeatData({});
+                                                            }
+                                                        } else {
+                                                            handleTaskChange('task_schedule_type', 'fixed_dates');
+                                                            setRepeatData({});
+                                                            setShowStartDateInput(false);
+                                                        }
+                                                    }}
+                                                />
+                                            }
+                                            label="Repeat"
+                                        />
+                                    </Box>
                                 </Grid>
 
-                                {taskFormData.task_schedule_type && taskFormData.task_schedule_type !== 'fixed_dates' && (
-                                    <>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <TextField
-                                                type="date"
-                                                label="Start Date"
-                                                size='small'
-                                                value={taskFormData.task_start_date}
-                                                onChange={(e) => handleTaskChange('task_start_date', e.target.value)}
-                                                error={!!validationErrors?.task_start_date}
-                                                helperText={validationErrors?.task_start_date}
-                                                InputLabelProps={{ shrink: true }}
-                                                fullWidth
-                                            />
-                                        </Grid>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <TextField
-                                                type="date"
-                                                label="End Date"
-                                                size='small'
-                                                value={taskFormData.task_end_date}
-                                                onChange={(e) => handleTaskChange('task_end_date', e.target.value)}
-                                                error={!!validationErrors?.task_end_date}
-                                                helperText={validationErrors?.task_end_date}
-                                                InputLabelProps={{ shrink: true }}
-                                                fullWidth
-                                            />
-                                        </Grid>
-                                    </>
-                                )}
-
-                                {taskFormData.task_schedule_type === 'fixed_dates' && (
+                                {/* Monthly - Selected Dates (below DatePicker) */}
+                                {isRepeat && repeatScheduleType === 'monthly' && (
                                     <Grid size={{ xs: 12 }}>
-                                        <TextField
-                                            type="date"
-                                            label="Select Date"
-                                            fullWidth
-                                            size="small"
-                                            InputLabelProps={{ shrink: true }}
-                                            onChange={(e) => {
-                                                const dateVal = e.target.value;
-                                                if (dateVal && !repeatData.dates?.includes(dateVal)) {
-                                                    setRepeatData(prev => ({
-                                                        ...prev,
-                                                        dates: [...(prev.dates || []), dateVal].sort()
-                                                    }));
-                                                }
-                                            }}
-                                            error={!!validationErrors.task_repeat_on}
-                                            helperText={validationErrors.task_repeat_on || 'Pick dates to add them'}
-                                        />
-                                        {repeatData.dates && repeatData.dates.length > 0 && (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                        {repeatData.dates?.length > 0 ? (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                                 {repeatData.dates.map((date) => (
                                                     <Box
                                                         key={date}
@@ -856,120 +1079,218 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                                     </Box>
                                                 ))}
                                             </Box>
+                                        ) : (
+                                            <Box sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                                                Select dates from the calendar above
+                                            </Box>
+                                        )}
+                                        {validationErrors?.task_repeat_on && (
+                                            <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                                                {validationErrors.task_repeat_on}
+                                            </Box>
                                         )}
                                     </Grid>
                                 )}
 
-                                {taskFormData.task_schedule_type === 'weekly' && (
+                                {/* Yearly - Selected Month/Date pairs (below DatePicker) */}
+                                {isRepeat && repeatScheduleType === 'yearly' && (
                                     <Grid size={{ xs: 12 }}>
-                                        <Autocomplete
-                                            multiple
-                                            limitTags={3}
-                                            size="small"
-                                            options={daysOfWeek}
-                                            getOptionLabel={(option) => option.label}
-                                            value={daysOfWeek.filter(day => repeatData.days?.includes(day.value)) || []}
-                                            onChange={(event, newValue) => {
-                                                const dayValues = newValue.map(day => day.value);
-                                                setRepeatData({ days: dayValues });
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    label="Select Days"
-                                                    placeholder="Choose days of the week"
-                                                    required
-                                                    error={!!validationErrors?.task_repeat_on}
-                                                    helperText={validationErrors?.task_repeat_on || 'Select days of the week'}
-                                                />
-                                            )}
-                                            isOptionEqualToValue={(option, value) => option.value === value.value}
-                                        />
+                                        {repeatData.yearly_pairs?.length > 0 ? (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                {repeatData.yearly_pairs.map((pair, idx) => (
+                                                    <Box
+                                                        key={idx}
+                                                        sx={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            bgcolor: palette.background.customPaper,
+                                                            borderRadius: 2,
+                                                            px: 1,
+                                                            py: 0.3,
+                                                            fontSize: '0.8rem',
+                                                            gap: 0.5,
+                                                        }}
+                                                    >
+                                                        {monthsOfYear.find(m => m.value === pair.month)?.label} {pair.date}
+                                                        <IconButton
+                                                            size="small"
+                                                            sx={{ p: 0, ml: 0.5 }}
+                                                            onClick={() => {
+                                                                setRepeatData(prev => ({
+                                                                    ...prev,
+                                                                    yearly_pairs: prev.yearly_pairs.filter((_, i) => i !== idx)
+                                                                }));
+                                                            }}
+                                                        >
+                                                            <CloseIcon sx={{ fontSize: 14 }} />
+                                                        </IconButton>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                                                Select dates from the calendar above
+                                            </Box>
+                                        )}
+                                        {validationErrors?.task_repeat_on && (
+                                            <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                                                {validationErrors.task_repeat_on}
+                                            </Box>
+                                        )}
                                     </Grid>
                                 )}
 
-                                {taskFormData.task_schedule_type === 'monthly' && (
+                                {/* Fixed dates chips */}
+                                {!isRepeat && repeatData.dates && repeatData.dates.length > 0 && (
                                     <Grid size={{ xs: 12 }}>
-                                        <Autocomplete
-                                            multiple
-                                            limitTags={5}
-                                            size="small"
-                                            options={datesOfMonth}
-                                            getOptionLabel={(option) => String(option)}
-                                            value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
-                                            onChange={(event, newValue) => {
-                                                setRepeatData({ dates: newValue.sort((a, b) => a - b) });
-                                            }}
-                                            renderInput={(params) => (
-                                                <TextField
-                                                    {...params}
-                                                    label="Select Dates"
-                                                    placeholder="Choose dates of the month"
-                                                    required
-                                                    error={!!validationErrors?.task_repeat_on}
-                                                    helperText={validationErrors?.task_repeat_on || 'Select dates of the month (1-31)'}
-                                                />
-                                            )}
-                                        />
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                            {repeatData.dates.map((date) => (
+                                                <Box
+                                                    key={date}
+                                                    sx={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        bgcolor: palette.background.customPaper,
+                                                        borderRadius: 2,
+                                                        px: 1,
+                                                        py: 0.3,
+                                                        fontSize: '0.8rem',
+                                                        gap: 0.5,
+                                                    }}
+                                                >
+                                                    {date}
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{ p: 0, ml: 0.5 }}
+                                                        onClick={() => {
+                                                            setRepeatData(prev => ({
+                                                                ...prev,
+                                                                dates: prev.dates.filter(d => d !== date)
+                                                            }));
+                                                        }}
+                                                    >
+                                                        <CloseIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Box>
+                                            ))}
+                                        </Box>
                                     </Grid>
                                 )}
 
-                                {taskFormData.task_schedule_type === 'yearly' && (
+                                {/* Repeat options */}
+                                {isRepeat && (
                                     <>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Autocomplete
-                                                multiple
-                                                limitTags={3}
-                                                size="small"
-                                                options={monthsOfYear}
-                                                getOptionLabel={(option) => option.label}
-                                                value={monthsOfYear.filter(month => repeatData.months?.includes(month.value)) || []}
-                                                onChange={(event, newValue) => {
-                                                    const monthValues = newValue.map(month => month.value);
-                                                    setRepeatData({ ...repeatData, months: monthValues });
+                                        <Grid size={{ xs: 12 }}>
+                                            <RadioGroup
+                                                row
+                                                value={repeatScheduleType}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setRepeatScheduleType(val);
+                                                    handleTaskChange('task_schedule_type', val);
+                                                    if (selectedDates.length > 0) {
+                                                        autoPopulateFromMultipleDates(selectedDates, val);
+                                                    } else if (selectedDate) {
+                                                        setRepeatData({});
+                                                        setTimeout(() => autoPopulateFromDate(selectedDate), 0);
+                                                    } else {
+                                                        setRepeatData({});
+                                                    }
                                                 }}
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        label="Select Months"
-                                                        placeholder="Choose months"
-                                                        required
-                                                        error={!!validationErrors?.task_repeat_on}
-                                                        helperText={validationErrors?.task_repeat_on || 'Select months of the year'}
-                                                    />
-                                                )}
-                                                isOptionEqualToValue={(option, value) => option.value === value.value}
+                                            >
+                                                <FormControlLabel value="weekly" control={<Radio />} label="Weekly" />
+                                                <FormControlLabel value="monthly" control={<Radio />} label="Monthly" />
+                                                <FormControlLabel value="yearly" control={<Radio />} label="Yearly" />
+                                            </RadioGroup>
+                                        </Grid>
+
+                                        {/* Start/End date row */}
+                                        <Grid size={{ xs: 12 }}>
+                                            {taskFormData.task_start_date ? (
+                                                <Box
+                                                    onClick={() => setDatePickerOpen(true)}
+                                                    sx={{
+                                                        cursor: 'pointer',
+                                                        color: palette.primary.main,
+                                                        fontSize: '0.875rem',
+                                                        py: 0.5,
+                                                        '&:hover': { textDecoration: 'underline' },
+                                                    }}
+                                                >
+                                                    Starts from {formatDateDisplay(taskFormData.task_start_date)}
+                                                    {repeatScheduleType === 'weekly' && ' every Week'}
+                                                    {repeatScheduleType === 'monthly' && ' every Month'}
+                                                    {repeatScheduleType === 'yearly' && ' every Year'}
+                                                    <span style={{ fontSize: '0.75rem', marginLeft: 8, opacity: 0.7 }}>(click to change)</span>
+                                                </Box>
+                                            ) : null}
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, sm: 6 }}>
+                                            <TextField
+                                                type="date"
+                                                label="End Date"
+                                                size='small'
+                                                value={taskFormData.task_end_date}
+                                                onChange={(e) => handleTaskChange('task_end_date', e.target.value)}
+                                                error={!!validationErrors?.task_end_date}
+                                                helperText={validationErrors?.task_end_date}
+                                                InputLabelProps={{ shrink: true }}
+                                                fullWidth
                                             />
                                         </Grid>
-                                        <Grid size={{ xs: 12, sm: 6 }}>
-                                            <Autocomplete
-                                                multiple
-                                                limitTags={3}
-                                                size="small"
-                                                options={datesOfMonth}
-                                                getOptionLabel={(option) => String(option)}
-                                                value={Array.isArray(repeatData.dates) ? repeatData.dates : []}
-                                                onChange={(event, newValue) => {
-                                                    setRepeatData({ ...repeatData, dates: newValue.sort((a, b) => a - b) });
-                                                }}
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        label="Select Dates"
-                                                        placeholder="Choose dates"
-                                                        required
-                                                        error={!!validationErrors?.task_repeat_on}
-                                                        helperText={validationErrors?.task_repeat_on || 'Select dates (1-31)'}
-                                                    />
-                                                )}
-                                            />
-                                        </Grid>
+
+                                        {/* Weekly */}
+                                        {repeatScheduleType === 'weekly' && (
+                                            <Grid size={{ xs: 12 }}>
+                                                <FormControl component="fieldset" fullWidth>
+                                                    <FormLabel component="legend" sx={{ mb: 1 }}>Select days of the week</FormLabel>
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                        {daysOfWeek.map((day) => {
+                                                            const isSelected = repeatData.days?.includes(day.value);
+                                                            return (
+                                                                <Button
+                                                                    key={day.value}
+                                                                    variant={isSelected ? 'contained' : 'outlined'}
+                                                                    onClick={() => {
+                                                                        const currentDays = repeatData.days || [];
+                                                                        const newDays = isSelected
+                                                                            ? currentDays.filter(d => d !== day.value)
+                                                                            : [...currentDays, day.value];
+                                                                        setRepeatData({ days: newDays });
+                                                                    }}
+                                                                    sx={{
+                                                                        textTransform: 'none',
+                                                                        borderRadius: 10,
+                                                                        minWidth: 'auto',
+                                                                        height: isMobile ? 25 : 30,
+                                                                        ...(isSelected && {
+                                                                            backgroundColor: palette.primary.main,
+                                                                            color: palette.primary.contrastText,
+                                                                            '&:hover': { backgroundColor: palette.secondary.main },
+                                                                        }),
+                                                                    }}
+                                                                >
+                                                                    {isMobile ? day.shortLabel : day.label}
+                                                                </Button>
+                                                            );
+                                                        })}
+                                                    </Box>
+                                                    {validationErrors?.task_repeat_on && (
+                                                        <Box sx={{ color: 'error.main', fontSize: '0.75rem', mt: 0.5 }}>
+                                                            {validationErrors.task_repeat_on}
+                                                        </Box>
+                                                    )}
+                                                </FormControl>
+                                            </Grid>
+                                        )}
+
                                     </>
                                 )}
 
                                 {/* ── Assignment & Settings Section ── */}
                                 <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: palette.primary.main }}>
                                         Assignment & Settings
                                     </Typography>
                                     <Divider />
@@ -977,6 +1298,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
 
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <Autocomplete
+                                        size="small"
                                         value={teamMembers.find((item) => item.id === taskFormData.task_assigned_to) || null}
                                         onChange={(e, newValue) => {
                                             handleTaskChange('task_assigned_to', newValue ? newValue.id : '');
@@ -1008,6 +1330,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                             }
                                         />
                                     </Grid>
+
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <FormControlLabel
                                             label="Update Inventory Quantity"
@@ -1021,6 +1344,7 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                                         />
                                     </Grid>
                                 </Grid>
+
                             </Grid>
                         )}
 
@@ -1037,7 +1361,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
             <DialogActions sx={{ px: 2, py: 2, justifyContent: 'space-between' }}>
                 <Button
                     variant="outlined"
-                    size='small'
                     disabled={activeStep === 0}
                     onClick={handleBack}
                     startIcon={<NavigateBefore />}
@@ -1051,7 +1374,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                 </Button>
                 <Button
                     variant="contained"
-                    size='small'
                     disableElevation
                     disabled={loading || submitting}
                     onClick={handleNext}
@@ -1061,7 +1383,6 @@ const TileView_addEdit_Inventory = ({ open, onClose, inventory }) => {
                         backgroundColor: palette.primary.main,
                         '&:hover': { backgroundColor: palette.secondary.main },
                         borderRadius: 10,
-                        px: 2,
                     }}
                 >
                     {submitting
