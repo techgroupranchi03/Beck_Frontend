@@ -12,6 +12,10 @@ pipeline {
         PROJECT         = 'beck-frontend'
     }
 
+    triggers {
+        githubPush()
+    }
+
     options {
         timeout(time: 20, unit: 'MINUTES')   // Vite build can take a few minutes
         disableConcurrentBuilds()
