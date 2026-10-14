@@ -21,7 +21,25 @@ export const getClientProperties = async (page, search = '') => {
         console.error('Client properties fetching error:', error);
         return Promise.reject(error.response?.data || { message: 'Fetching properties failed' });
     }
-}
+};
+
+export const getClientPropertiesById = async (propertyId) => {
+    const token = getClientToken();
+    try {
+        const response = await axios.get(
+            `${BASE_URL}/client/properties/${propertyId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Client property fetching error:', error);
+        return Promise.reject(error.response?.data || { message: 'Fetching property failed' });
+    }
+};
 
 export const createClientProperty = async (propertyData) => {
     const token = getClientToken();
